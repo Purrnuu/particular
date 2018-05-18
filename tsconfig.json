@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "es6",
+    "module": "es6",
+    "allowJs": true,
+    "jsx": "preserve",
+    "sourceMap": true,
+
+    "noImplicitAny": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+
+    "allowSyntheticDefaultImports": true,
+    "moduleResolution": "node",
+    "baseUrl": "src",
+    "lib": ["dom", "es6"],
+
+    "experimentalDecorators": false
+  }
+}

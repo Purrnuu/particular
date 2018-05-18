@@ -1,0 +1,170 @@
+import React from 'react';
+import _ from 'lodash';
+
+import Emitter from '../components/emitter';
+import Vector from '../utils/vector';
+
+import { ICONS_HAPPY, ICONS_SAD, ICONS_ALPACA, ICONS_CHRISTMAS } from '../utils/icons';
+import * as emitterTypes from '../utils/emitterTypes';
+
+const MAX_EMOTICONS = 300;
+const EMITTER_RATE = 8;
+const EMITTER_LIFE = 30;
+const PIXEL_RATIO = 2;
+
+export default class ParticleRenderer extends React.Component {
+  constructor(props) {
+    super(props);
+
+    this.state = { width: 100, height: 100, animating: false };
+
+    this.emitters = [];
+    this.particles = [];
+    this.canvas = null;
+  }
+
+  componentDidMount() {
+    window.addEventListener('resize', this.onWindowResize);
+    this.onWindowResize();
+    this.animate();
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('resize', this.onWindowResize);
+    window.clearInterval(this.animateRequest);
+  }
+
+  onWindowResize = () => {
+    const height = window.innerHeight;
+    const width = window.innerWidth;
+    this.setState({ width, height });
+  };
+
+  startEngine = () => {
+    this.setState({ animating: true });
+  };
+
+  stopEngine = () => {
+    this.setState({ animating: false });
+  };
+
+  create = ({ x, y, type }) => {
+    let icons = ICONS_HAPPY;
+    if (type === emitterTypes.happy) {
+      icons = ICONS_HAPPY;
+    } else if (type === emitterTypes.sad) {
+      icons = ICONS_SAD;
+    } else if (type === emitterTypes.christmas) {
+      icons = ICONS_CHRISTMAS;
+    } else if (type === emitterTypes.custom) {
+      icons = ICONS_CHRISTMAS;
+    }
+
+    if (Math.random() > 0.99) {
+      icons = ICONS_ALPACA;
+    }
+
+    this.emitters.push(
+      new Emitter(
+        icons,
+        new Vector(x / PIXEL_RATIO, y / PIXEL_RATIO),
+        Vector.fromAngle(-90, 5),
+        Math.PI / 1.3,
+      ),
+    );
+    this.startEngine();
+  };
+
+  addNewParticles = () => {
+    if (this.particles.length > MAX_EMOTICONS) return;
+
+    _.each(this.emitters, emitter => {
+      if (emitter) {
+        for (let j = 0; j < EMITTER_RATE; j++) {
+          const particle = emitter.emitParticle();
+          const icon = _.sample(emitter.icons, 1);
+          particle.init(icon);
+          this.particles.push(particle);
+        }
+      }
+    });
+
+    this.emitters = _.filter(this.emitters, emitter => {
+      if (emitter.lifeCycle < EMITTER_LIFE) {
+        return emitter;
+      }
+      return null;
+    });
+  };
+
+  plotParticles = (boundsX, boundsY) => {
+    const currentParticles = [];
+
+    _.each(this.particles, particle => {
+      const pos = particle.position;
+      if (!(pos.x < 0 || pos.x > boundsX || pos.y < -boundsY || pos.y > boundsY)) {
+        particle.move();
+        currentParticles.push(particle);
+      }
+    });
+    this.particles = currentParticles;
+
+    if (!this.particles.length && !this.emitters.length) {
+      this.stopEngine();
+    }
+  };
+
+  redraw = () => {
+    const { width, height } = this.state;
+    const pixelRatio = PIXEL_RATIO;
+    if (!this.canvas) {
+      return;
+    }
+
+    this.addNewParticles();
+    this.plotParticles(width, height);
+
+    const ctx = this.canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.save();
+    ctx.scale(pixelRatio, pixelRatio);
+    ctx.clearRect(0, 0, width, height);
+
+    _.each(this.particles, particle => {
+      particle.render(ctx);
+    });
+
+    ctx.restore();
+  };
+
+  animate = () => {
+    this.animateRequest = window.requestAnimationFrame(this.animate);
+    if (this.state.animating) {
+      this.redraw();
+    }
+  };
+
+  render() {
+    return (
+      <canvas
+        ref={canvas => {
+          this.canvas = canvas;
+        }}
+        id="particular"
+        width={this.state.width}
+        height={this.state.height}
+        style={{
+          width: `${this.state.width}px`,
+          height: `${this.state.height}px`,
+          position: 'absolute',
+          pointerEvents: 'none',
+          cursor: 'auto',
+          opacity: 1,
+          left: 0,
+          top: 0,
+          zIndex: 10000,
+        }}
+      />
+    );
+  }
+}

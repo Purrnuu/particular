@@ -1,0 +1,14 @@
+dist
+.DS_Store
+.tmp
+node_modules
+public
+static
+test/output
+npm-debug.log
+server_build/
+yarn-error.log
+newrelic_agent.log
+report.html
+src/client/js/locale/messages/*.json
+package.json

@@ -1,0 +1,24 @@
+{
+  "extends": ["tslint:recommended"],
+  "rules": {
+    "quotemark": [true, "single", "jsx-double", "avoid-escape"],
+    "object-literal-sort-keys": false,
+    "ordered-imports": false,
+    "interface-name": false,
+    "member-access": false,
+    "array-type": [true, "generic"],
+    "no-unused-expression": [true, "allow-fast-null-checks"],
+    "variable-name": [
+      true,
+      "ban-keywords",
+      "check-format",
+      "allow-leading-underscore",
+      "allow-pascal-case"
+    ],
+    "no-irregular-whitespace": true,
+    "prefer-object-spread": true,
+    "prefer-conditional-expression": true,
+    "no-console": [true, "log"],
+    "no-bitwise": false
+  }
+}
