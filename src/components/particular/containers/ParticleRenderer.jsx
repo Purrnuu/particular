@@ -4,7 +4,7 @@ import _ from 'lodash';
 import Emitter from '../components/emitter';
 import Vector from '../utils/vector';
 
-import { ICONS_HAPPY, ICONS_SAD, ICONS_ALPACA, ICONS_CHRISTMAS } from '../utils/icons';
+import { ICONS_HAPPY, ICONS_ALPACA } from '../utils/icons';
 import * as emitterTypes from '../utils/emitterTypes';
 
 const MAX_EMOTICONS = 300;
@@ -52,12 +52,8 @@ export default class ParticleRenderer extends React.Component {
     let icons = ICONS_HAPPY;
     if (type === emitterTypes.happy) {
       icons = ICONS_HAPPY;
-    } else if (type === emitterTypes.sad) {
-      icons = ICONS_SAD;
-    } else if (type === emitterTypes.christmas) {
-      icons = ICONS_CHRISTMAS;
     } else if (type === emitterTypes.custom) {
-      icons = ICONS_CHRISTMAS;
+      icons = ICONS_HAPPY;
     }
 
     if (Math.random() > 0.99) {

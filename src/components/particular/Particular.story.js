@@ -1,7 +1,11 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-
 import { storiesOf } from '@storybook/react';
+
+import sad1 from 'icons/smiley_sad.png';
+import sad2 from 'icons/smiley_cry.png';
+import sad3 from 'icons/smiley_sad_2.png';
+
 import Particular from './Particular';
 
 const Playground = ({ burst }) => {
@@ -27,4 +31,4 @@ Playground.propTypes = {
 
 const PlaygroundWrapped = Particular()(Playground);
 
-storiesOf('Particular', module).add('default', () => <PlaygroundWrapped />);
+storiesOf('Particular', module).add('Burst', () => <PlaygroundWrapped />);

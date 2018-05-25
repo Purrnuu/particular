@@ -19,13 +19,18 @@ const particular = () => Wrapped => {
     // A good default version but with complete control over particle base physics
     // NOTE: This is an opinionated particle experience. Not a full library.
 
-    burst = e => {
-      if (this.particles) {
+    // Add feature to do timed burst or constant burst
+
+    // Give location coordinates as a parameter
+    // Automatically configure it to use clientX and clientY if they are included in the configuration so you can use e as onclick default
+    burst = ({ clientX, clientY, custom }) => {
+      if (this.particles && clientX !== undefined && clientY !== undefined) {
         const type = Math.random() > 0.6 ? 'SAD' : 'HAPPY';
-        this.particles.create({ x: e.clientX, y: e.clientY, type });
+        this.particles.create({ x: clientX, y: clientY, type });
       }
     };
 
+    // TODO: Add React Portal to render this outside of current dom context
     render() {
       return (
         <div>
