@@ -1,5 +1,7 @@
 import React, { Component } from 'react';
 import getDisplayName from 'react-display-name';
+import { Portal } from 'react-portal';
+
 import ParticleRenderer from './containers/ParticleRenderer';
 
 // TODO: Configuration optons as parameter object with set types
@@ -30,15 +32,16 @@ const particular = () => Wrapped => {
       }
     };
 
-    // TODO: Add React Portal to render this outside of current dom context
     render() {
       return (
         <div>
-          <ParticleRenderer
-            ref={particles => {
-              this.particles = particles;
-            }}
-          />
+          <Portal isOpened>
+            <ParticleRenderer
+              ref={particles => {
+                this.particles = particles;
+              }}
+            />
+          </Portal>
           <Wrapped {...this.props} burst={this.burst} />
         </div>
       );
