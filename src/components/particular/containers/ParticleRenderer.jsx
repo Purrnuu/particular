@@ -7,10 +7,11 @@ import Vector from '../utils/vector';
 import { ICONS_HAPPY, ICONS_ALPACA } from '../utils/icons';
 import { processImages } from '../components/icons';
 
-const MAX_EMOTICONS = 300;
+const MAX_COUNT = 300;
 const EMITTER_RATE = 8;
 const EMITTER_LIFE = 30;
 const PIXEL_RATIO = 2;
+const Z_INDEX = 10000;
 
 export default class ParticleRenderer extends React.Component {
   constructor(props) {
@@ -21,6 +22,12 @@ export default class ParticleRenderer extends React.Component {
     this.emitters = [];
     this.particles = [];
     this.canvas = null;
+
+    this.maxCount = MAX_COUNT;
+    this.emitterRate = EMITTER_RATE;
+    this.emitterLife = EMITTER_LIFE;
+    this.pixelRatio = PIXEL_RATIO;
+    this.zIndex = Z_INDEX;
   }
 
   componentDidMount() {
@@ -48,7 +55,14 @@ export default class ParticleRenderer extends React.Component {
     this.setState({ animating: false });
   };
 
-  // TODO: Preload images for icons on create
+  configure = ({ maxCount, rate, life, pixelRatio, zIndex }) => {
+    this.maxCount = maxCount || MAX_COUNT;
+    this.emitterRate = rate || EMITTER_RATE;
+    this.emitterLife = life || EMITTER_LIFE;
+    this.pixelRatio = pixelRatio || PIXEL_RATIO;
+    this.zIndex = zIndex || Z_INDEX;
+  };
+
   create = ({ x, y, customIcons }) => {
     let icons = ICONS_HAPPY;
     if (customIcons) {
@@ -64,7 +78,7 @@ export default class ParticleRenderer extends React.Component {
     this.emitters.push(
       new Emitter(
         icons,
-        new Vector(x / PIXEL_RATIO, y / PIXEL_RATIO),
+        new Vector(x / this.pixelRatio, y / this.pixelRatio),
         Vector.fromAngle(-90, 5),
         Math.PI / 1.3,
       ),
@@ -73,11 +87,11 @@ export default class ParticleRenderer extends React.Component {
   };
 
   addNewParticles = () => {
-    if (this.particles.length > MAX_EMOTICONS) return;
+    if (this.particles.length > this.maxCount) return;
 
     _.each(this.emitters, emitter => {
       if (emitter) {
-        for (let j = 0; j < EMITTER_RATE; j++) {
+        for (let j = 0; j < this.emitterRate; j++) {
           const particle = emitter.emitParticle();
           const icon = _.sample(emitter.icons, 1);
           particle.init(icon);
@@ -87,7 +101,7 @@ export default class ParticleRenderer extends React.Component {
     });
 
     this.emitters = _.filter(this.emitters, emitter => {
-      if (emitter.lifeCycle < EMITTER_LIFE) {
+      if (emitter.lifeCycle < this.emitterLife) {
         return emitter;
       }
       return null;
@@ -113,7 +127,7 @@ export default class ParticleRenderer extends React.Component {
 
   redraw = () => {
     const { width, height } = this.state;
-    const pixelRatio = PIXEL_RATIO;
+    const pixelRatio = this.pixelRatio;
     if (!this.canvas) {
       return;
     }
@@ -159,7 +173,7 @@ export default class ParticleRenderer extends React.Component {
           opacity: 1,
           left: 0,
           top: 0,
-          zIndex: 10000,
+          zIndex: this.zIndex,
         }}
       />
     );

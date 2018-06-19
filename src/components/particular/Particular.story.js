@@ -34,6 +34,15 @@ Playground.propTypes = {
 
 const PlaygroundWrapped = Particular()(Playground);
 const PlaygroundCustomWrapped = Particular({ customIcons })(Playground);
+const PlaygroundCustomControlsWrapped = Particular({
+  customIcons,
+  rate: 1,
+  life: 200,
+  maxCount: 1000,
+})(Playground);
 
 storiesOf('Particular', module).add('Burst', () => <PlaygroundWrapped />);
 storiesOf('Particular', module).add('Burst with custom icons', () => <PlaygroundCustomWrapped />);
+storiesOf('Particular', module).add('Burst with custom controls', () => (
+  <PlaygroundCustomControlsWrapped />
+));
