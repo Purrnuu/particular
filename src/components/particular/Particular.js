@@ -11,7 +11,7 @@ import ParticleRenderer from './containers/ParticleRenderer';
   }
 */
 const particular = (configuration = {}) => Wrapped => {
-  const { customIcons, zIndex, rate, life, pixelRatio, maxCount } = configuration;
+  const { customIcons, zIndex, rate, life, pixelRatio, maxCount, autoStart } = configuration;
   class Particular extends Component {
     static displayName = `Particular(${getDisplayName(Wrapped)})`;
 
@@ -21,8 +21,7 @@ const particular = (configuration = {}) => Wrapped => {
     }
 
     componentDidMount() {
-      console.log(configuration);
-      this.particles.configure({ maxCount, rate, life, pixelRatio, zIndex });
+      this.particles.configure(configuration);
     }
 
     //  TODO: Make cases for burst, spawn and permanence

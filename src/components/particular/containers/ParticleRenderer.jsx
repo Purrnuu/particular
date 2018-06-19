@@ -28,6 +28,7 @@ export default class ParticleRenderer extends React.Component {
     this.emitterLife = EMITTER_LIFE;
     this.pixelRatio = PIXEL_RATIO;
     this.zIndex = Z_INDEX;
+    this.continuous = false;
   }
 
   componentDidMount() {
@@ -55,12 +56,16 @@ export default class ParticleRenderer extends React.Component {
     this.setState({ animating: false });
   };
 
-  configure = ({ maxCount, rate, life, pixelRatio, zIndex }) => {
+  configure = ({ maxCount, rate, life, pixelRatio, zIndex, autoStart, continuous }) => {
     this.maxCount = maxCount || MAX_COUNT;
     this.emitterRate = rate || EMITTER_RATE;
     this.emitterLife = life || EMITTER_LIFE;
     this.pixelRatio = pixelRatio || PIXEL_RATIO;
     this.zIndex = zIndex || Z_INDEX;
+    this.continuous = continuous;
+    if (autoStart) {
+      this.create(this.state.width / 2, this.state.height / 2);
+    }
   };
 
   create = ({ x, y, customIcons }) => {
@@ -101,7 +106,7 @@ export default class ParticleRenderer extends React.Component {
     });
 
     this.emitters = _.filter(this.emitters, emitter => {
-      if (emitter.lifeCycle < this.emitterLife) {
+      if (this.continuous || emitter.lifeCycle < this.emitterLife) {
         return emitter;
       }
       return null;

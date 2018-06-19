@@ -40,9 +40,20 @@ const PlaygroundCustomControlsWrapped = Particular({
   life: 200,
   maxCount: 1000,
 })(Playground);
+const PlaygroundAutomaticWrapped = Particular({
+  customIcons,
+  rate: 1,
+  life: 200,
+  maxCount: 1000,
+  continuous: true,
+  autoStart: true,
+})(Playground);
 
 storiesOf('Particular', module).add('Burst', () => <PlaygroundWrapped />);
 storiesOf('Particular', module).add('Burst with custom icons', () => <PlaygroundCustomWrapped />);
 storiesOf('Particular', module).add('Burst with custom controls', () => (
   <PlaygroundCustomControlsWrapped />
+));
+storiesOf('Particular', module).add('Automatic and continuous', () => (
+  <PlaygroundAutomaticWrapped />
 ));
