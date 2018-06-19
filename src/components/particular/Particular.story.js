@@ -12,17 +12,17 @@ const customIcons = [sad1, sad2, sad3];
 
 const Playground = ({ burst }) => {
   return (
-    <div style={{ width: '100%', height: '100vh', overflow: 'hidden' }} onClick={burst}>
+    <div onClick={burst}>
       <h1
         style={{
           textAlign: 'center',
           paddingTop: '45vh',
+          paddingBottom: '40vh',
           pointerEvents: 'none',
           userSelect: 'none',
         }}
       >
         CLICK ME FOR PARTICLES
-        {customIcons}
       </h1>
     </div>
   );
@@ -33,5 +33,7 @@ Playground.propTypes = {
 };
 
 const PlaygroundWrapped = Particular()(Playground);
+const PlaygroundCustomWrapped = Particular({ customIcons })(Playground);
 
 storiesOf('Particular', module).add('Burst', () => <PlaygroundWrapped />);
+storiesOf('Particular', module).add('Burst with custom icons', () => <PlaygroundCustomWrapped />);

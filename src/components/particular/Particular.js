@@ -4,8 +4,14 @@ import { Portal } from 'react-portal';
 
 import ParticleRenderer from './containers/ParticleRenderer';
 
-// TODO: Configuration optons as parameter object with set types
-const particular = () => Wrapped => {
+/*
+  Configuration
+  {
+    customIcons: [] Array containing image resource links for use in icon graphics
+  }
+*/
+const particular = (configuration = {}) => Wrapped => {
+  const { customIcons, zIndex } = configuration;
   class Particular extends Component {
     static displayName = `Particular(${getDisplayName(Wrapped)})`;
 
@@ -24,11 +30,11 @@ const particular = () => Wrapped => {
     // Add feature to do timed burst or constant burst
 
     // Give location coordinates as a parameter
-    // Automatically configure it to use clientX and clientY if they are included in the configuration so you can use e as onclick default
-    burst = ({ clientX, clientY, custom }) => {
+    // Automatically configure it to use clientX and clientY
+    // if they are included in the configuration so you can use e as onclick default
+    burst = ({ clientX, clientY, icons }) => {
       if (this.particles && clientX !== undefined && clientY !== undefined) {
-        const type = Math.random() > 0.6 ? 'SAD' : 'HAPPY';
-        this.particles.create({ x: clientX, y: clientY, type });
+        this.particles.create({ x: clientX, y: clientY, customIcons: icons || customIcons });
       }
     };
 

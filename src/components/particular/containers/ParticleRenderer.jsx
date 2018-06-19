@@ -5,7 +5,7 @@ import Emitter from '../components/emitter';
 import Vector from '../utils/vector';
 
 import { ICONS_HAPPY, ICONS_ALPACA } from '../utils/icons';
-import * as emitterTypes from '../utils/emitterTypes';
+import { processImages } from '../components/icons';
 
 const MAX_EMOTICONS = 300;
 const EMITTER_RATE = 8;
@@ -48,17 +48,18 @@ export default class ParticleRenderer extends React.Component {
     this.setState({ animating: false });
   };
 
-  create = ({ x, y, type }) => {
+  // TODO: Preload images for icons on create
+  create = ({ x, y, customIcons }) => {
     let icons = ICONS_HAPPY;
-    if (type === emitterTypes.happy) {
-      icons = ICONS_HAPPY;
-    } else if (type === emitterTypes.custom) {
-      icons = ICONS_HAPPY;
+    if (customIcons) {
+      icons = customIcons;
     }
 
     if (Math.random() > 0.99) {
       icons = ICONS_ALPACA;
     }
+
+    icons = processImages(icons);
 
     this.emitters.push(
       new Emitter(

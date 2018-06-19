@@ -26,8 +26,7 @@ export default class Particle {
   }
 
   init = image => {
-    this.image = new Image();
-    this.image.src = image;
+    this.image = image;
   };
 
   move = () => {
@@ -54,7 +53,6 @@ export default class Particle {
       this.factoredSize * 2,
       this.factoredSize * 2,
     );
-
     this.lifeTick++;
 
     ctx.restore();
