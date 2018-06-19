@@ -29,6 +29,7 @@ export default class ParticleRenderer extends React.Component {
     this.pixelRatio = PIXEL_RATIO;
     this.zIndex = Z_INDEX;
     this.continuous = false;
+    this.alpaca = true;
   }
 
   componentDidMount() {
@@ -56,13 +57,14 @@ export default class ParticleRenderer extends React.Component {
     this.setState({ animating: false });
   };
 
-  configure = ({ maxCount, rate, life, pixelRatio, zIndex, autoStart, continuous }) => {
+  configure = ({ maxCount, rate, life, pixelRatio, zIndex, autoStart, continuous, alpaca }) => {
     this.maxCount = maxCount || MAX_COUNT;
     this.emitterRate = rate || EMITTER_RATE;
     this.emitterLife = life || EMITTER_LIFE;
     this.pixelRatio = pixelRatio || PIXEL_RATIO;
     this.zIndex = zIndex || Z_INDEX;
-    this.continuous = continuous;
+    this.continuous = continuous || false;
+    this.alpaca = alpaca || true;
     if (autoStart) {
       this.create(this.state.width / 2, this.state.height / 2);
     }
@@ -74,7 +76,7 @@ export default class ParticleRenderer extends React.Component {
       icons = customIcons;
     }
 
-    if (Math.random() > 0.99) {
+    if (this.alpaca && Math.random() > 0.99) {
       icons = ICONS_ALPACA;
     }
 
