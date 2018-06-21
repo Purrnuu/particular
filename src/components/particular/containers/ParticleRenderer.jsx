@@ -168,7 +168,7 @@ export default class ParticleRenderer extends React.Component {
         ref={canvas => {
           this.canvas = canvas;
         }}
-        id="particular"
+        className="particular"
         width={this.state.width}
         height={this.state.height}
         style={{
