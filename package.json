@@ -1,7 +1,7 @@
 {
   "name": "particular",
   "version": "0.1.0",
-  "description": "Particle generator for React.",
+  "description": "An opinionated Particle Engine",
   "main": "./lib/index.js",
   "scripts": {
     "dev": "start-storybook -p 6006",

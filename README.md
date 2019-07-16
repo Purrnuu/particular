@@ -1,6 +1,6 @@
 # particular
 
-A short and sweet react canvas wrapper for particular particles.
+An opinionated Particle Engine. 
 
 ## Install
 
