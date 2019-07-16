@@ -6,7 +6,7 @@ import sad1 from 'icons/smiley_sad.png';
 import sad2 from 'icons/smiley_cry.png';
 import sad3 from 'icons/smiley_sad_2.png';
 
-import Particular from './Particular';
+import ParticularWrapper from './ParticularWrapper';
 
 const customIcons = [sad1, sad2, sad3];
 
@@ -28,30 +28,47 @@ const Playground = ({ burst }) => {
   );
 };
 
+const PlaygroundWithoutClick = () => {
+  return (
+    <div>
+      <h1
+        style={{
+          textAlign: 'center',
+          paddingTop: '45vh',
+          pointerEvents: 'none',
+          userSelect: 'none',
+        }}
+      >
+        I AM CONTINUOUS. <br />I EXIST FOREVER.
+      </h1>
+    </div>
+  );
+};
+
 Playground.propTypes = {
   burst: PropTypes.func,
 };
 
-const PlaygroundWrapped = Particular()(Playground);
-const PlaygroundCustomWrapped = Particular({ customIcons })(Playground);
-const PlaygroundCustomControlsWrapped = Particular({
+const PlaygroundWrapped = ParticularWrapper()(Playground);
+const PlaygroundCustomWrapped = ParticularWrapper({ customIcons })(Playground);
+const PlaygroundCustomControlsWrapped = ParticularWrapper({
   customIcons,
   rate: 1,
   life: 200,
   maxCount: 1000,
 })(Playground);
-const PlaygroundAutomaticWrapped = Particular({
+const PlaygroundAutomaticWrapped = ParticularWrapper({
   customIcons,
   rate: 1,
   life: 200,
   maxCount: 1000,
   continuous: true,
   autoStart: true,
-})(Playground);
+})(PlaygroundWithoutClick);
 
 storiesOf('Particular', module).add('Burst', () => <PlaygroundWrapped />);
 storiesOf('Particular', module).add('Burst with custom icons', () => <PlaygroundCustomWrapped />);
-storiesOf('Particular', module).add('Burst with custom controls', () => (
+storiesOf('Particular', module).add('Burst with custom emitter controls', () => (
   <PlaygroundCustomControlsWrapped />
 ));
 storiesOf('Particular', module).add('Automatic and continuous', () => (

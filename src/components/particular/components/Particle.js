@@ -1,7 +1,7 @@
 import Vector from '../utils/vector';
 import { getRandomInt } from '../utils/math';
+import EventDispatcher from '../utils/eventDispatcher';
 
-const TO_RADIANS = Math.PI / 180;
 const SCALE_STEP = 1;
 const GRAVITY = 0.15;
 const FADE_TIME = 30;
@@ -21,40 +21,42 @@ export default class Particle {
 
     this.lifeTime = getRandomInt(75, 100);
     this.lifeTick = 0;
-
     this.size = size || getRandomInt(5, 15);
+
+    this.alpha = 1;
+    this.color = '#ff0000';
+    this.particular = null;
   }
 
-  init = image => {
+  init = (image, particular) => {
     this.image = image;
+    this.particular = particular;
+    this.dispatch('PARTICLE_CREATED', this);
   };
 
-  move = () => {
+  update = () => {
     this.velocity.add(this.acceleration);
     this.velocity.addFriction(this.friction);
     this.velocity.addGravity(GRAVITY);
     this.position.add(this.velocity);
     this.rotation = this.rotation + this.rotationVelocity;
     this.factoredSize = Math.min(this.factoredSize + SCALE_STEP, this.size);
+    this.alpha = Math.max((this.lifeTime - this.lifeTick) / FADE_TIME, 0);
+    this.lifeTick++;
+    this.dispatch('PARTICLE_UPDATE', this);
   };
 
-  render = ctx => {
-    ctx.save();
+  getRoundedLocation = () => {
+    return [((this.position.x * 10) << 0) * 0.1, ((this.position.y * 10) << 0) * 0.1];
+  };
 
-    const currentAlpha = (this.lifeTime - this.lifeTick) / FADE_TIME;
-    ctx.globalAlpha = currentAlpha < 0 ? 0 : currentAlpha;
-    const pixelRounded = [((this.position.x * 10) << 0) * 0.1, ((this.position.y * 10) << 0) * 0.1];
-    ctx.translate(pixelRounded[0], pixelRounded[1]);
-    ctx.rotate(this.rotation * TO_RADIANS);
-    ctx.drawImage(
-      this.image,
-      -this.factoredSize,
-      -this.factoredSize,
-      this.factoredSize * 2,
-      this.factoredSize * 2,
-    );
-    this.lifeTick++;
+  dispatch = (event, target) => {
+    this.particular && this.particular.dispatchEvent(event, target); // eslint-disable-line
+  };
 
-    ctx.restore();
+  destroy = () => {
+    this.dispatch('PARTICLE_DEAD', this);
   };
 }
+
+EventDispatcher.bind(Particle);

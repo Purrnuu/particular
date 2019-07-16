@@ -63,10 +63,10 @@ export default class ParticleRenderer extends React.Component {
     this.emitterLife = life || EMITTER_LIFE;
     this.pixelRatio = pixelRatio || PIXEL_RATIO;
     this.zIndex = zIndex || Z_INDEX;
-    this.continuous = continuous || false;
-    this.alpaca = alpaca || true;
+    this.continuous = continuous || false;
+    this.alpaca = alpaca || true;
     if (autoStart) {
-      this.create(this.state.width / 2, this.state.height / 2);
+      this.create(window.innerWidth / 2, window.innerHeight / 2);
     }
   };
 
@@ -134,7 +134,6 @@ export default class ParticleRenderer extends React.Component {
 
   redraw = () => {
     const { width, height } = this.state;
-    const pixelRatio = this.pixelRatio;
     if (!this.canvas) {
       return;
     }
@@ -145,7 +144,7 @@ export default class ParticleRenderer extends React.Component {
     const ctx = this.canvas.getContext('2d');
     ctx.imageSmoothingEnabled = true;
     ctx.save();
-    ctx.scale(pixelRatio, pixelRatio);
+    ctx.scale(this.pixelRatio, this.pixelRatio);
     ctx.clearRect(0, 0, width, height);
 
     _.each(this.particles, particle => {
