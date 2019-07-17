@@ -1,4 +1,4 @@
-# particular
+# Particular
 
 An opinionated Particle Engine. 
 
