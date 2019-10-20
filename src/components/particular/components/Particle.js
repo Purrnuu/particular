@@ -46,6 +46,10 @@ export default class Particle {
     this.dispatch('PARTICLE_UPDATE', this);
   };
 
+  resetImage = () => {
+    this.image = null;
+  }
+
   getRoundedLocation = () => {
     return [((this.position.x * 10) << 0) * 0.1, ((this.position.y * 10) << 0) * 0.1];
   };

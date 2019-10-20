@@ -49,7 +49,7 @@ export default class CanvasRenderer {
   };
 
   onParticleDead = particle => {
-    particle.image = null;
+    particle.resetImage();
   };
 
   drawImage = particle => {
@@ -63,7 +63,7 @@ export default class CanvasRenderer {
     this.context.drawImage(
       particle.image,
       -particle.factoredSize,
-      -particle.factoredSize,                      
+      -particle.factoredSize,
       particle.factoredSize * 2,
       particle.factoredSize * 2,
     );
