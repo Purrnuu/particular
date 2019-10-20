@@ -1,73 +1,66 @@
 const path = require('path');
-const ExtractTextPlugin = require('extract-text-webpack-plugin');
-const CopyWebpackPlugin = require('copy-webpack-plugin');
+const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const TerserPlugin = require('terser-webpack-plugin');
+const OptimizeCSSAssetsPlugin = require('optimize-css-assets-webpack-plugin');
+const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 
 module.exports = {
+  devtool: 'source-map',
   resolve: {
     extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
   },
-  entry: './src/index.js',
+  entry: {
+    'components/index': './src/components/index.js',
+  },
   output: {
     path: path.resolve(__dirname, 'lib'),
     filename: '[name].js',
-    sourceMapFilename: 'index.map',
+    sourceMapFilename: '[file].map',
     library: 'Particular',
-    libraryTarget: 'commonjs',
+    libraryTarget: 'commonjs2',
   },
-  externals: {
-    classnames: 'classnames',
-    react: 'react',
-    'react-dom': 'react-dom',
-    'react-motion': 'react-motion',
-    ramda: 'ramda',
-  },
+  externals: [
+    'classnames',
+    'react',
+    'react-dom',
+    'react-motion',
+    'ramda',
+    'react-portal',
+    'prop-types',
+    'styled-components',
+  ],
   module: {
     rules: [
       {
         enforce: 'pre',
-        test: /\.jsx?$/,
-        use: 'eslint-loader',
+        test: /\.(jsx?|tsx?)$/,
+        use: 'eslint-loader?{emitWarning: true}',
         exclude: /node_modules/,
       },
       {
-        enforce: 'pre',
-        test: /\.tsx?$/,
-        use: 'tslint-loader?{emitWarning: true}',
-        exclude: /node_modules/,
-      },
-      {
-        test: /\.tsx?$/,
-        use: ['babel-loader', 'ts-loader'],
-        exclude: /node_modules/,
-      },
-      {
-        test: /\.jsx?$/,
-        use: 'babel-loader',
+        test: /\.(jsx?|tsx?)$/,
+        use: [{ loader: 'babel-loader', options: { cacheDirectory: true } }],
         exclude: /node_modules/,
       },
       {
         test: /\.css$/,
-        loader: ExtractTextPlugin.extract({
-          fallback: 'style-loader',
-          use: [
-            {
-              loader: 'css-loader',
-              options: {
-                modules: true,
-                localIdentName: '[name]__[local]___[hash:base64:5]',
-              },
+        loader: [
+          MiniCssExtractPlugin.loader,
+          {
+            loader: 'css-loader',
+            options: {
+              modules: true,
+              localIdentName: '[name]__[local]___[hash:base64:5]',
             },
-            { loader: 'postcss-loader' },
-          ],
-        }),
+          },
+          { loader: 'postcss-loader' },
+        ],
         exclude: /node_modules/,
       },
       {
         test: /\.css$/,
-        use: ExtractTextPlugin.extract({
-          fallback: 'style-loader',
-          use: 'css-loader',
-        }),
+        loader: [MiniCssExtractPlugin.loader, 'css-loader'],
         include: /node_modules/,
       },
       {
@@ -97,13 +90,22 @@ module.exports = {
       },
     ],
   },
+  optimization: {
+    minimizer: [
+      new TerserPlugin({
+        parallel: true,
+        sourceMap: true,
+      }),
+      new OptimizeCSSAssetsPlugin({}),
+    ],
+  },
   plugins: [
-    new CopyWebpackPlugin([
-      {
-        from: './icons',
-        to: 'icons',
-      },
-    ]),
-    new ExtractTextPlugin('styles.css'),
+    new ForkTsCheckerWebpackPlugin({
+      tsconfig: path.resolve(__dirname, './tsconfig.json'),
+    }),
+    new MiniCssExtractPlugin({
+      filename: 'styles.css',
+    }),
+    ...(process.env.ANALYZE_BUNDLE === 'true' ? [new BundleAnalyzerPlugin()] : []),
   ],
 };

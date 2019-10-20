@@ -7,7 +7,9 @@ import { destroy } from '../utils/genericUtils';
 
 export default class Particular {
   static UPDATE = 'UPDATE';
+
   static UPDATE_AFTER = 'UPDATE_AFTER';
+
   static RESIZE = 'RESIZE';
 
   constructor() {

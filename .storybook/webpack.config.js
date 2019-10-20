@@ -1,39 +1,34 @@
 const path = require('path');
+const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 
-// you can use this file to add your custom webpack plugins, loaders and anything you like.
-// This is just the basic way to add addional webpack configurations.
-// For more information refer the docs: https://getstorybook.io/docs/configurations/custom-webpack-config
+module.exports = function({ config }) {
+  config.resolve.extensions = [...config.resolve.extensions, '.ts', '.tsx'];
 
-module.exports = function(storybookBaseConfig, configType) {
-  storybookBaseConfig.resolve.extensions = ['.ts', '.tsx', '.js', '.jsx', '.json'];
-
-  storybookBaseConfig.resolve.modules = [
-    ...storybookBaseConfig.resolve.modules,
+  config.resolve.modules = [
+    ...config.resolve.modules,
     path.resolve(__dirname, '../src'),
+    '../node_modules',
   ];
 
-  storybookBaseConfig.module.rules = [
-    ...storybookBaseConfig.module.rules,
+  config.module.rules = [
+    // exclude .css and .svg loaders to provide our own
+    ...config.module.rules.filter(
+      rule => rule.test.toString() !== /\.css$/.toString() && !rule.test.toString().includes('svg')
+    ),
     {
       enforce: 'pre',
-      test: /\.jsx?$/,
+      test: /\.(jsx?|tsx?)$/,
       use: 'eslint-loader?{emitWarning: true}',
-      exclude: /node_modules/,
+      include: path.resolve(__dirname, '../src'),
     },
     {
-      enforce: 'pre',
-      test: /\.tsx?$/,
-      use: 'tslint-loader?{emitWarning: true}',
-      exclude: /node_modules/,
-    },
-    {
-      test: /\.tsx?$/,
-      use: ['babel-loader', 'ts-loader'],
+      test: /\.(jsx?|tsx?)$/,
+      use: [{ loader: 'babel-loader', options: { cacheDirectory: true } }],
       exclude: /node_modules/,
     },
     {
       test: /\.css$/,
-      loader: [
+      use: [
         { loader: 'style-loader' },
         {
           loader: 'css-loader',
@@ -48,29 +43,44 @@ module.exports = function(storybookBaseConfig, configType) {
     },
     {
       test: /\.css$/,
-      loader: [{ loader: 'style-loader' }, { loader: 'css-loader' }],
+      use: [{ loader: 'style-loader' }, { loader: 'css-loader' }],
       include: /node_modules/,
     },
     {
       test: /\.(jpe?g|png|gif|svg)$/i,
+      use: 'file-loader?name=images/[name].[ext]',
       include: /node_modules/,
-      loader: 'file-loader?name=images/[name].[ext]',
     },
     {
       test: /\.(jpe?g|png|gif|svg)$/i,
+      use: 'url-loader?limit=4096&name=images/[name].[hash].[ext]',
       include: /icons/,
-      loader: 'url-loader?limit=4096&name=images/[name].[ext]',
     },
     {
       test: /\.svg$/,
-      include: /icons|components/,
-      loader:
-        'babel-loader!react-svg-loader?' +
-        JSON.stringify({
-          svgo: { plugins: [{ removeTitle: false }], floatPrecision: 2 },
-        }),
+      include: [
+        path.resolve(__dirname, '../src/icons'),
+        path.resolve(__dirname, '../src/components'),
+      ],
+      use: [
+        'babel-loader',
+        {
+          loader: 'react-svg-loader',
+          query: {
+            svgo: { plugins: [{ removeTitle: false }], floatPrecision: 2 },
+          },
+        },
+      ],
     },
   ];
 
-  return storybookBaseConfig;
+  config.plugins = [
+    new ForkTsCheckerWebpackPlugin({
+      async: false,
+      tsconfig: path.resolve(__dirname, '../tsconfig.json'),
+    }),
+    ...config.plugins,
+  ];
+
+  return config;
 };
