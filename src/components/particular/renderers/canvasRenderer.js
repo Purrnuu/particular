@@ -10,7 +10,7 @@ export default class CanvasRenderer {
   init(particular, pixelRatio) {
     this.particular = particular;
     this.pixelRatio = pixelRatio;
-    this.context.scale(pixelRatio, pixelRatio);
+    this.context.scale(this.pixelRatio, this.pixelRatio);
     this.context.imageSmoothingEnabled = true;
 
     particular.addEventListener('UPDATE', this.onUpdate);
@@ -29,6 +29,7 @@ export default class CanvasRenderer {
 
   onUpdate = () => {
     this.context.save();
+    this.context.scale(this.pixelRatio, this.pixelRatio);
     this.context.clearRect(0, 0, this.target.width, this.target.height);
   };
 
@@ -36,8 +37,8 @@ export default class CanvasRenderer {
     this.context.restore();
   };
 
-  onParticleCreated = particle => {
-    console.log(particle);
+  onParticleCreated = () => {
+    // console.log(particle);
   };
 
   onParticleUpdated = particle => {

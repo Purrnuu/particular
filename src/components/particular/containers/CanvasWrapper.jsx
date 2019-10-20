@@ -42,12 +42,12 @@ export default class CanvasWrapper extends React.Component {
     this.configuration = configure(configuration);
     this.particular.initialize(this.configuration);
     this.particular.addRenderer(new CanvasRenderer(this.canvas));
+    if (this.configuration.autoStart) {
+      this.create(window.innerWidth / 2, window.innerHeight / 2);
+    }
   };
 
-  // TODO: Change these functions from here to emitter
-  // Make separate renderer that handles Particular events to clear canvas and fix it
-  // Only use this to init the react wrapped part
-  // This could also be more generic and without react if we wanted to.
+  // NOTE: These should be cleaned from here to actual particular
   create = ({ x, y, customIcons }) => {
     let icons = ICONS_HAPPY;
     if (customIcons) {
@@ -63,8 +63,9 @@ export default class CanvasWrapper extends React.Component {
     this.particular.addEmitter(
       new Emitter(
         this.configuration.life,
+        this.configuration.rate,
         icons,
-        new Vector(x / this.pixelRatio, y / this.pixelRatio),
+        new Vector(x / this.configuration.pixelRatio, y / this.configuration.pixelRatio),
         Vector.fromAngle(-90, 5),
         Math.PI / 1.3,
       ),

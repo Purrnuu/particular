@@ -17,10 +17,14 @@ export default class Particular {
     this.maxCount = defaultConfiguration.maxCount;
     this.width = 0;
     this.height = 0;
+    this.pixelRatio = 2;
+    this.continuous = false;
   }
 
-  initialize = ({ maxCount }) => {
+  initialize = ({ maxCount, continuous, pixelRatio }) => {
     this.maxCount = maxCount;
+    this.continuous = continuous;
+    this.pixelRatio = pixelRatio;
     this.update();
   };
 
@@ -40,13 +44,13 @@ export default class Particular {
 
   addRenderer = renderer => {
     this.renderers.push(renderer);
-    renderer.init(this, 2);
+    renderer.init(this, this.pixelRatio);
     this.start();
   };
 
   addEmitter = emitter => {
     this.emitters.push(emitter);
-    emitter.particular = this; // eslint-disable-line
+    emitter.assignParticular(this);
     this.start();
   };
 
@@ -75,7 +79,7 @@ export default class Particular {
     });
 
     this.emitters = _.filter(this.emitters, emitter => {
-      if (this.continuous || emitter.isAlive) {
+      if (this.continuous || emitter.isAlive()) {
         return emitter;
       }
       emitter.destroy();
@@ -87,22 +91,22 @@ export default class Particular {
     }
   };
 
-  getCount() {
-    return this.getAllParticles().count;
-  }
+  getCount = () => {
+    return this.getAllParticles().length;
+  };
 
-  getAllParticles() {
+  getAllParticles = () => {
     let particles = [];
     let i = this.emitters.length;
     while (i--) particles = particles.concat(this.emitters[i].particles);
     return particles;
-  }
+  };
 
-  destroy() {
+  destroy = () => {
     window.clearInterval(this.animateRequest);
     destroy(this.renderers);
     destroy(this.emitters);
-  }
+  };
 }
 
 EventDispatcher.bind(Particular);
