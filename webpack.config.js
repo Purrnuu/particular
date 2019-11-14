@@ -10,9 +10,7 @@ module.exports = {
   resolve: {
     extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
   },
-  entry: {
-    'components/index': './src/components/index.js',
-  },
+  entry: './src/index.js',
   output: {
     path: path.resolve(__dirname, 'lib'),
     filename: '[name].js',

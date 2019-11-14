@@ -5,7 +5,7 @@
  * Copyright (c) 2010 gskinner.com, inc.
  *
  *
-*/
+ */
 
 export default class EventDispatcher {
   constructor() {

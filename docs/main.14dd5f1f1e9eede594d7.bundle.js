@@ -50,21 +50,21 @@
       module.exports =
         __webpack_require__.p + 'images/smiley_sad_2.de029a664f05340b9c814cd050c2bb86.png';
     },
-    220: function(module, exports, __webpack_require__) {
+    222: function(module, exports, __webpack_require__) {
       module.exports =
         __webpack_require__.p + 'images/smiley_2.b4bc32ff414ff56c627ad56ba50c647b.png';
     },
-    221: function(module, exports, __webpack_require__) {
+    223: function(module, exports, __webpack_require__) {
       module.exports =
         __webpack_require__.p + 'images/smiley_heart.5ca0dfe51b9196a4815f02ed3021ac5a.png';
     },
-    222: function(module, exports, __webpack_require__) {
+    224: function(module, exports, __webpack_require__) {
       module.exports = __webpack_require__.p + 'images/star.0f9f1b9abdebce2d76caf7b272a545d5.png';
     },
-    223: function(module, exports, __webpack_require__) {
+    225: function(module, exports, __webpack_require__) {
       module.exports = __webpack_require__.p + 'images/alpaca.fb5dc5936e65660f85b50a6d00784e82.png';
     },
-    224: function(module, exports, __webpack_require__) {
+    226: function(module, exports, __webpack_require__) {
       module.exports = __webpack_require__.p + 'images/smiley.69a171824f3cc96aed817381fb766c19.png';
     },
     227: function(module, exports, __webpack_require__) {
@@ -94,61 +94,18 @@
     },
     41: function(module, __webpack_exports__, __webpack_require__) {
       'use strict';
-      var helpers_extends = __webpack_require__(217),
-        extends_default = __webpack_require__.n(helpers_extends),
-        classCallCheck = __webpack_require__(7),
+      __webpack_require__(197);
+      var classCallCheck = __webpack_require__(7),
         classCallCheck_default = __webpack_require__.n(classCallCheck),
-        createClass = __webpack_require__(29),
-        createClass_default = __webpack_require__.n(createClass),
-        possibleConstructorReturn = __webpack_require__(83),
-        possibleConstructorReturn_default = __webpack_require__.n(possibleConstructorReturn),
-        getPrototypeOf = __webpack_require__(84),
-        getPrototypeOf_default = __webpack_require__.n(getPrototypeOf),
-        assertThisInitialized = __webpack_require__(34),
-        assertThisInitialized_default = __webpack_require__.n(assertThisInitialized),
-        inherits = __webpack_require__(85),
-        inherits_default = __webpack_require__.n(inherits),
         defineProperty = __webpack_require__(0),
         defineProperty_default = __webpack_require__.n(defineProperty),
-        react = __webpack_require__(1),
-        react_default = __webpack_require__.n(react),
-        getDisplayName = __webpack_require__(218),
-        getDisplayName_default = __webpack_require__.n(getDisplayName),
-        PortalCompat = __webpack_require__(491),
-        each = __webpack_require__(35),
+        filter = __webpack_require__(217),
+        filter_default = __webpack_require__.n(filter),
+        each = __webpack_require__(34),
         each_default = __webpack_require__.n(each),
-        sample = __webpack_require__(219),
-        sample_default = __webpack_require__.n(sample),
-        vector_Vector = function Vector(x, y) {
-          var _this = this;
-          classCallCheck_default()(this, Vector),
-            defineProperty_default()(this, 'getMagnitude', function() {
-              return Math.sqrt(_this.x * _this.x + _this.y * _this.y);
-            }),
-            defineProperty_default()(this, 'add', function(vector) {
-              (_this.x += vector.x), (_this.y += vector.y);
-            }),
-            defineProperty_default()(this, 'addFriction', function(friction) {
-              (_this.x -= friction * _this.x), (_this.y -= friction * _this.y);
-            }),
-            defineProperty_default()(this, 'addGravity', function(gravity) {
-              _this.y += gravity;
-            }),
-            defineProperty_default()(this, 'getAngle', function() {
-              return Math.atan2(_this.y, _this.x);
-            }),
-            (this.x = x || 0),
-            (this.y = y || 0);
-        };
-      defineProperty_default()(vector_Vector, 'fromAngle', function(angle, magnitude) {
-        return new vector_Vector(magnitude * Math.cos(angle), magnitude * Math.sin(angle));
-      });
-      __webpack_require__(204);
-      function getRandomInt(min, max) {
-        return Math.floor(Math.random() * (max - min + 1)) + min;
-      }
-      var TO_RADIANS = Math.PI / 180;
-      var eventDispatcher_EventDispatcher = (function() {
+        createClass = __webpack_require__(29),
+        createClass_default = __webpack_require__.n(createClass),
+        eventDispatcher_EventDispatcher = (function() {
           function EventDispatcher() {
             classCallCheck_default()(this, EventDispatcher), (this.listeners = null);
           }
@@ -230,51 +187,17 @@
             EventDispatcher
           );
         })(),
-        particle_Particle = function Particle(point, velocity, acceleration, friction, size) {
-          var _this = this;
-          classCallCheck_default()(this, Particle),
-            defineProperty_default()(this, 'init', function(image, particular) {
-              (_this.image = image),
-                (_this.particular = particular),
-                _this.dispatch('PARTICLE_CREATED', _this);
-            }),
-            defineProperty_default()(this, 'update', function() {
-              _this.velocity.add(_this.acceleration),
-                _this.velocity.addFriction(_this.friction),
-                _this.velocity.addGravity(0.15),
-                _this.position.add(_this.velocity),
-                (_this.rotation += _this.rotationVelocity),
-                (_this.factoredSize = Math.min(_this.factoredSize + 1, _this.size)),
-                (_this.alpha = Math.max((_this.lifeTime - _this.lifeTick) / 30, 0)),
-                _this.lifeTick++,
-                _this.dispatch('PARTICLE_UPDATE', _this);
-            }),
-            defineProperty_default()(this, 'resetImage', function() {
-              _this.image = null;
-            }),
-            defineProperty_default()(this, 'getRoundedLocation', function() {
-              return [0.1 * ((10 * _this.position.x) << 0), 0.1 * ((10 * _this.position.y) << 0)];
-            }),
-            defineProperty_default()(this, 'dispatch', function(event, target) {
-              _this.particular && _this.particular.dispatchEvent(event, target);
-            }),
-            defineProperty_default()(this, 'destroy', function() {
-              _this.dispatch('PARTICLE_DEAD', _this);
-            }),
-            (this.position = point || new vector_Vector(0, 0)),
-            (this.velocity = velocity || new vector_Vector(0, 0)),
-            (this.acceleration = acceleration || new vector_Vector(0, 0)),
-            (this.friction = friction || 0),
-            (this.rotation = 360 * Math.random()),
-            (this.rotationDirection = 0.5 < Math.random() ? 1 : -1),
-            (this.rotationVelocity = this.rotationDirection * getRandomInt(1, 3)),
-            (this.factoredSize = 1),
-            (this.lifeTime = getRandomInt(75, 100)),
-            (this.lifeTick = 0),
-            (this.size = size || getRandomInt(5, 15)),
-            (this.alpha = 1),
-            (this.color = '#ff0000'),
-            (this.particular = null);
+        objectSpread = __webpack_require__(218),
+        objectSpread_default = __webpack_require__.n(objectSpread),
+        defaultConfiguration = {
+          maxCount: 300,
+          rate: 8,
+          life: 30,
+          pixelRatio: 2,
+          zIndex: 1e4,
+          autoStart: !1,
+          continuous: !1,
+          alpaca: !0,
         };
       function destroy(array, param) {
         for (var i = array.length; i--; ) {
@@ -285,6 +208,172 @@
         }
         array.splice(0, array.length);
       }
+      var particular_Particular = function Particular() {
+        var _this = this;
+        classCallCheck_default()(this, Particular),
+          defineProperty_default()(this, 'initialize', function(_ref) {
+            var maxCount = _ref.maxCount,
+              continuous = _ref.continuous,
+              pixelRatio = _ref.pixelRatio;
+            (_this.maxCount = maxCount),
+              (_this.continuous = continuous),
+              (_this.pixelRatio = pixelRatio),
+              _this.update();
+          }),
+          defineProperty_default()(this, 'start', function() {
+            _this.isOn = !0;
+          }),
+          defineProperty_default()(this, 'stop', function() {
+            _this.isOn = !1;
+          }),
+          defineProperty_default()(this, 'onResize', function() {
+            var height = (_this.height = window.innerHeight),
+              width = (_this.width = window.innerWidth);
+            _this.dispatchEvent(Particular.RESIZE, { width: width, height: height });
+          }),
+          defineProperty_default()(this, 'addRenderer', function(renderer) {
+            _this.renderers.push(renderer), renderer.init(_this, _this.pixelRatio), _this.start();
+          }),
+          defineProperty_default()(this, 'addEmitter', function(emitter) {
+            _this.emitters.push(emitter), emitter.assignParticular(_this), _this.start();
+          }),
+          defineProperty_default()(this, 'update', function() {
+            (_this.animateRequest = window.requestAnimationFrame(_this.update)),
+              _this.isOn &&
+                (_this.dispatchEvent(Particular.UPDATE),
+                _this.updateEmitters(),
+                _this.dispatchEvent(Particular.UPDATE_AFTER));
+          }),
+          defineProperty_default()(this, 'updateEmitters', function() {
+            _this.getCount() <= _this.maxCount &&
+              each_default()(_this.emitters, function(emitter) {
+                emitter.emit();
+              }),
+              each_default()(_this.emitters, function(emitter) {
+                emitter.update(_this.width, _this.height);
+              }),
+              (_this.emitters = filter_default()(_this.emitters, function(emitter) {
+                return _this.continuous || emitter.isAlive() ? emitter : (emitter.destroy(), null);
+              })),
+              _this.emitters.length || _this.stop();
+          }),
+          defineProperty_default()(this, 'getCount', function() {
+            return _this.getAllParticles().length;
+          }),
+          defineProperty_default()(this, 'getAllParticles', function() {
+            for (var particles = [], i = _this.emitters.length; i--; )
+              particles = particles.concat(_this.emitters[i].particles);
+            return particles;
+          }),
+          defineProperty_default()(this, 'destroy', function() {
+            window.clearInterval(_this.animateRequest),
+              destroy(_this.renderers),
+              destroy(_this.emitters);
+          }),
+          (this.isOn = !1),
+          (this.emitters = []),
+          (this.renderers = []),
+          (this.maxCount = defaultConfiguration.maxCount),
+          (this.width = 0),
+          (this.height = 0),
+          (this.pixelRatio = 2),
+          (this.continuous = !1);
+      };
+      defineProperty_default()(particular_Particular, 'UPDATE', 'UPDATE'),
+        defineProperty_default()(particular_Particular, 'UPDATE_AFTER', 'UPDATE_AFTER'),
+        defineProperty_default()(particular_Particular, 'RESIZE', 'RESIZE'),
+        eventDispatcher_EventDispatcher.bind(particular_Particular);
+      var helpers_extends = __webpack_require__(219),
+        extends_default = __webpack_require__.n(helpers_extends),
+        possibleConstructorReturn = __webpack_require__(83),
+        possibleConstructorReturn_default = __webpack_require__.n(possibleConstructorReturn),
+        getPrototypeOf = __webpack_require__(84),
+        getPrototypeOf_default = __webpack_require__.n(getPrototypeOf),
+        assertThisInitialized = __webpack_require__(35),
+        assertThisInitialized_default = __webpack_require__.n(assertThisInitialized),
+        inherits = __webpack_require__(85),
+        inherits_default = __webpack_require__.n(inherits),
+        react = __webpack_require__(1),
+        react_default = __webpack_require__.n(react),
+        getDisplayName = __webpack_require__(220),
+        getDisplayName_default = __webpack_require__.n(getDisplayName),
+        PortalCompat = __webpack_require__(491),
+        sample = __webpack_require__(221),
+        sample_default = __webpack_require__.n(sample),
+        vector_Vector = function Vector(x, y) {
+          var _this = this;
+          classCallCheck_default()(this, Vector),
+            defineProperty_default()(this, 'getMagnitude', function() {
+              return Math.sqrt(_this.x * _this.x + _this.y * _this.y);
+            }),
+            defineProperty_default()(this, 'add', function(vector) {
+              (_this.x += vector.x), (_this.y += vector.y);
+            }),
+            defineProperty_default()(this, 'addFriction', function(friction) {
+              (_this.x -= friction * _this.x), (_this.y -= friction * _this.y);
+            }),
+            defineProperty_default()(this, 'addGravity', function(gravity) {
+              _this.y += gravity;
+            }),
+            defineProperty_default()(this, 'getAngle', function() {
+              return Math.atan2(_this.y, _this.x);
+            }),
+            (this.x = x || 0),
+            (this.y = y || 0);
+        };
+      function getRandomInt(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+      }
+      defineProperty_default()(vector_Vector, 'fromAngle', function(angle, magnitude) {
+        return new vector_Vector(magnitude * Math.cos(angle), magnitude * Math.sin(angle));
+      });
+      var TO_RADIANS = Math.PI / 180;
+      var particle_Particle = function Particle(point, velocity, acceleration, friction, size) {
+        var _this = this;
+        classCallCheck_default()(this, Particle),
+          defineProperty_default()(this, 'init', function(image, particular) {
+            (_this.image = image),
+              (_this.particular = particular),
+              _this.dispatch('PARTICLE_CREATED', _this);
+          }),
+          defineProperty_default()(this, 'update', function() {
+            _this.velocity.add(_this.acceleration),
+              _this.velocity.addFriction(_this.friction),
+              _this.velocity.addGravity(0.15),
+              _this.position.add(_this.velocity),
+              (_this.rotation += _this.rotationVelocity),
+              (_this.factoredSize = Math.min(_this.factoredSize + 1, _this.size)),
+              (_this.alpha = Math.max((_this.lifeTime - _this.lifeTick) / 30, 0)),
+              _this.lifeTick++,
+              _this.dispatch('PARTICLE_UPDATE', _this);
+          }),
+          defineProperty_default()(this, 'resetImage', function() {
+            _this.image = null;
+          }),
+          defineProperty_default()(this, 'getRoundedLocation', function() {
+            return [0.1 * ((10 * _this.position.x) << 0), 0.1 * ((10 * _this.position.y) << 0)];
+          }),
+          defineProperty_default()(this, 'dispatch', function(event, target) {
+            _this.particular && _this.particular.dispatchEvent(event, target);
+          }),
+          defineProperty_default()(this, 'destroy', function() {
+            _this.dispatch('PARTICLE_DEAD', _this);
+          }),
+          (this.position = point || new vector_Vector(0, 0)),
+          (this.velocity = velocity || new vector_Vector(0, 0)),
+          (this.acceleration = acceleration || new vector_Vector(0, 0)),
+          (this.friction = friction || 0),
+          (this.rotation = 360 * Math.random()),
+          (this.rotationDirection = 0.5 < Math.random() ? 1 : -1),
+          (this.rotationVelocity = this.rotationDirection * getRandomInt(1, 3)),
+          (this.factoredSize = 1),
+          (this.lifeTime = getRandomInt(75, 100)),
+          (this.lifeTick = 0),
+          (this.size = size || getRandomInt(5, 15)),
+          (this.alpha = 1),
+          (this.color = '#ff0000'),
+          (this.particular = null);
+      };
       eventDispatcher_EventDispatcher.bind(particle_Particle);
       var emitter_Emitter = function Emitter(life, rate, icons, point, _velocity, spread) {
           var _this = this;
@@ -342,15 +431,15 @@
             (this.emitterLife = life),
             (this.emitterRate = rate);
         },
-        smiley_2 = __webpack_require__(220),
+        smiley_2 = __webpack_require__(222),
         smiley_2_default = __webpack_require__.n(smiley_2),
-        smiley_heart = __webpack_require__(221),
+        smiley_heart = __webpack_require__(223),
         smiley_heart_default = __webpack_require__.n(smiley_heart),
-        star = __webpack_require__(222),
+        star = __webpack_require__(224),
         star_default = __webpack_require__.n(star),
-        alpaca = __webpack_require__(223),
+        alpaca = __webpack_require__(225),
         alpaca_default = __webpack_require__.n(alpaca),
-        smiley = __webpack_require__(224),
+        smiley = __webpack_require__(226),
         ICONS_HAPPY = {
           smiley1: __webpack_require__.n(smiley).a,
           smiley2: smiley_2_default.a,
@@ -359,97 +448,6 @@
         },
         ICONS_ALPACA = { alpaca: alpaca_default.a },
         icons_images = [];
-      var objectSpread = __webpack_require__(225),
-        objectSpread_default = __webpack_require__.n(objectSpread),
-        defaultConfiguration = {
-          maxCount: 300,
-          rate: 8,
-          life: 30,
-          pixelRatio: 2,
-          zIndex: 1e4,
-          autoStart: !1,
-          continuous: !1,
-          alpaca: !0,
-        };
-      var filter = __webpack_require__(226),
-        filter_default = __webpack_require__.n(filter),
-        particular_Particular = function Particular() {
-          var _this = this;
-          classCallCheck_default()(this, Particular),
-            defineProperty_default()(this, 'initialize', function(_ref) {
-              var maxCount = _ref.maxCount,
-                continuous = _ref.continuous,
-                pixelRatio = _ref.pixelRatio;
-              (_this.maxCount = maxCount),
-                (_this.continuous = continuous),
-                (_this.pixelRatio = pixelRatio),
-                _this.update();
-            }),
-            defineProperty_default()(this, 'start', function() {
-              _this.isOn = !0;
-            }),
-            defineProperty_default()(this, 'stop', function() {
-              _this.isOn = !1;
-            }),
-            defineProperty_default()(this, 'onResize', function() {
-              var height = (_this.height = window.innerHeight),
-                width = (_this.width = window.innerWidth);
-              _this.dispatchEvent(Particular.RESIZE, { width: width, height: height });
-            }),
-            defineProperty_default()(this, 'addRenderer', function(renderer) {
-              _this.renderers.push(renderer), renderer.init(_this, _this.pixelRatio), _this.start();
-            }),
-            defineProperty_default()(this, 'addEmitter', function(emitter) {
-              _this.emitters.push(emitter), emitter.assignParticular(_this), _this.start();
-            }),
-            defineProperty_default()(this, 'update', function() {
-              (_this.animateRequest = window.requestAnimationFrame(_this.update)),
-                _this.isOn &&
-                  (_this.dispatchEvent(Particular.UPDATE),
-                  _this.updateEmitters(),
-                  _this.dispatchEvent(Particular.UPDATE_AFTER));
-            }),
-            defineProperty_default()(this, 'updateEmitters', function() {
-              _this.getCount() <= _this.maxCount &&
-                each_default()(_this.emitters, function(emitter) {
-                  emitter.emit();
-                }),
-                each_default()(_this.emitters, function(emitter) {
-                  emitter.update(_this.width, _this.height);
-                }),
-                (_this.emitters = filter_default()(_this.emitters, function(emitter) {
-                  return _this.continuous || emitter.isAlive()
-                    ? emitter
-                    : (emitter.destroy(), null);
-                })),
-                _this.emitters.length || _this.stop();
-            }),
-            defineProperty_default()(this, 'getCount', function() {
-              return _this.getAllParticles().length;
-            }),
-            defineProperty_default()(this, 'getAllParticles', function() {
-              for (var particles = [], i = _this.emitters.length; i--; )
-                particles = particles.concat(_this.emitters[i].particles);
-              return particles;
-            }),
-            defineProperty_default()(this, 'destroy', function() {
-              window.clearInterval(_this.animateRequest),
-                destroy(_this.renderers),
-                destroy(_this.emitters);
-            }),
-            (this.isOn = !1),
-            (this.emitters = []),
-            (this.renderers = []),
-            (this.maxCount = defaultConfiguration.maxCount),
-            (this.width = 0),
-            (this.height = 0),
-            (this.pixelRatio = 2),
-            (this.continuous = !1);
-        };
-      defineProperty_default()(particular_Particular, 'UPDATE', 'UPDATE'),
-        defineProperty_default()(particular_Particular, 'UPDATE_AFTER', 'UPDATE_AFTER'),
-        defineProperty_default()(particular_Particular, 'RESIZE', 'RESIZE'),
-        eventDispatcher_EventDispatcher.bind(particular_Particular);
       __webpack_require__(72), __webpack_require__(488);
       var canvasRenderer_CanvasRenderer = (function() {
           function CanvasRenderer(target) {
@@ -673,87 +671,90 @@
             ]),
             CanvasWrapper
           );
-        })(react_default.a.Component);
-      __webpack_exports__.a = function() {
-        var configuration = 0 < arguments.length && void 0 !== arguments[0] ? arguments[0] : {};
-        return function(Wrapped) {
-          var customIcons = configuration.customIcons,
-            ParticularWrapper = (function(_Component) {
-              function ParticularWrapper() {
-                var _this;
+        })(react_default.a.Component),
+        particular_ParticularWrapper = function() {
+          var configuration = 0 < arguments.length && void 0 !== arguments[0] ? arguments[0] : {};
+          return function(Wrapped) {
+            var customIcons = configuration.customIcons,
+              ParticularWrapper = (function(_Component) {
+                function ParticularWrapper() {
+                  var _this;
+                  return (
+                    classCallCheck_default()(this, ParticularWrapper),
+                    (_this = possibleConstructorReturn_default()(
+                      this,
+                      getPrototypeOf_default()(ParticularWrapper).call(this),
+                    )),
+                    defineProperty_default()(
+                      assertThisInitialized_default()(_this),
+                      'burst',
+                      function(_ref) {
+                        var clientX = _ref.clientX,
+                          clientY = _ref.clientY,
+                          icons = _ref.icons;
+                        _this.particles &&
+                          void 0 !== clientX &&
+                          void 0 !== clientY &&
+                          _this.particles.create({
+                            x: clientX,
+                            y: clientY,
+                            customIcons: icons || customIcons,
+                          });
+                      },
+                    ),
+                    (_this.particles = null),
+                    _this
+                  );
+                }
                 return (
-                  classCallCheck_default()(this, ParticularWrapper),
-                  (_this = possibleConstructorReturn_default()(
-                    this,
-                    getPrototypeOf_default()(ParticularWrapper).call(this),
-                  )),
-                  defineProperty_default()(
-                    assertThisInitialized_default()(_this),
-                    'burst',
-                    function(_ref) {
-                      var clientX = _ref.clientX,
-                        clientY = _ref.clientY,
-                        icons = _ref.icons;
-                      _this.particles &&
-                        void 0 !== clientX &&
-                        void 0 !== clientY &&
-                        _this.particles.create({
-                          x: clientX,
-                          y: clientY,
-                          customIcons: icons || customIcons,
-                        });
+                  inherits_default()(ParticularWrapper, _Component),
+                  createClass_default()(ParticularWrapper, [
+                    {
+                      key: 'componentDidMount',
+                      value: function() {
+                        this.particles.configure(configuration);
+                      },
                     },
-                  ),
-                  (_this.particles = null),
-                  _this
+                    {
+                      key: 'render',
+                      value: function() {
+                        var _this2 = this;
+                        return react_default.a.createElement(
+                          'div',
+                          null,
+                          react_default.a.createElement(
+                            PortalCompat.a,
+                            { isOpened: !0 },
+                            react_default.a.createElement(CanvasWrapper_CanvasWrapper, {
+                              ref: function(particles) {
+                                _this2.particles = particles;
+                              },
+                            }),
+                          ),
+                          react_default.a.createElement(
+                            Wrapped,
+                            extends_default()({}, this.props, { burst: this.burst }),
+                          ),
+                        );
+                      },
+                    },
+                  ]),
+                  ParticularWrapper
                 );
-              }
-              return (
-                inherits_default()(ParticularWrapper, _Component),
-                createClass_default()(ParticularWrapper, [
-                  {
-                    key: 'componentDidMount',
-                    value: function() {
-                      this.particles.configure(configuration);
-                    },
-                  },
-                  {
-                    key: 'render',
-                    value: function() {
-                      var _this2 = this;
-                      return react_default.a.createElement(
-                        'div',
-                        null,
-                        react_default.a.createElement(
-                          PortalCompat.a,
-                          { isOpened: !0 },
-                          react_default.a.createElement(CanvasWrapper_CanvasWrapper, {
-                            ref: function(particles) {
-                              _this2.particles = particles;
-                            },
-                          }),
-                        ),
-                        react_default.a.createElement(
-                          Wrapped,
-                          extends_default()({}, this.props, { burst: this.burst }),
-                        ),
-                      );
-                    },
-                  },
-                ]),
-                ParticularWrapper
-              );
-            })(react.Component);
-          return (
-            defineProperty_default()(
-              ParticularWrapper,
-              'displayName',
-              'Particular('.concat(getDisplayName_default()(Wrapped), ')'),
-            ),
-            ParticularWrapper
-          );
+              })(react.Component);
+            return (
+              defineProperty_default()(
+                ParticularWrapper,
+                'displayName',
+                'Particular('.concat(getDisplayName_default()(Wrapped), ')'),
+              ),
+              ParticularWrapper
+            );
+          };
         };
-      };
+      __webpack_require__.d(__webpack_exports__, 'a', function() {
+        return particular_ParticularWrapper;
+      });
     },
     418: function(module, exports, __webpack_require__) {
       (exports = module.exports = __webpack_require__(419)(!1)).push([
@@ -764,7 +765,7 @@
         (exports.locals = { root: 'storiesDecorator__root___35OG9' });
     },
     422: function(module, exports, __webpack_require__) {
-      var map = { './src/components/particular/Particular.story.js': 423 };
+      var map = { './src/Particular.story.js': 423 };
       function webpackContext(req) {
         var id = webpackContextResolve(req);
         return __webpack_require__(id);
@@ -808,7 +809,7 @@
             icons_smiley_sad_2_png__WEBPACK_IMPORTED_MODULE_5___default = __webpack_require__.n(
               icons_smiley_sad_2_png__WEBPACK_IMPORTED_MODULE_5__,
             ),
-            _ParticularWrapper__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(41),
+            _index__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(41),
             customIcons = [
               icons_smiley_sad_png__WEBPACK_IMPORTED_MODULE_3___default.a,
               icons_smiley_cry_png__WEBPACK_IMPORTED_MODULE_4___default.a,
@@ -835,16 +836,17 @@
               );
             };
           Playground.propTypes = { burst: prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.func };
-          var PlaygroundWrapped = Object(_ParticularWrapper__WEBPACK_IMPORTED_MODULE_6__.a)()(
-              Playground,
-            ),
-            PlaygroundCustomWrapped = Object(_ParticularWrapper__WEBPACK_IMPORTED_MODULE_6__.a)({
+          var PlaygroundWrapped = Object(_index__WEBPACK_IMPORTED_MODULE_6__.a)()(Playground),
+            PlaygroundCustomWrapped = Object(_index__WEBPACK_IMPORTED_MODULE_6__.a)({
               customIcons: customIcons,
             })(Playground),
-            PlaygroundCustomControlsWrapped = Object(
-              _ParticularWrapper__WEBPACK_IMPORTED_MODULE_6__.a,
-            )({ customIcons: customIcons, rate: 1, life: 200, maxCount: 1e3 })(Playground),
-            PlaygroundAutomaticWrapped = Object(_ParticularWrapper__WEBPACK_IMPORTED_MODULE_6__.a)({
+            PlaygroundCustomControlsWrapped = Object(_index__WEBPACK_IMPORTED_MODULE_6__.a)({
+              customIcons: customIcons,
+              rate: 1,
+              life: 200,
+              maxCount: 1e3,
+            })(Playground),
+            PlaygroundAutomaticWrapped = Object(_index__WEBPACK_IMPORTED_MODULE_6__.a)({
               customIcons: customIcons,
               rate: 1,
               life: 200,
@@ -871,9 +873,12 @@
                 ),
               );
             }),
-            PlaygroundCustomControls2Wrapped = Object(
-              _ParticularWrapper__WEBPACK_IMPORTED_MODULE_6__.a,
-            )({ customIcons: customIcons, rate: 1e3, life: 1e3, maxCount: 1e3 })(Playground);
+            PlaygroundCustomControls2Wrapped = Object(_index__WEBPACK_IMPORTED_MODULE_6__.a)({
+              customIcons: customIcons,
+              rate: 1e3,
+              life: 1e3,
+              maxCount: 1e3,
+            })(Playground);
           Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)('Particular', module).add(
             'Burst',
             function() {
@@ -924,4 +929,4 @@
   },
   [[227, 1, 2]],
 ]);
-//# sourceMappingURL=main.f2124160c8049d6460fe.bundle.js.map
+//# sourceMappingURL=main.14dd5f1f1e9eede594d7.bundle.js.map

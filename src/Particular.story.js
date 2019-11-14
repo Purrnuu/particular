@@ -6,7 +6,7 @@ import sad1 from 'icons/smiley_sad.png';
 import sad2 from 'icons/smiley_cry.png';
 import sad3 from 'icons/smiley_sad_2.png';
 
-import ParticularWrapper from './ParticularWrapper';
+import { ParticularWrapper } from './index';
 
 const customIcons = [sad1, sad2, sad3];
 
