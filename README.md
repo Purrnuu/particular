@@ -10,11 +10,11 @@ Install with npm or yarn. Then live .
 
 To import the HOC wrapper for React
 
-```
+```jsx
 import { ParticularWrapper } from "particular";
 ```
 
-```
+```js
 ParticularWrapper({
   customIcons: Array of images,
   rate: Integer emission rate (How many particles per burst iteration),
@@ -27,7 +27,7 @@ ParticularWrapper({
 
 To import the Particular library itself
 
-```
+```js
 import { Particular } from "particular";
 ```
 
