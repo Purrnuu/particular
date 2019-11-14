@@ -65,11 +65,19 @@ const PlaygroundAutomaticWrapped = ParticularWrapper({
   continuous: true,
   autoStart: true,
 })(PlaygroundWithoutClick);
-const PlaygroundCustomControls2Wrapped = ParticularWrapper({
-  customIcons,
+const PlaygroundMassive = ParticularWrapper({
   rate: 1000,
   life: 1000,
   maxCount: 1000,
+})(Playground);
+
+const PlaygroundParticleControls = ParticularWrapper({
+  rate: 8,
+  life: 30,
+  sizeMin: 1,
+  sizeMax: 5,
+  maxCount: 300,
+  velocityMultiplier: 110,
 })(Playground);
 
 storiesOf('Particular', module).add('Burst', () => <PlaygroundWrapped />);
@@ -77,9 +85,8 @@ storiesOf('Particular', module).add('Burst with custom icons', () => <Playground
 storiesOf('Particular', module).add('Burst with custom emitter controls', () => (
   <PlaygroundCustomControlsWrapped />
 ));
-storiesOf('Particular', module).add('Performance beauty', () => (
-  <PlaygroundCustomControls2Wrapped />
-));
+storiesOf('Particular', module).add('Performance beauty', () => <PlaygroundMassive />);
+storiesOf('Particular', module).add('Particle sizing', () => <PlaygroundParticleControls />);
 storiesOf('Particular', module).add('Automatic and continuous', () => (
   <PlaygroundAutomaticWrapped />
 ));

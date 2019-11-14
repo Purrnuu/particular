@@ -1,13 +1,13 @@
 (window.webpackJsonp = window.webpackJsonp || []).push([
   [0],
   {
-    212: function(module, __webpack_exports__, __webpack_require__) {
+    213: function(module, __webpack_exports__, __webpack_require__) {
       'use strict';
       var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1),
         react__WEBPACK_IMPORTED_MODULE_0___default = __webpack_require__.n(
           react__WEBPACK_IMPORTED_MODULE_0__,
         ),
-        _storiesDecorator_css__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(213),
+        _storiesDecorator_css__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(214),
         _storiesDecorator_css__WEBPACK_IMPORTED_MODULE_1___default = __webpack_require__.n(
           _storiesDecorator_css__WEBPACK_IMPORTED_MODULE_1__,
         ),
@@ -31,22 +31,22 @@
             path: 'storiesDecorator/index.js',
           });
     },
-    213: function(module, exports, __webpack_require__) {
+    214: function(module, exports, __webpack_require__) {
       var content = __webpack_require__(414);
       'string' == typeof content && (content = [[module.i, content, '']]);
       var options = { hmr: !0, transform: void 0, insertInto: void 0 };
       __webpack_require__(416)(content, options);
       content.locals && (module.exports = content.locals);
     },
-    214: function(module, exports, __webpack_require__) {
+    215: function(module, exports, __webpack_require__) {
       module.exports =
         __webpack_require__.p + 'images/smiley_sad.889e801ea5fc009a301fd03436c47f26.png';
     },
-    215: function(module, exports, __webpack_require__) {
+    216: function(module, exports, __webpack_require__) {
       module.exports =
         __webpack_require__.p + 'images/smiley_cry.7dc8b869b03bc46cac07d874581292e8.png';
     },
-    216: function(module, exports, __webpack_require__) {
+    217: function(module, exports, __webpack_require__) {
       module.exports =
         __webpack_require__.p + 'images/smiley_sad_2.de029a664f05340b9c814cd050c2bb86.png';
     },
@@ -64,8 +64,8 @@
             __webpack_require__(54),
             __webpack_require__(52),
             __webpack_require__(70);
-          var _storybook_react__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(23),
-            _storiesDecorator__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(212),
+          var _storybook_react__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(20),
+            _storiesDecorator__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(213),
             req = __webpack_require__(418);
           Object(_storybook_react__WEBPACK_IMPORTED_MODULE_4__.addDecorator)(
             _storiesDecorator__WEBPACK_IMPORTED_MODULE_5__.a,
@@ -73,186 +73,16 @@
             Object(_storybook_react__WEBPACK_IMPORTED_MODULE_4__.configure)(function loadStories() {
               req.keys().forEach(req);
             }, module);
-        }.call(this, __webpack_require__(153)(module));
+        }.call(this, __webpack_require__(154)(module));
     },
-    414: function(module, exports, __webpack_require__) {
-      (exports = module.exports = __webpack_require__(415)(!1)).push([
-        module.i,
-        ":root {\n}\n\n.storiesDecorator__root___35OG9 {\n  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',\n    'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;\n  -webkit-font-smoothing: antialiased;\n  -moz-osx-font-smoothing: grayscale;\n}\n",
-        '',
-      ]),
-        (exports.locals = { root: 'storiesDecorator__root___35OG9' });
-    },
-    418: function(module, exports, __webpack_require__) {
-      var map = { './src/Particular.story.js': 419 };
-      function webpackContext(req) {
-        var id = webpackContextResolve(req);
-        return __webpack_require__(id);
-      }
-      function webpackContextResolve(req) {
-        if (!__webpack_require__.o(map, req)) {
-          var e = new Error("Cannot find module '" + req + "'");
-          throw ((e.code = 'MODULE_NOT_FOUND'), e);
-        }
-        return map[req];
-      }
-      (webpackContext.keys = function webpackContextKeys() {
-        return Object.keys(map);
-      }),
-        (webpackContext.resolve = webpackContextResolve),
-        (module.exports = webpackContext),
-        (webpackContext.id = 418);
-    },
-    419: function(module, __webpack_exports__, __webpack_require__) {
+    36: function(module, __webpack_exports__, __webpack_require__) {
       'use strict';
-      __webpack_require__.r(__webpack_exports__),
-        function(module) {
-          var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1),
-            react__WEBPACK_IMPORTED_MODULE_0___default = __webpack_require__.n(
-              react__WEBPACK_IMPORTED_MODULE_0__,
-            ),
-            prop_types__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(30),
-            prop_types__WEBPACK_IMPORTED_MODULE_1___default = __webpack_require__.n(
-              prop_types__WEBPACK_IMPORTED_MODULE_1__,
-            ),
-            _storybook_react__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(23),
-            icons_smiley_sad_png__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(214),
-            icons_smiley_sad_png__WEBPACK_IMPORTED_MODULE_3___default = __webpack_require__.n(
-              icons_smiley_sad_png__WEBPACK_IMPORTED_MODULE_3__,
-            ),
-            icons_smiley_cry_png__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(215),
-            icons_smiley_cry_png__WEBPACK_IMPORTED_MODULE_4___default = __webpack_require__.n(
-              icons_smiley_cry_png__WEBPACK_IMPORTED_MODULE_4__,
-            ),
-            icons_smiley_sad_2_png__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(216),
-            icons_smiley_sad_2_png__WEBPACK_IMPORTED_MODULE_5___default = __webpack_require__.n(
-              icons_smiley_sad_2_png__WEBPACK_IMPORTED_MODULE_5__,
-            ),
-            _index__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(42),
-            customIcons = [
-              icons_smiley_sad_png__WEBPACK_IMPORTED_MODULE_3___default.a,
-              icons_smiley_cry_png__WEBPACK_IMPORTED_MODULE_4___default.a,
-              icons_smiley_sad_2_png__WEBPACK_IMPORTED_MODULE_5___default.a,
-            ],
-            Playground = function(_ref) {
-              var burst = _ref.burst;
-              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
-                'div',
-                { onClick: burst },
-                react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
-                  'h1',
-                  {
-                    style: {
-                      textAlign: 'center',
-                      paddingTop: '45vh',
-                      paddingBottom: '40vh',
-                      pointerEvents: 'none',
-                      userSelect: 'none',
-                    },
-                  },
-                  'CLICK ME FOR PARTICLES',
-                ),
-              );
-            };
-          Playground.propTypes = { burst: prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.func };
-          var PlaygroundWrapped = Object(_index__WEBPACK_IMPORTED_MODULE_6__.a)()(Playground),
-            PlaygroundCustomWrapped = Object(_index__WEBPACK_IMPORTED_MODULE_6__.a)({
-              customIcons: customIcons,
-            })(Playground),
-            PlaygroundCustomControlsWrapped = Object(_index__WEBPACK_IMPORTED_MODULE_6__.a)({
-              customIcons: customIcons,
-              rate: 1,
-              life: 200,
-              maxCount: 1e3,
-            })(Playground),
-            PlaygroundAutomaticWrapped = Object(_index__WEBPACK_IMPORTED_MODULE_6__.a)({
-              customIcons: customIcons,
-              rate: 1,
-              life: 200,
-              maxCount: 1e3,
-              continuous: !0,
-              autoStart: !0,
-            })(function() {
-              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
-                'div',
-                null,
-                react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
-                  'h1',
-                  {
-                    style: {
-                      textAlign: 'center',
-                      paddingTop: '45vh',
-                      pointerEvents: 'none',
-                      userSelect: 'none',
-                    },
-                  },
-                  'I AM CONTINUOUS. ',
-                  react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement('br', null),
-                  'I EXIST FOREVER.',
-                ),
-              );
-            }),
-            PlaygroundCustomControls2Wrapped = Object(_index__WEBPACK_IMPORTED_MODULE_6__.a)({
-              customIcons: customIcons,
-              rate: 1e3,
-              life: 1e3,
-              maxCount: 1e3,
-            })(Playground);
-          Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)('Particular', module).add(
-            'Burst',
-            function() {
-              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
-                PlaygroundWrapped,
-                null,
-              );
-            },
-          ),
-            Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)(
-              'Particular',
-              module,
-            ).add('Burst with custom icons', function() {
-              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
-                PlaygroundCustomWrapped,
-                null,
-              );
-            }),
-            Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)(
-              'Particular',
-              module,
-            ).add('Burst with custom emitter controls', function() {
-              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
-                PlaygroundCustomControlsWrapped,
-                null,
-              );
-            }),
-            Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)(
-              'Particular',
-              module,
-            ).add('Performance beauty', function() {
-              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
-                PlaygroundCustomControls2Wrapped,
-                null,
-              );
-            }),
-            Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)(
-              'Particular',
-              module,
-            ).add('Automatic and continuous', function() {
-              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
-                PlaygroundAutomaticWrapped,
-                null,
-              );
-            });
-        }.call(this, __webpack_require__(153)(module));
-    },
-    42: function(module, __webpack_exports__, __webpack_require__) {
-      'use strict';
-      __webpack_require__(197);
+      __webpack_require__(198);
       var classCallCheck = __webpack_require__(7),
         classCallCheck_default = __webpack_require__.n(classCallCheck),
         defineProperty = __webpack_require__(0),
         defineProperty_default = __webpack_require__.n(defineProperty),
-        filter = __webpack_require__(217),
+        filter = __webpack_require__(218),
         filter_default = __webpack_require__.n(filter),
         each = __webpack_require__(34),
         each_default = __webpack_require__.n(each),
@@ -340,18 +170,46 @@
             EventDispatcher
           );
         })(),
-        objectSpread = __webpack_require__(218),
+        objectSpread = __webpack_require__(83),
         objectSpread_default = __webpack_require__.n(objectSpread),
-        defaultConfiguration = {
-          maxCount: 300,
-          rate: 8,
-          life: 30,
-          pixelRatio: 2,
-          zIndex: 1e4,
-          autoStart: !1,
-          continuous: !1,
-          alpaca: !0,
+        vector_Vector = function Vector(x, y) {
+          var _this = this;
+          classCallCheck_default()(this, Vector),
+            defineProperty_default()(this, 'getMagnitude', function() {
+              return Math.sqrt(_this.x * _this.x + _this.y * _this.y);
+            }),
+            defineProperty_default()(this, 'add', function(vector) {
+              (_this.x += vector.x), (_this.y += vector.y);
+            }),
+            defineProperty_default()(this, 'addFriction', function(friction) {
+              (_this.x -= friction * _this.x), (_this.y -= friction * _this.y);
+            }),
+            defineProperty_default()(this, 'addGravity', function(gravity) {
+              _this.y += gravity;
+            }),
+            defineProperty_default()(this, 'getAngle', function() {
+              return Math.atan2(_this.y, _this.x);
+            }),
+            (this.x = x || 0),
+            (this.y = y || 0);
         };
+      defineProperty_default()(vector_Vector, 'fromAngle', function(angle, magnitude) {
+        return new vector_Vector(magnitude * Math.cos(angle), magnitude * Math.sin(angle));
+      });
+      var defaultConfiguration = {
+        maxCount: 300,
+        rate: 8,
+        life: 30,
+        pixelRatio: 2,
+        zIndex: 1e4,
+        autoStart: !1,
+        continuous: !1,
+        velocity: vector_Vector.fromAngle(-90, 5),
+        spread: Math.PI / 1.3,
+        sizeMin: 5,
+        sizeMax: 15,
+        velocityMultiplier: 6,
+      };
       function destroy(array, param) {
         for (var i = array.length; i--; ) {
           try {
@@ -438,13 +296,13 @@
         eventDispatcher_EventDispatcher.bind(particular_Particular);
       var helpers_extends = __webpack_require__(219),
         extends_default = __webpack_require__.n(helpers_extends),
-        possibleConstructorReturn = __webpack_require__(83),
+        possibleConstructorReturn = __webpack_require__(84),
         possibleConstructorReturn_default = __webpack_require__.n(possibleConstructorReturn),
-        getPrototypeOf = __webpack_require__(84),
+        getPrototypeOf = __webpack_require__(85),
         getPrototypeOf_default = __webpack_require__.n(getPrototypeOf),
         assertThisInitialized = __webpack_require__(35),
         assertThisInitialized_default = __webpack_require__.n(assertThisInitialized),
-        inherits = __webpack_require__(85),
+        inherits = __webpack_require__(86),
         inherits_default = __webpack_require__.n(inherits),
         react = __webpack_require__(1),
         react_default = __webpack_require__.n(react),
@@ -453,38 +311,19 @@
         PortalCompat = __webpack_require__(487),
         sample = __webpack_require__(221),
         sample_default = __webpack_require__.n(sample),
-        vector_Vector = function Vector(x, y) {
-          var _this = this;
-          classCallCheck_default()(this, Vector),
-            defineProperty_default()(this, 'getMagnitude', function() {
-              return Math.sqrt(_this.x * _this.x + _this.y * _this.y);
-            }),
-            defineProperty_default()(this, 'add', function(vector) {
-              (_this.x += vector.x), (_this.y += vector.y);
-            }),
-            defineProperty_default()(this, 'addFriction', function(friction) {
-              (_this.x -= friction * _this.x), (_this.y -= friction * _this.y);
-            }),
-            defineProperty_default()(this, 'addGravity', function(gravity) {
-              _this.y += gravity;
-            }),
-            defineProperty_default()(this, 'getAngle', function() {
-              return Math.atan2(_this.y, _this.x);
-            }),
-            (this.x = x || 0),
-            (this.y = y || 0);
-        };
-      defineProperty_default()(vector_Vector, 'fromAngle', function(angle, magnitude) {
-        return new vector_Vector(magnitude * Math.cos(angle), magnitude * Math.sin(angle));
-      });
-      var randomColor = __webpack_require__(222),
+        randomColor = __webpack_require__(222),
         randomColor_default = __webpack_require__.n(randomColor);
       function getRandomInt(min, max) {
         return Math.floor(Math.random() * (max - min + 1)) + min;
       }
       var TO_RADIANS = Math.PI / 180;
-      var particle_Particle = function Particle(point, velocity, acceleration, friction, size) {
-        var _this = this;
+      var particle_Particle = function Particle(_ref) {
+        var _this = this,
+          point = _ref.point,
+          velocity = _ref.velocity,
+          acceleration = _ref.acceleration,
+          friction = _ref.friction,
+          size = _ref.size;
         classCallCheck_default()(this, Particle),
           defineProperty_default()(this, 'init', function(image, particular) {
             (_this.image = image),
@@ -530,8 +369,17 @@
           (this.particular = null);
       };
       eventDispatcher_EventDispatcher.bind(particle_Particle);
-      var emitter_Emitter = function Emitter(life, rate, icons, point, _velocity, spread) {
-          var _this = this;
+      var emitter_Emitter = function Emitter(_ref) {
+          var _this = this,
+            life = _ref.life,
+            rate = _ref.rate,
+            icons = _ref.icons,
+            point = _ref.point,
+            _velocity = _ref.velocity,
+            spread = _ref.spread,
+            sizeMin = _ref.sizeMin,
+            sizeMax = _ref.sizeMax,
+            velocityMultiplier = _ref.velocityMultiplier;
           classCallCheck_default()(this, Emitter),
             defineProperty_default()(this, 'emit', function() {
               if (_this.isEmitting)
@@ -564,12 +412,18 @@
                 magnitude = _this.velocity.getMagnitude(),
                 position = new vector_Vector(_this.position.x, _this.position.y),
                 velocity = vector_Vector.fromAngle(angle, magnitude),
-                size = getRandomInt(5, 15);
-              velocity.add({ x: 0, y: (-(15 - size) / 15) * 6 });
+                size = getRandomInt(_this.sizeMin, _this.sizeMax);
+              velocity.add({ x: 0, y: (-(_this.sizeMax - size) / 15) * _this.velocityMultiplier });
               var acceleration = new vector_Vector(0, size / 100);
               return (
                 _this.lifeCycle++,
-                new particle_Particle(position, velocity, acceleration, size / 2e3, size)
+                new particle_Particle({
+                  point: position,
+                  velocity: velocity,
+                  acceleration: acceleration,
+                  friction: size / 2e3,
+                  size: size,
+                })
               );
             }),
             defineProperty_default()(this, 'destroy', function() {
@@ -578,13 +432,16 @@
             (this.position = point),
             (this.velocity = _velocity),
             (this.spread = spread || Math.PI / 32),
-            (this.lifeCycle = 0),
             (this.icons = icons),
+            (this.emitterLife = life),
+            (this.emitterRate = rate),
+            (this.sizeMin = sizeMin),
+            (this.sizeMax = sizeMax),
+            (this.velocityMultiplier = velocityMultiplier),
             (this.particles = []),
             (this.isEmitting = !1),
             (this.particular = null),
-            (this.emitterLife = life),
-            (this.emitterRate = rate);
+            (this.lifeCycle = 0);
         },
         icons_images = [];
       __webpack_require__(72), __webpack_require__(484);
@@ -745,15 +602,16 @@
                   })(customIcons)),
                   _this.particular.addEmitter(
                     new emitter_Emitter(
-                      _this.configuration.life,
-                      _this.configuration.rate,
-                      icons,
-                      new vector_Vector(
-                        x / _this.configuration.pixelRatio,
-                        y / _this.configuration.pixelRatio,
+                      objectSpread_default()(
+                        {
+                          point: new vector_Vector(
+                            x / _this.configuration.pixelRatio,
+                            y / _this.configuration.pixelRatio,
+                          ),
+                          icons: icons,
+                        },
+                        _this.configuration,
                       ),
-                      vector_Vector.fromAngle(-90, 5),
-                      Math.PI / 1.3,
                     ),
                   );
               }),
@@ -895,7 +753,193 @@
         return particular_ParticularWrapper;
       });
     },
+    414: function(module, exports, __webpack_require__) {
+      (exports = module.exports = __webpack_require__(415)(!1)).push([
+        module.i,
+        ":root {\n}\n\n.storiesDecorator__root___35OG9 {\n  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',\n    'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;\n  -webkit-font-smoothing: antialiased;\n  -moz-osx-font-smoothing: grayscale;\n}\n",
+        '',
+      ]),
+        (exports.locals = { root: 'storiesDecorator__root___35OG9' });
+    },
+    418: function(module, exports, __webpack_require__) {
+      var map = { './src/Particular.story.js': 419 };
+      function webpackContext(req) {
+        var id = webpackContextResolve(req);
+        return __webpack_require__(id);
+      }
+      function webpackContextResolve(req) {
+        if (!__webpack_require__.o(map, req)) {
+          var e = new Error("Cannot find module '" + req + "'");
+          throw ((e.code = 'MODULE_NOT_FOUND'), e);
+        }
+        return map[req];
+      }
+      (webpackContext.keys = function webpackContextKeys() {
+        return Object.keys(map);
+      }),
+        (webpackContext.resolve = webpackContextResolve),
+        (module.exports = webpackContext),
+        (webpackContext.id = 418);
+    },
+    419: function(module, __webpack_exports__, __webpack_require__) {
+      'use strict';
+      __webpack_require__.r(__webpack_exports__),
+        function(module) {
+          var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1),
+            react__WEBPACK_IMPORTED_MODULE_0___default = __webpack_require__.n(
+              react__WEBPACK_IMPORTED_MODULE_0__,
+            ),
+            prop_types__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(30),
+            prop_types__WEBPACK_IMPORTED_MODULE_1___default = __webpack_require__.n(
+              prop_types__WEBPACK_IMPORTED_MODULE_1__,
+            ),
+            _storybook_react__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(20),
+            icons_smiley_sad_png__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(215),
+            icons_smiley_sad_png__WEBPACK_IMPORTED_MODULE_3___default = __webpack_require__.n(
+              icons_smiley_sad_png__WEBPACK_IMPORTED_MODULE_3__,
+            ),
+            icons_smiley_cry_png__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(216),
+            icons_smiley_cry_png__WEBPACK_IMPORTED_MODULE_4___default = __webpack_require__.n(
+              icons_smiley_cry_png__WEBPACK_IMPORTED_MODULE_4__,
+            ),
+            icons_smiley_sad_2_png__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(217),
+            icons_smiley_sad_2_png__WEBPACK_IMPORTED_MODULE_5___default = __webpack_require__.n(
+              icons_smiley_sad_2_png__WEBPACK_IMPORTED_MODULE_5__,
+            ),
+            _index__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(36),
+            customIcons = [
+              icons_smiley_sad_png__WEBPACK_IMPORTED_MODULE_3___default.a,
+              icons_smiley_cry_png__WEBPACK_IMPORTED_MODULE_4___default.a,
+              icons_smiley_sad_2_png__WEBPACK_IMPORTED_MODULE_5___default.a,
+            ],
+            Playground = function(_ref) {
+              var burst = _ref.burst;
+              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
+                'div',
+                { onClick: burst },
+                react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
+                  'h1',
+                  {
+                    style: {
+                      textAlign: 'center',
+                      paddingTop: '45vh',
+                      paddingBottom: '40vh',
+                      pointerEvents: 'none',
+                      userSelect: 'none',
+                    },
+                  },
+                  'CLICK ME FOR PARTICLES',
+                ),
+              );
+            };
+          Playground.propTypes = { burst: prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.func };
+          var PlaygroundWrapped = Object(_index__WEBPACK_IMPORTED_MODULE_6__.a)()(Playground),
+            PlaygroundCustomWrapped = Object(_index__WEBPACK_IMPORTED_MODULE_6__.a)({
+              customIcons: customIcons,
+            })(Playground),
+            PlaygroundCustomControlsWrapped = Object(_index__WEBPACK_IMPORTED_MODULE_6__.a)({
+              customIcons: customIcons,
+              rate: 1,
+              life: 200,
+              maxCount: 1e3,
+            })(Playground),
+            PlaygroundAutomaticWrapped = Object(_index__WEBPACK_IMPORTED_MODULE_6__.a)({
+              customIcons: customIcons,
+              rate: 1,
+              life: 200,
+              maxCount: 1e3,
+              continuous: !0,
+              autoStart: !0,
+            })(function() {
+              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
+                'div',
+                null,
+                react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
+                  'h1',
+                  {
+                    style: {
+                      textAlign: 'center',
+                      paddingTop: '45vh',
+                      pointerEvents: 'none',
+                      userSelect: 'none',
+                    },
+                  },
+                  'I AM CONTINUOUS. ',
+                  react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement('br', null),
+                  'I EXIST FOREVER.',
+                ),
+              );
+            }),
+            PlaygroundMassive = Object(_index__WEBPACK_IMPORTED_MODULE_6__.a)({
+              rate: 1e3,
+              life: 1e3,
+              maxCount: 1e3,
+            })(Playground),
+            PlaygroundParticleControls = Object(_index__WEBPACK_IMPORTED_MODULE_6__.a)({
+              rate: 8,
+              life: 30,
+              sizeMin: 1,
+              sizeMax: 5,
+              maxCount: 300,
+              velocityMultiplier: 110,
+            })(Playground);
+          Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)('Particular', module).add(
+            'Burst',
+            function() {
+              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
+                PlaygroundWrapped,
+                null,
+              );
+            },
+          ),
+            Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)(
+              'Particular',
+              module,
+            ).add('Burst with custom icons', function() {
+              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
+                PlaygroundCustomWrapped,
+                null,
+              );
+            }),
+            Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)(
+              'Particular',
+              module,
+            ).add('Burst with custom emitter controls', function() {
+              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
+                PlaygroundCustomControlsWrapped,
+                null,
+              );
+            }),
+            Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)(
+              'Particular',
+              module,
+            ).add('Performance beauty', function() {
+              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
+                PlaygroundMassive,
+                null,
+              );
+            }),
+            Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)(
+              'Particular',
+              module,
+            ).add('Particle sizing', function() {
+              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
+                PlaygroundParticleControls,
+                null,
+              );
+            }),
+            Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)(
+              'Particular',
+              module,
+            ).add('Automatic and continuous', function() {
+              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
+                PlaygroundAutomaticWrapped,
+                null,
+              );
+            });
+        }.call(this, __webpack_require__(154)(module));
+    },
   },
   [[223, 1, 2]],
 ]);
-//# sourceMappingURL=main.76bcbe29a53ac309eb73.bundle.js.map
+//# sourceMappingURL=main.fc35cac580e261aea70c.bundle.js.map

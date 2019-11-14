@@ -54,14 +54,11 @@ export default class CanvasWrapper extends React.Component {
     }
 
     this.particular.addEmitter(
-      new Emitter(
-        this.configuration.life,
-        this.configuration.rate,
+      new Emitter({
+        point: new Vector(x / this.configuration.pixelRatio, y / this.configuration.pixelRatio),
         icons,
-        new Vector(x / this.configuration.pixelRatio, y / this.configuration.pixelRatio),
-        Vector.fromAngle(-90, 5),
-        Math.PI / 1.3,
-      ),
+        ...this.configuration,
+      }),
     );
   };
 

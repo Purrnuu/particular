@@ -6,17 +6,31 @@ import { getRandomInt } from '../utils/math';
 import { destroy } from '../utils/genericUtils';
 
 export default class Emitter {
-  constructor(life, rate, icons, point, velocity, spread) {
+  constructor({
+    life,
+    rate,
+    icons,
+    point,
+    velocity,
+    spread,
+    sizeMin,
+    sizeMax,
+    velocityMultiplier,
+  }) {
     this.position = point;
     this.velocity = velocity;
     this.spread = spread || Math.PI / 32;
-    this.lifeCycle = 0;
     this.icons = icons;
+    this.emitterLife = life;
+    this.emitterRate = rate;
+    this.sizeMin = sizeMin;
+    this.sizeMax = sizeMax;
+    this.velocityMultiplier = velocityMultiplier;
+    // Internal defaults
     this.particles = [];
     this.isEmitting = false;
     this.particular = null;
-    this.emitterLife = life;
-    this.emitterRate = rate;
+    this.lifeCycle = 0;
   }
 
   emit = () => {
@@ -58,14 +72,20 @@ export default class Emitter {
     const position = new Vector(this.position.x, this.position.y);
     const velocity = Vector.fromAngle(angle, magnitude);
 
-    const size = getRandomInt(5, 15);
-    velocity.add({ x: 0, y: -((15 - size) / 15) * 6 });
+    const size = getRandomInt(this.sizeMin, this.sizeMax);
+    velocity.add({ x: 0, y: -((this.sizeMax - size) / 15) * this.velocityMultiplier });
     const friction = size / 2000;
     const acceleration = new Vector(0, size / 100);
 
     this.lifeCycle++;
 
-    return new Particle(position, velocity, acceleration, friction, size);
+    return new Particle({
+      point: position,
+      velocity,
+      acceleration,
+      friction,
+      size,
+    });
   };
 
   destroy = () => {

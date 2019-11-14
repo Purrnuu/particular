@@ -9,7 +9,7 @@ const GRAVITY = 0.15;
 const FADE_TIME = 30;
 
 export default class Particle {
-  constructor(point, velocity, acceleration, friction, size) {
+  constructor({ point, velocity, acceleration, friction, size }) {
     this.position = point || new Vector(0, 0);
     this.velocity = velocity || new Vector(0, 0);
     this.acceleration = acceleration || new Vector(0, 0);
