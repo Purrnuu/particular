@@ -3,7 +3,6 @@ import React from 'react';
 import Emitter from '../components/emitter';
 import Vector from '../utils/vector';
 
-import { ICONS_HAPPY, ICONS_ALPACA } from '../utils/icons';
 import { processImages } from '../components/icons';
 import { configure } from '../core/defaults';
 import Particular from '../core/particular';
@@ -49,16 +48,10 @@ export default class CanvasWrapper extends React.Component {
 
   // NOTE: These should be cleaned from here to actual particular
   create = ({ x, y, customIcons }) => {
-    let icons = ICONS_HAPPY;
+    let icons = [];
     if (customIcons) {
-      icons = customIcons;
+      icons = processImages(customIcons);
     }
-
-    if (this.alpaca && Math.random() > 0.99) {
-      icons = ICONS_ALPACA;
-    }
-
-    icons = processImages(icons);
 
     this.particular.addEmitter(
       new Emitter(

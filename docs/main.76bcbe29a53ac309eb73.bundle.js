@@ -32,10 +32,10 @@
           });
     },
     213: function(module, exports, __webpack_require__) {
-      var content = __webpack_require__(418);
+      var content = __webpack_require__(414);
       'string' == typeof content && (content = [[module.i, content, '']]);
       var options = { hmr: !0, transform: void 0, insertInto: void 0 };
-      __webpack_require__(420)(content, options);
+      __webpack_require__(416)(content, options);
       content.locals && (module.exports = content.locals);
     },
     214: function(module, exports, __webpack_require__) {
@@ -50,40 +50,23 @@
       module.exports =
         __webpack_require__.p + 'images/smiley_sad_2.de029a664f05340b9c814cd050c2bb86.png';
     },
-    222: function(module, exports, __webpack_require__) {
-      module.exports =
-        __webpack_require__.p + 'images/smiley_2.b4bc32ff414ff56c627ad56ba50c647b.png';
-    },
     223: function(module, exports, __webpack_require__) {
-      module.exports =
-        __webpack_require__.p + 'images/smiley_heart.5ca0dfe51b9196a4815f02ed3021ac5a.png';
+      __webpack_require__(224),
+        __webpack_require__(319),
+        (module.exports = __webpack_require__(320));
     },
-    224: function(module, exports, __webpack_require__) {
-      module.exports = __webpack_require__.p + 'images/star.0f9f1b9abdebce2d76caf7b272a545d5.png';
-    },
-    225: function(module, exports, __webpack_require__) {
-      module.exports = __webpack_require__.p + 'images/alpaca.fb5dc5936e65660f85b50a6d00784e82.png';
-    },
-    226: function(module, exports, __webpack_require__) {
-      module.exports = __webpack_require__.p + 'images/smiley.69a171824f3cc96aed817381fb766c19.png';
-    },
-    227: function(module, exports, __webpack_require__) {
-      __webpack_require__(228),
-        __webpack_require__(323),
-        (module.exports = __webpack_require__(324));
-    },
-    250: function(module, exports) {},
-    324: function(module, __webpack_exports__, __webpack_require__) {
+    246: function(module, exports) {},
+    320: function(module, __webpack_exports__, __webpack_require__) {
       'use strict';
       __webpack_require__.r(__webpack_exports__),
         function(module) {
-          __webpack_require__(52),
-            __webpack_require__(53),
-            __webpack_require__(51),
+          __webpack_require__(53),
+            __webpack_require__(54),
+            __webpack_require__(52),
             __webpack_require__(70);
           var _storybook_react__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(23),
             _storiesDecorator__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(212),
-            req = __webpack_require__(422);
+            req = __webpack_require__(418);
           Object(_storybook_react__WEBPACK_IMPORTED_MODULE_4__.addDecorator)(
             _storiesDecorator__WEBPACK_IMPORTED_MODULE_5__.a,
           ),
@@ -92,7 +75,177 @@
             }, module);
         }.call(this, __webpack_require__(153)(module));
     },
-    41: function(module, __webpack_exports__, __webpack_require__) {
+    414: function(module, exports, __webpack_require__) {
+      (exports = module.exports = __webpack_require__(415)(!1)).push([
+        module.i,
+        ":root {\n}\n\n.storiesDecorator__root___35OG9 {\n  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',\n    'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;\n  -webkit-font-smoothing: antialiased;\n  -moz-osx-font-smoothing: grayscale;\n}\n",
+        '',
+      ]),
+        (exports.locals = { root: 'storiesDecorator__root___35OG9' });
+    },
+    418: function(module, exports, __webpack_require__) {
+      var map = { './src/Particular.story.js': 419 };
+      function webpackContext(req) {
+        var id = webpackContextResolve(req);
+        return __webpack_require__(id);
+      }
+      function webpackContextResolve(req) {
+        if (!__webpack_require__.o(map, req)) {
+          var e = new Error("Cannot find module '" + req + "'");
+          throw ((e.code = 'MODULE_NOT_FOUND'), e);
+        }
+        return map[req];
+      }
+      (webpackContext.keys = function webpackContextKeys() {
+        return Object.keys(map);
+      }),
+        (webpackContext.resolve = webpackContextResolve),
+        (module.exports = webpackContext),
+        (webpackContext.id = 418);
+    },
+    419: function(module, __webpack_exports__, __webpack_require__) {
+      'use strict';
+      __webpack_require__.r(__webpack_exports__),
+        function(module) {
+          var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1),
+            react__WEBPACK_IMPORTED_MODULE_0___default = __webpack_require__.n(
+              react__WEBPACK_IMPORTED_MODULE_0__,
+            ),
+            prop_types__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(30),
+            prop_types__WEBPACK_IMPORTED_MODULE_1___default = __webpack_require__.n(
+              prop_types__WEBPACK_IMPORTED_MODULE_1__,
+            ),
+            _storybook_react__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(23),
+            icons_smiley_sad_png__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(214),
+            icons_smiley_sad_png__WEBPACK_IMPORTED_MODULE_3___default = __webpack_require__.n(
+              icons_smiley_sad_png__WEBPACK_IMPORTED_MODULE_3__,
+            ),
+            icons_smiley_cry_png__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(215),
+            icons_smiley_cry_png__WEBPACK_IMPORTED_MODULE_4___default = __webpack_require__.n(
+              icons_smiley_cry_png__WEBPACK_IMPORTED_MODULE_4__,
+            ),
+            icons_smiley_sad_2_png__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(216),
+            icons_smiley_sad_2_png__WEBPACK_IMPORTED_MODULE_5___default = __webpack_require__.n(
+              icons_smiley_sad_2_png__WEBPACK_IMPORTED_MODULE_5__,
+            ),
+            _index__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(42),
+            customIcons = [
+              icons_smiley_sad_png__WEBPACK_IMPORTED_MODULE_3___default.a,
+              icons_smiley_cry_png__WEBPACK_IMPORTED_MODULE_4___default.a,
+              icons_smiley_sad_2_png__WEBPACK_IMPORTED_MODULE_5___default.a,
+            ],
+            Playground = function(_ref) {
+              var burst = _ref.burst;
+              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
+                'div',
+                { onClick: burst },
+                react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
+                  'h1',
+                  {
+                    style: {
+                      textAlign: 'center',
+                      paddingTop: '45vh',
+                      paddingBottom: '40vh',
+                      pointerEvents: 'none',
+                      userSelect: 'none',
+                    },
+                  },
+                  'CLICK ME FOR PARTICLES',
+                ),
+              );
+            };
+          Playground.propTypes = { burst: prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.func };
+          var PlaygroundWrapped = Object(_index__WEBPACK_IMPORTED_MODULE_6__.a)()(Playground),
+            PlaygroundCustomWrapped = Object(_index__WEBPACK_IMPORTED_MODULE_6__.a)({
+              customIcons: customIcons,
+            })(Playground),
+            PlaygroundCustomControlsWrapped = Object(_index__WEBPACK_IMPORTED_MODULE_6__.a)({
+              customIcons: customIcons,
+              rate: 1,
+              life: 200,
+              maxCount: 1e3,
+            })(Playground),
+            PlaygroundAutomaticWrapped = Object(_index__WEBPACK_IMPORTED_MODULE_6__.a)({
+              customIcons: customIcons,
+              rate: 1,
+              life: 200,
+              maxCount: 1e3,
+              continuous: !0,
+              autoStart: !0,
+            })(function() {
+              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
+                'div',
+                null,
+                react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
+                  'h1',
+                  {
+                    style: {
+                      textAlign: 'center',
+                      paddingTop: '45vh',
+                      pointerEvents: 'none',
+                      userSelect: 'none',
+                    },
+                  },
+                  'I AM CONTINUOUS. ',
+                  react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement('br', null),
+                  'I EXIST FOREVER.',
+                ),
+              );
+            }),
+            PlaygroundCustomControls2Wrapped = Object(_index__WEBPACK_IMPORTED_MODULE_6__.a)({
+              customIcons: customIcons,
+              rate: 1e3,
+              life: 1e3,
+              maxCount: 1e3,
+            })(Playground);
+          Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)('Particular', module).add(
+            'Burst',
+            function() {
+              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
+                PlaygroundWrapped,
+                null,
+              );
+            },
+          ),
+            Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)(
+              'Particular',
+              module,
+            ).add('Burst with custom icons', function() {
+              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
+                PlaygroundCustomWrapped,
+                null,
+              );
+            }),
+            Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)(
+              'Particular',
+              module,
+            ).add('Burst with custom emitter controls', function() {
+              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
+                PlaygroundCustomControlsWrapped,
+                null,
+              );
+            }),
+            Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)(
+              'Particular',
+              module,
+            ).add('Performance beauty', function() {
+              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
+                PlaygroundCustomControls2Wrapped,
+                null,
+              );
+            }),
+            Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)(
+              'Particular',
+              module,
+            ).add('Automatic and continuous', function() {
+              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
+                PlaygroundAutomaticWrapped,
+                null,
+              );
+            });
+        }.call(this, __webpack_require__(153)(module));
+    },
+    42: function(module, __webpack_exports__, __webpack_require__) {
       'use strict';
       __webpack_require__(197);
       var classCallCheck = __webpack_require__(7),
@@ -297,7 +450,7 @@
         react_default = __webpack_require__.n(react),
         getDisplayName = __webpack_require__(220),
         getDisplayName_default = __webpack_require__.n(getDisplayName),
-        PortalCompat = __webpack_require__(491),
+        PortalCompat = __webpack_require__(487),
         sample = __webpack_require__(221),
         sample_default = __webpack_require__.n(sample),
         vector_Vector = function Vector(x, y) {
@@ -321,12 +474,14 @@
             (this.x = x || 0),
             (this.y = y || 0);
         };
-      function getRandomInt(min, max) {
-        return Math.floor(Math.random() * (max - min + 1)) + min;
-      }
       defineProperty_default()(vector_Vector, 'fromAngle', function(angle, magnitude) {
         return new vector_Vector(magnitude * Math.cos(angle), magnitude * Math.sin(angle));
       });
+      var randomColor = __webpack_require__(222),
+        randomColor_default = __webpack_require__.n(randomColor);
+      function getRandomInt(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+      }
       var TO_RADIANS = Math.PI / 180;
       var particle_Particle = function Particle(point, velocity, acceleration, friction, size) {
         var _this = this;
@@ -371,7 +526,7 @@
           (this.lifeTick = 0),
           (this.size = size || getRandomInt(5, 15)),
           (this.alpha = 1),
-          (this.color = '#ff0000'),
+          (this.color = randomColor_default()()),
           (this.particular = null);
       };
       eventDispatcher_EventDispatcher.bind(particle_Particle);
@@ -431,24 +586,8 @@
             (this.emitterLife = life),
             (this.emitterRate = rate);
         },
-        smiley_2 = __webpack_require__(222),
-        smiley_2_default = __webpack_require__.n(smiley_2),
-        smiley_heart = __webpack_require__(223),
-        smiley_heart_default = __webpack_require__.n(smiley_heart),
-        star = __webpack_require__(224),
-        star_default = __webpack_require__.n(star),
-        alpaca = __webpack_require__(225),
-        alpaca_default = __webpack_require__.n(alpaca),
-        smiley = __webpack_require__(226),
-        ICONS_HAPPY = {
-          smiley1: __webpack_require__.n(smiley).a,
-          smiley2: smiley_2_default.a,
-          smiley3: smiley_heart_default.a,
-          star: star_default.a,
-        },
-        ICONS_ALPACA = { alpaca: alpaca_default.a },
         icons_images = [];
-      __webpack_require__(72), __webpack_require__(488);
+      __webpack_require__(72), __webpack_require__(484);
       var canvasRenderer_CanvasRenderer = (function() {
           function CanvasRenderer(target) {
             var _this = this;
@@ -592,9 +731,8 @@
                 var x = _ref.x,
                   y = _ref.y,
                   customIcons = _ref.customIcons,
-                  icons = ICONS_HAPPY;
-                customIcons && (icons = customIcons),
-                  _this.alpaca && 0.99 < Math.random() && (icons = ICONS_ALPACA),
+                  icons = [];
+                customIcons &&
                   (icons = (function processImages(icons) {
                     return (
                       (icons_images = []),
@@ -604,7 +742,7 @@
                       }),
                       icons_images
                     );
-                  })(icons)),
+                  })(customIcons)),
                   _this.particular.addEmitter(
                     new emitter_Emitter(
                       _this.configuration.life,
@@ -692,14 +830,15 @@
                         var clientX = _ref.clientX,
                           clientY = _ref.clientY,
                           icons = _ref.icons;
-                        _this.particles &&
-                          void 0 !== clientX &&
-                          void 0 !== clientY &&
-                          _this.particles.create({
-                            x: clientX,
-                            y: clientY,
-                            customIcons: icons || customIcons,
-                          });
+                        _this.particles && void 0 !== clientX && void 0 !== clientY
+                          ? _this.particles.create({
+                              x: clientX,
+                              y: clientY,
+                              customIcons: icons || customIcons,
+                            })
+                          : console.warn(
+                              'ParticularWrapper || Burst called without parameters: clientX and/or clientY ',
+                            );
                       },
                     ),
                     (_this.particles = null),
@@ -756,177 +895,7 @@
         return particular_ParticularWrapper;
       });
     },
-    418: function(module, exports, __webpack_require__) {
-      (exports = module.exports = __webpack_require__(419)(!1)).push([
-        module.i,
-        ":root {\n}\n\n.storiesDecorator__root___35OG9 {\n  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',\n    'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;\n  -webkit-font-smoothing: antialiased;\n  -moz-osx-font-smoothing: grayscale;\n}\n",
-        '',
-      ]),
-        (exports.locals = { root: 'storiesDecorator__root___35OG9' });
-    },
-    422: function(module, exports, __webpack_require__) {
-      var map = { './src/Particular.story.js': 423 };
-      function webpackContext(req) {
-        var id = webpackContextResolve(req);
-        return __webpack_require__(id);
-      }
-      function webpackContextResolve(req) {
-        if (!__webpack_require__.o(map, req)) {
-          var e = new Error("Cannot find module '" + req + "'");
-          throw ((e.code = 'MODULE_NOT_FOUND'), e);
-        }
-        return map[req];
-      }
-      (webpackContext.keys = function webpackContextKeys() {
-        return Object.keys(map);
-      }),
-        (webpackContext.resolve = webpackContextResolve),
-        (module.exports = webpackContext),
-        (webpackContext.id = 422);
-    },
-    423: function(module, __webpack_exports__, __webpack_require__) {
-      'use strict';
-      __webpack_require__.r(__webpack_exports__),
-        function(module) {
-          var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1),
-            react__WEBPACK_IMPORTED_MODULE_0___default = __webpack_require__.n(
-              react__WEBPACK_IMPORTED_MODULE_0__,
-            ),
-            prop_types__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(30),
-            prop_types__WEBPACK_IMPORTED_MODULE_1___default = __webpack_require__.n(
-              prop_types__WEBPACK_IMPORTED_MODULE_1__,
-            ),
-            _storybook_react__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(23),
-            icons_smiley_sad_png__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(214),
-            icons_smiley_sad_png__WEBPACK_IMPORTED_MODULE_3___default = __webpack_require__.n(
-              icons_smiley_sad_png__WEBPACK_IMPORTED_MODULE_3__,
-            ),
-            icons_smiley_cry_png__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(215),
-            icons_smiley_cry_png__WEBPACK_IMPORTED_MODULE_4___default = __webpack_require__.n(
-              icons_smiley_cry_png__WEBPACK_IMPORTED_MODULE_4__,
-            ),
-            icons_smiley_sad_2_png__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(216),
-            icons_smiley_sad_2_png__WEBPACK_IMPORTED_MODULE_5___default = __webpack_require__.n(
-              icons_smiley_sad_2_png__WEBPACK_IMPORTED_MODULE_5__,
-            ),
-            _index__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(41),
-            customIcons = [
-              icons_smiley_sad_png__WEBPACK_IMPORTED_MODULE_3___default.a,
-              icons_smiley_cry_png__WEBPACK_IMPORTED_MODULE_4___default.a,
-              icons_smiley_sad_2_png__WEBPACK_IMPORTED_MODULE_5___default.a,
-            ],
-            Playground = function(_ref) {
-              var burst = _ref.burst;
-              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
-                'div',
-                { onClick: burst },
-                react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
-                  'h1',
-                  {
-                    style: {
-                      textAlign: 'center',
-                      paddingTop: '45vh',
-                      paddingBottom: '40vh',
-                      pointerEvents: 'none',
-                      userSelect: 'none',
-                    },
-                  },
-                  'CLICK ME FOR PARTICLES',
-                ),
-              );
-            };
-          Playground.propTypes = { burst: prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.func };
-          var PlaygroundWrapped = Object(_index__WEBPACK_IMPORTED_MODULE_6__.a)()(Playground),
-            PlaygroundCustomWrapped = Object(_index__WEBPACK_IMPORTED_MODULE_6__.a)({
-              customIcons: customIcons,
-            })(Playground),
-            PlaygroundCustomControlsWrapped = Object(_index__WEBPACK_IMPORTED_MODULE_6__.a)({
-              customIcons: customIcons,
-              rate: 1,
-              life: 200,
-              maxCount: 1e3,
-            })(Playground),
-            PlaygroundAutomaticWrapped = Object(_index__WEBPACK_IMPORTED_MODULE_6__.a)({
-              customIcons: customIcons,
-              rate: 1,
-              life: 200,
-              maxCount: 1e3,
-              continuous: !0,
-              autoStart: !0,
-            })(function() {
-              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
-                'div',
-                null,
-                react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
-                  'h1',
-                  {
-                    style: {
-                      textAlign: 'center',
-                      paddingTop: '45vh',
-                      pointerEvents: 'none',
-                      userSelect: 'none',
-                    },
-                  },
-                  'I AM CONTINUOUS. ',
-                  react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement('br', null),
-                  'I EXIST FOREVER.',
-                ),
-              );
-            }),
-            PlaygroundCustomControls2Wrapped = Object(_index__WEBPACK_IMPORTED_MODULE_6__.a)({
-              customIcons: customIcons,
-              rate: 1e3,
-              life: 1e3,
-              maxCount: 1e3,
-            })(Playground);
-          Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)('Particular', module).add(
-            'Burst',
-            function() {
-              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
-                PlaygroundWrapped,
-                null,
-              );
-            },
-          ),
-            Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)(
-              'Particular',
-              module,
-            ).add('Burst with custom icons', function() {
-              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
-                PlaygroundCustomWrapped,
-                null,
-              );
-            }),
-            Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)(
-              'Particular',
-              module,
-            ).add('Burst with custom emitter controls', function() {
-              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
-                PlaygroundCustomControlsWrapped,
-                null,
-              );
-            }),
-            Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)(
-              'Particular',
-              module,
-            ).add('Performance beauty', function() {
-              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
-                PlaygroundCustomControls2Wrapped,
-                null,
-              );
-            }),
-            Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)(
-              'Particular',
-              module,
-            ).add('Automatic and continuous', function() {
-              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
-                PlaygroundAutomaticWrapped,
-                null,
-              );
-            });
-        }.call(this, __webpack_require__(153)(module));
-    },
   },
-  [[227, 1, 2]],
+  [[223, 1, 2]],
 ]);
-//# sourceMappingURL=main.14dd5f1f1e9eede594d7.bundle.js.map
+//# sourceMappingURL=main.76bcbe29a53ac309eb73.bundle.js.map

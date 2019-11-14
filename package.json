@@ -120,6 +120,7 @@
     "@babel/runtime": "^7.3.4",
     "lodash": "4.17.13",
     "prop-types": "^15.6.0",
+    "randomcolor": "^0.5.4",
     "react-collapse": "^4.0.3",
     "react-portal": "^4.2.0",
     "react-transition-group": "^1.2.0"

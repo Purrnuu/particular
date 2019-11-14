@@ -58,10 +58,7 @@ module.exports = function({ config }) {
     },
     {
       test: /\.svg$/,
-      include: [
-        path.resolve(__dirname, '../src/icons'),
-        path.resolve(__dirname, '../src/components'),
-      ],
+      include: [path.resolve(__dirname, '../src/icons')],
       use: [
         'babel-loader',
         {

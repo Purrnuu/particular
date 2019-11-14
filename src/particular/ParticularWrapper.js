@@ -34,6 +34,10 @@ const particularWrapper = (configuration = {}) => Wrapped => {
     burst = ({ clientX, clientY, icons }) => {
       if (this.particles && clientX !== undefined && clientY !== undefined) {
         this.particles.create({ x: clientX, y: clientY, customIcons: icons || customIcons });
+      } else {
+        console.warn(
+          'ParticularWrapper || Burst called without parameters: clientX and/or clientY ',
+        );
       }
     };
 

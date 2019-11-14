@@ -1,3 +1,5 @@
+import randomcolor from 'randomcolor';
+
 import Vector from '../utils/vector';
 import { getRandomInt } from '../utils/math';
 import EventDispatcher from '../utils/eventDispatcher';
@@ -24,7 +26,7 @@ export default class Particle {
     this.size = size || getRandomInt(5, 15);
 
     this.alpha = 1;
-    this.color = '#ff0000';
+    this.color = randomcolor();
     this.particular = null;
   }
 
