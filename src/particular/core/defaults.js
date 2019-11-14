@@ -6,7 +6,6 @@ export const defaultConfiguration = {
   zIndex: 10000,
   autoStart: false,
   continuous: false,
-  alpaca: true,
 };
 
 export function configure(configuration) {

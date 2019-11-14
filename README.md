@@ -1,18 +1,38 @@
 # Particular
 
-An opinionated Particle Engine. 
+An opinionated Particle Engine.
 
 ## Install
 
 Install with npm or yarn. Then live .
 
-## Usage
+## Usage (With React)
 
-Example:
+To import the HOC wrapper for React
 
-```jsx
-import { emitter } from "particular/components";
 ```
+import { ParticularWrapper } from "particular";
+```
+
+```
+ParticularWrapper({
+  customIcons: Array of images,
+  rate: Integer emission rate (How many particles per burst iteration),
+  life: Integer emitter amount (How many particles per burst),
+  maxCount: Integer for maximum amount of concurrent particles,
+})(ReactComponent)
+```
+
+## Usage (Pure)
+
+To import the Particular library itself
+
+```
+import { Particular } from "particular";
+```
+
+No documentation support yet. You need to check the source code for now.
+Look into CanvasWrapper for details.
 
 ## Tips
 
