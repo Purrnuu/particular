@@ -1,4 +1,4 @@
-import _ from 'lodash';
+import { each, filter } from 'lodash';
 
 import EventDispatcher from '../utils/eventDispatcher';
 
@@ -71,16 +71,16 @@ export default class Particular {
 
   updateEmitters = () => {
     if (this.getCount() <= this.maxCount) {
-      _.each(this.emitters, emitter => {
+      each(this.emitters, emitter => {
         emitter.emit();
       });
     }
 
-    _.each(this.emitters, emitter => {
+    each(this.emitters, emitter => {
       emitter.update(this.width, this.height);
     });
 
-    this.emitters = _.filter(this.emitters, emitter => {
+    this.emitters = filter(this.emitters, emitter => {
       if (this.continuous || emitter.isAlive()) {
         return emitter;
       }

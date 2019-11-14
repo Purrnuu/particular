@@ -25,10 +25,10 @@
           displayName: 'storiesDecorator',
         }),
         'undefined' != typeof STORYBOOK_REACT_CLASSES &&
-          (STORYBOOK_REACT_CLASSES['storiesDecorator\\index.js'] = {
+          (STORYBOOK_REACT_CLASSES['storiesDecorator/index.js'] = {
             name: 'storiesDecorator',
             docgenInfo: storiesDecorator.__docgenInfo,
-            path: 'storiesDecorator\\index.js',
+            path: 'storiesDecorator/index.js',
           });
     },
     213: function(module, exports, __webpack_require__) {
@@ -77,11 +77,11 @@
       'use strict';
       __webpack_require__.r(__webpack_exports__),
         function(module) {
-          __webpack_require__(51),
-            __webpack_require__(52),
-            __webpack_require__(50),
+          __webpack_require__(52),
+            __webpack_require__(53),
+            __webpack_require__(51),
             __webpack_require__(70);
-          var _storybook_react__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(30),
+          var _storybook_react__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(23),
             _storiesDecorator__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(212),
             req = __webpack_require__(422);
           Object(_storybook_react__WEBPACK_IMPORTED_MODULE_4__.addDecorator)(
@@ -92,167 +92,13 @@
             }, module);
         }.call(this, __webpack_require__(153)(module));
     },
-    418: function(module, exports, __webpack_require__) {
-      (exports = module.exports = __webpack_require__(419)(!1)).push([
-        module.i,
-        ":root {\r\n}\r\n\r\n.storiesDecorator__root___35OG9 {\r\n  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',\r\n    'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;\r\n  -webkit-font-smoothing: antialiased;\r\n  -moz-osx-font-smoothing: grayscale;\r\n}\r\n",
-        '',
-      ]),
-        (exports.locals = { root: 'storiesDecorator__root___35OG9' });
-    },
-    422: function(module, exports, __webpack_require__) {
-      var map = { './src/components/particular/Particular.story.js': 423 };
-      function webpackContext(req) {
-        var id = webpackContextResolve(req);
-        return __webpack_require__(id);
-      }
-      function webpackContextResolve(req) {
-        if (!__webpack_require__.o(map, req)) {
-          var e = new Error("Cannot find module '" + req + "'");
-          throw ((e.code = 'MODULE_NOT_FOUND'), e);
-        }
-        return map[req];
-      }
-      (webpackContext.keys = function webpackContextKeys() {
-        return Object.keys(map);
-      }),
-        (webpackContext.resolve = webpackContextResolve),
-        (module.exports = webpackContext),
-        (webpackContext.id = 422);
-    },
-    423: function(module, __webpack_exports__, __webpack_require__) {
-      'use strict';
-      __webpack_require__.r(__webpack_exports__),
-        function(module) {
-          var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1),
-            react__WEBPACK_IMPORTED_MODULE_0___default = __webpack_require__.n(
-              react__WEBPACK_IMPORTED_MODULE_0__,
-            ),
-            prop_types__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(29),
-            prop_types__WEBPACK_IMPORTED_MODULE_1___default = __webpack_require__.n(
-              prop_types__WEBPACK_IMPORTED_MODULE_1__,
-            ),
-            _storybook_react__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(30),
-            icons_smiley_sad_png__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(214),
-            icons_smiley_sad_png__WEBPACK_IMPORTED_MODULE_3___default = __webpack_require__.n(
-              icons_smiley_sad_png__WEBPACK_IMPORTED_MODULE_3__,
-            ),
-            icons_smiley_cry_png__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(215),
-            icons_smiley_cry_png__WEBPACK_IMPORTED_MODULE_4___default = __webpack_require__.n(
-              icons_smiley_cry_png__WEBPACK_IMPORTED_MODULE_4__,
-            ),
-            icons_smiley_sad_2_png__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(216),
-            icons_smiley_sad_2_png__WEBPACK_IMPORTED_MODULE_5___default = __webpack_require__.n(
-              icons_smiley_sad_2_png__WEBPACK_IMPORTED_MODULE_5__,
-            ),
-            _ParticularWrapper__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(58),
-            customIcons = [
-              icons_smiley_sad_png__WEBPACK_IMPORTED_MODULE_3___default.a,
-              icons_smiley_cry_png__WEBPACK_IMPORTED_MODULE_4___default.a,
-              icons_smiley_sad_2_png__WEBPACK_IMPORTED_MODULE_5___default.a,
-            ],
-            Playground = function(_ref) {
-              var burst = _ref.burst;
-              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
-                'div',
-                { onClick: burst },
-                react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
-                  'h1',
-                  {
-                    style: {
-                      textAlign: 'center',
-                      paddingTop: '45vh',
-                      paddingBottom: '40vh',
-                      pointerEvents: 'none',
-                      userSelect: 'none',
-                    },
-                  },
-                  'CLICK ME FOR PARTICLES',
-                ),
-              );
-            };
-          Playground.propTypes = { burst: prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.func };
-          var PlaygroundWrapped = Object(_ParticularWrapper__WEBPACK_IMPORTED_MODULE_6__.a)()(
-              Playground,
-            ),
-            PlaygroundCustomWrapped = Object(_ParticularWrapper__WEBPACK_IMPORTED_MODULE_6__.a)({
-              customIcons: customIcons,
-            })(Playground),
-            PlaygroundCustomControlsWrapped = Object(
-              _ParticularWrapper__WEBPACK_IMPORTED_MODULE_6__.a,
-            )({ customIcons: customIcons, rate: 1, life: 200, maxCount: 1e3 })(Playground),
-            PlaygroundAutomaticWrapped = Object(_ParticularWrapper__WEBPACK_IMPORTED_MODULE_6__.a)({
-              customIcons: customIcons,
-              rate: 1,
-              life: 200,
-              maxCount: 1e3,
-              continuous: !0,
-              autoStart: !0,
-            })(function() {
-              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
-                'div',
-                null,
-                react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
-                  'h1',
-                  {
-                    style: {
-                      textAlign: 'center',
-                      paddingTop: '45vh',
-                      pointerEvents: 'none',
-                      userSelect: 'none',
-                    },
-                  },
-                  'I AM CONTINUOUS. ',
-                  react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement('br', null),
-                  'I EXIST FOREVER.',
-                ),
-              );
-            });
-          Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)('Particular', module).add(
-            'Burst',
-            function() {
-              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
-                PlaygroundWrapped,
-                null,
-              );
-            },
-          ),
-            Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)(
-              'Particular',
-              module,
-            ).add('Burst with custom icons', function() {
-              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
-                PlaygroundCustomWrapped,
-                null,
-              );
-            }),
-            Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)(
-              'Particular',
-              module,
-            ).add('Burst with custom emitter controls', function() {
-              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
-                PlaygroundCustomControlsWrapped,
-                null,
-              );
-            }),
-            Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)(
-              'Particular',
-              module,
-            ).add('Automatic and continuous', function() {
-              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
-                PlaygroundAutomaticWrapped,
-                null,
-              );
-            });
-        }.call(this, __webpack_require__(153)(module));
-    },
-    58: function(module, __webpack_exports__, __webpack_require__) {
+    41: function(module, __webpack_exports__, __webpack_require__) {
       'use strict';
       var helpers_extends = __webpack_require__(217),
         extends_default = __webpack_require__.n(helpers_extends),
         classCallCheck = __webpack_require__(7),
         classCallCheck_default = __webpack_require__.n(classCallCheck),
-        createClass = __webpack_require__(28),
+        createClass = __webpack_require__(29),
         createClass_default = __webpack_require__.n(createClass),
         possibleConstructorReturn = __webpack_require__(83),
         possibleConstructorReturn_default = __webpack_require__.n(possibleConstructorReturn),
@@ -909,7 +755,173 @@
         };
       };
     },
+    418: function(module, exports, __webpack_require__) {
+      (exports = module.exports = __webpack_require__(419)(!1)).push([
+        module.i,
+        ":root {\n}\n\n.storiesDecorator__root___35OG9 {\n  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',\n    'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;\n  -webkit-font-smoothing: antialiased;\n  -moz-osx-font-smoothing: grayscale;\n}\n",
+        '',
+      ]),
+        (exports.locals = { root: 'storiesDecorator__root___35OG9' });
+    },
+    422: function(module, exports, __webpack_require__) {
+      var map = { './src/components/particular/Particular.story.js': 423 };
+      function webpackContext(req) {
+        var id = webpackContextResolve(req);
+        return __webpack_require__(id);
+      }
+      function webpackContextResolve(req) {
+        if (!__webpack_require__.o(map, req)) {
+          var e = new Error("Cannot find module '" + req + "'");
+          throw ((e.code = 'MODULE_NOT_FOUND'), e);
+        }
+        return map[req];
+      }
+      (webpackContext.keys = function webpackContextKeys() {
+        return Object.keys(map);
+      }),
+        (webpackContext.resolve = webpackContextResolve),
+        (module.exports = webpackContext),
+        (webpackContext.id = 422);
+    },
+    423: function(module, __webpack_exports__, __webpack_require__) {
+      'use strict';
+      __webpack_require__.r(__webpack_exports__),
+        function(module) {
+          var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1),
+            react__WEBPACK_IMPORTED_MODULE_0___default = __webpack_require__.n(
+              react__WEBPACK_IMPORTED_MODULE_0__,
+            ),
+            prop_types__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(30),
+            prop_types__WEBPACK_IMPORTED_MODULE_1___default = __webpack_require__.n(
+              prop_types__WEBPACK_IMPORTED_MODULE_1__,
+            ),
+            _storybook_react__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(23),
+            icons_smiley_sad_png__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(214),
+            icons_smiley_sad_png__WEBPACK_IMPORTED_MODULE_3___default = __webpack_require__.n(
+              icons_smiley_sad_png__WEBPACK_IMPORTED_MODULE_3__,
+            ),
+            icons_smiley_cry_png__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(215),
+            icons_smiley_cry_png__WEBPACK_IMPORTED_MODULE_4___default = __webpack_require__.n(
+              icons_smiley_cry_png__WEBPACK_IMPORTED_MODULE_4__,
+            ),
+            icons_smiley_sad_2_png__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(216),
+            icons_smiley_sad_2_png__WEBPACK_IMPORTED_MODULE_5___default = __webpack_require__.n(
+              icons_smiley_sad_2_png__WEBPACK_IMPORTED_MODULE_5__,
+            ),
+            _ParticularWrapper__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(41),
+            customIcons = [
+              icons_smiley_sad_png__WEBPACK_IMPORTED_MODULE_3___default.a,
+              icons_smiley_cry_png__WEBPACK_IMPORTED_MODULE_4___default.a,
+              icons_smiley_sad_2_png__WEBPACK_IMPORTED_MODULE_5___default.a,
+            ],
+            Playground = function(_ref) {
+              var burst = _ref.burst;
+              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
+                'div',
+                { onClick: burst },
+                react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
+                  'h1',
+                  {
+                    style: {
+                      textAlign: 'center',
+                      paddingTop: '45vh',
+                      paddingBottom: '40vh',
+                      pointerEvents: 'none',
+                      userSelect: 'none',
+                    },
+                  },
+                  'CLICK ME FOR PARTICLES',
+                ),
+              );
+            };
+          Playground.propTypes = { burst: prop_types__WEBPACK_IMPORTED_MODULE_1___default.a.func };
+          var PlaygroundWrapped = Object(_ParticularWrapper__WEBPACK_IMPORTED_MODULE_6__.a)()(
+              Playground,
+            ),
+            PlaygroundCustomWrapped = Object(_ParticularWrapper__WEBPACK_IMPORTED_MODULE_6__.a)({
+              customIcons: customIcons,
+            })(Playground),
+            PlaygroundCustomControlsWrapped = Object(
+              _ParticularWrapper__WEBPACK_IMPORTED_MODULE_6__.a,
+            )({ customIcons: customIcons, rate: 1, life: 200, maxCount: 1e3 })(Playground),
+            PlaygroundAutomaticWrapped = Object(_ParticularWrapper__WEBPACK_IMPORTED_MODULE_6__.a)({
+              customIcons: customIcons,
+              rate: 1,
+              life: 200,
+              maxCount: 1e3,
+              continuous: !0,
+              autoStart: !0,
+            })(function() {
+              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
+                'div',
+                null,
+                react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
+                  'h1',
+                  {
+                    style: {
+                      textAlign: 'center',
+                      paddingTop: '45vh',
+                      pointerEvents: 'none',
+                      userSelect: 'none',
+                    },
+                  },
+                  'I AM CONTINUOUS. ',
+                  react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement('br', null),
+                  'I EXIST FOREVER.',
+                ),
+              );
+            }),
+            PlaygroundCustomControls2Wrapped = Object(
+              _ParticularWrapper__WEBPACK_IMPORTED_MODULE_6__.a,
+            )({ customIcons: customIcons, rate: 1e3, life: 1e3, maxCount: 1e3 })(Playground);
+          Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)('Particular', module).add(
+            'Burst',
+            function() {
+              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
+                PlaygroundWrapped,
+                null,
+              );
+            },
+          ),
+            Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)(
+              'Particular',
+              module,
+            ).add('Burst with custom icons', function() {
+              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
+                PlaygroundCustomWrapped,
+                null,
+              );
+            }),
+            Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)(
+              'Particular',
+              module,
+            ).add('Burst with custom emitter controls', function() {
+              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
+                PlaygroundCustomControlsWrapped,
+                null,
+              );
+            }),
+            Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)(
+              'Particular',
+              module,
+            ).add('Performance beauty', function() {
+              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
+                PlaygroundCustomControls2Wrapped,
+                null,
+              );
+            }),
+            Object(_storybook_react__WEBPACK_IMPORTED_MODULE_2__.storiesOf)(
+              'Particular',
+              module,
+            ).add('Automatic and continuous', function() {
+              return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(
+                PlaygroundAutomaticWrapped,
+                null,
+              );
+            });
+        }.call(this, __webpack_require__(153)(module));
+    },
   },
   [[227, 1, 2]],
 ]);
-//# sourceMappingURL=main.0c2d27ffb98db2a192ee.bundle.js.map
+//# sourceMappingURL=main.f2124160c8049d6460fe.bundle.js.map

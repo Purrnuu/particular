@@ -1,4 +1,4 @@
-import _ from 'lodash';
+import { sample, each } from 'lodash';
 
 import Vector from '../utils/vector';
 import Particle from './particle';
@@ -23,7 +23,7 @@ export default class Emitter {
     if (!this.isEmitting) return;
     for (let j = 0; j < this.emitterRate; j++) {
       const particle = this.createParticle();
-      const icon = _.sample(this.icons, 1);
+      const icon = sample(this.icons, 1);
       particle.init(icon, this.particular);
       this.particles.push(particle);
     }
@@ -36,7 +36,7 @@ export default class Emitter {
   update = (boundsX, boundsY) => {
     const currentParticles = [];
 
-    _.each(this.particles, particle => {
+    each(this.particles, particle => {
       const pos = particle.position;
       if (!(pos.x < 0 || pos.x > boundsX || pos.y < -boundsY || pos.y > boundsY)) {
         particle.update();

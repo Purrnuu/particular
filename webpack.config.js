@@ -24,8 +24,6 @@ module.exports = {
     'classnames',
     'react',
     'react-dom',
-    'react-motion',
-    'ramda',
     'react-portal',
     'prop-types',
     'styled-components',

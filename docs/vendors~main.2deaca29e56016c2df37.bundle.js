@@ -62623,6 +62623,8 @@ object-assign
     },
     function(e) {
       e.exports = {
+        _args: [['@storybook/ui@5.0.6', '/Users/muffinssi/Documents/GitHub/particular']],
+        _development: !0,
         _from: '@storybook/ui@5.0.6',
         _id: '@storybook/ui@5.0.6',
         _inBundle: !1,
@@ -62643,11 +62645,9 @@ object-assign
         },
         _requiredBy: ['/@storybook/core'],
         _resolved: 'https://registry.npmjs.org/@storybook/ui/-/ui-5.0.6.tgz',
-        _shasum: '954b1284d0a21e8c0154e56c2f76e58e66fe09fe',
-        _spec: '@storybook/ui@5.0.6',
-        _where: 'C:\\Users\\nipsu\\Documents\\GitHub\\particular\\node_modules\\@storybook\\core',
+        _spec: '5.0.6',
+        _where: '/Users/muffinssi/Documents/GitHub/particular',
         bugs: { url: 'https://github.com/storybooks/storybook/issues' },
-        bundleDependencies: !1,
         dependencies: {
           '@storybook/addons': '5.0.6',
           '@storybook/client-logger': '5.0.6',
@@ -62685,7 +62685,6 @@ object-assign
           telejson: '^2.1.1',
           'util-deprecate': '^1.0.2',
         },
-        deprecated: !1,
         description: 'Core Storybook UI',
         devDependencies: { 'terser-webpack-plugin': '^1.2.1', webpack: '^4.29.0' },
         gitHead: '6633eff16e5980aa74f862847a48fc6305c876ab',

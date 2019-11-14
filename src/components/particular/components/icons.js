@@ -1,10 +1,10 @@
-import _ from 'lodash';
+import { each } from 'lodash';
 
 let images = [];
 
 export function processImages(icons) {
   images = [];
-  _.each(icons, icon => {
+  each(icons, icon => {
     const imageObject = new Image();
     imageObject.src = icon;
     images.push(imageObject);

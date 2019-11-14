@@ -20,10 +20,8 @@
   "license": "MIT",
   "peerDependencies": {
     "classnames": "^2.2.0",
-    "ramda": "^0.26.0",
     "react": ">=16.8.0",
     "react-dom": ">=16.8.0",
-    "react-motion": "~0.5.0",
     "styled-components": ">=4"
   },
   "lint-staged": {
@@ -101,7 +99,6 @@
     "postcss-nested": "4.1.2",
     "postcss-units": "1.2.1",
     "prettier": "1.16.4",
-    "ramda": "^0.26.1",
     "react": "16.8.6",
     "react-display-name": "0.2.4",
     "react-dom": "16.8.6",
