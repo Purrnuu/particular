@@ -4,12 +4,8 @@ import Vector from '../utils/vector';
 import { getRandomInt } from '../utils/math';
 import EventDispatcher from '../utils/eventDispatcher';
 
-const SCALE_STEP = 1;
-const GRAVITY = 0.15;
-const FADE_TIME = 30;
-
 export default class Particle {
-  constructor({ point, velocity, acceleration, friction, size }) {
+  constructor({ point, velocity, acceleration, friction, size, gravity, scaleStep, fadeTime }) {
     this.position = point || new Vector(0, 0);
     this.velocity = velocity || new Vector(0, 0);
     this.acceleration = acceleration || new Vector(0, 0);
@@ -25,6 +21,10 @@ export default class Particle {
     this.lifeTick = 0;
     this.size = size || getRandomInt(5, 15);
 
+    this.gravity = gravity;
+    this.scaleStep = scaleStep;
+    this.fadeTime = fadeTime;
+
     this.alpha = 1;
     this.color = randomcolor();
     this.particular = null;
@@ -39,11 +39,11 @@ export default class Particle {
   update = () => {
     this.velocity.add(this.acceleration);
     this.velocity.addFriction(this.friction);
-    this.velocity.addGravity(GRAVITY);
+    this.velocity.addGravity(this.gravity);
     this.position.add(this.velocity);
     this.rotation = this.rotation + this.rotationVelocity;
-    this.factoredSize = Math.min(this.factoredSize + SCALE_STEP, this.size);
-    this.alpha = Math.max((this.lifeTime - this.lifeTick) / FADE_TIME, 0);
+    this.factoredSize = Math.min(this.factoredSize + this.scaleStep, this.size);
+    this.alpha = Math.max((this.lifeTime - this.lifeTick) / this.fadeTime, 0);
     this.lifeTick++;
     this.dispatch('PARTICLE_UPDATE', this);
   };

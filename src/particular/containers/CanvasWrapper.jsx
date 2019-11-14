@@ -4,7 +4,7 @@ import Emitter from '../components/emitter';
 import Vector from '../utils/vector';
 
 import { processImages } from '../components/icons';
-import { configure } from '../core/defaults';
+import { configureParticular, configureParticle } from '../core/defaults';
 import Particular from '../core/particular';
 import CanvasRenderer from '../renderers/canvasRenderer';
 
@@ -38,7 +38,7 @@ export default class CanvasWrapper extends React.Component {
   };
 
   configure = configuration => {
-    this.configuration = configure(configuration);
+    this.configuration = configureParticular(configuration);
     this.particular.initialize(this.configuration);
     this.particular.addRenderer(new CanvasRenderer(this.canvas));
     if (this.configuration.autoStart) {
@@ -47,17 +47,22 @@ export default class CanvasWrapper extends React.Component {
   };
 
   // NOTE: These should be cleaned from here to actual particular
-  create = ({ x, y, customIcons }) => {
+  create = settings => {
+    const combinedSettings = configureParticle(settings, this.configuration);
+
     let icons = [];
-    if (customIcons) {
-      icons = processImages(customIcons);
+    if (combinedSettings.icons) {
+      icons = processImages(combinedSettings.icons);
     }
 
     this.particular.addEmitter(
       new Emitter({
-        point: new Vector(x / this.configuration.pixelRatio, y / this.configuration.pixelRatio),
+        point: new Vector(
+          combinedSettings.x / this.configuration.pixelRatio,
+          combinedSettings.y / this.configuration.pixelRatio,
+        ),
+        ...combinedSettings,
         icons,
-        ...this.configuration,
       }),
     );
   };

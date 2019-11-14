@@ -2,7 +2,7 @@ import { each, filter } from 'lodash';
 
 import EventDispatcher from '../utils/eventDispatcher';
 
-import { defaultConfiguration } from './defaults';
+import { defaultParticular } from './defaults';
 import { destroy } from '../utils/genericUtils';
 
 export default class Particular {
@@ -16,7 +16,7 @@ export default class Particular {
     this.isOn = false;
     this.emitters = [];
     this.renderers = [];
-    this.maxCount = defaultConfiguration.maxCount;
+    this.maxCount = defaultParticular.maxCount;
     this.width = 0;
     this.height = 0;
     this.pixelRatio = 2;

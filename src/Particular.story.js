@@ -45,20 +45,48 @@ const PlaygroundWithoutClick = () => {
   );
 };
 
+const PlaygroundWithRandomParameters = ({ burst }) => {
+  // eslint-disable-line
+  const doBurst = e => {
+    burst({
+      ...e,
+      sizeMin: Math.random() * 10,
+      sizeMax: 10 + Math.random() * 10,
+      velocityMultiplier: Math.random() * 15,
+      gravity: Math.random() * 0.5,
+    });
+  };
+  return (
+    <div onClick={doBurst}>
+      <h1
+        style={{
+          textAlign: 'center',
+          paddingTop: '45vh',
+          paddingBottom: '40vh',
+          pointerEvents: 'none',
+          userSelect: 'none',
+        }}
+      >
+        CLICK ME FOR PARTICLES
+      </h1>
+    </div>
+  );
+};
+
 Playground.propTypes = {
   burst: PropTypes.func,
 };
 
 const PlaygroundWrapped = ParticularWrapper()(Playground);
-const PlaygroundCustomWrapped = ParticularWrapper({ customIcons })(Playground);
+const PlaygroundCustomWrapped = ParticularWrapper({ icons: customIcons })(Playground);
 const PlaygroundCustomControlsWrapped = ParticularWrapper({
-  customIcons,
+  icons: customIcons,
   rate: 1,
   life: 200,
   maxCount: 1000,
 })(Playground);
 const PlaygroundAutomaticWrapped = ParticularWrapper({
-  customIcons,
+  icons: customIcons,
   rate: 1,
   life: 200,
   maxCount: 1000,
@@ -78,7 +106,7 @@ const PlaygroundParticleControls = ParticularWrapper({
   sizeMax: 5,
   maxCount: 300,
   velocityMultiplier: 110,
-})(Playground);
+})(PlaygroundWithRandomParameters);
 
 storiesOf('Particular', module).add('Burst', () => <PlaygroundWrapped />);
 storiesOf('Particular', module).add('Burst with custom icons', () => <PlaygroundCustomWrapped />);

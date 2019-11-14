@@ -11,7 +11,7 @@ import CanvasWrapper from './containers/CanvasWrapper';
   }
 */
 const particularWrapper = (configuration = {}) => Wrapped => {
-  const { customIcons } = configuration;
+  const { icons } = configuration;
   class ParticularWrapper extends Component {
     static displayName = `Particular(${getDisplayName(Wrapped)})`;
 
@@ -26,18 +26,16 @@ const particularWrapper = (configuration = {}) => Wrapped => {
 
     //  TODO: Make cases for burst, spawn and permanence
     // So that basic case is done, but we can do the other cool ones
-    // Constant emittering with certain coordinates
-    // A click by click spawning
-    // A good default version but with complete control over particle base physics
     // NOTE: This is an opinionated particle experience. Not a full library.
 
-    burst = ({ clientX, clientY, icons }) => {
-      if (this.particles && clientX !== undefined && clientY !== undefined) {
-        this.particles.create({ x: clientX, y: clientY, customIcons: icons || customIcons });
-      } else {
-        console.warn(
-          'ParticularWrapper || Burst called without parameters: clientX and/or clientY ',
-        );
+    burst = settings => {
+      if (this.particles && settings.clientX !== undefined && settings.clientY !== undefined) {
+        this.particles.create({
+          x: settings.clientX,
+          y: settings.clientY,
+          ...settings,
+          icons: icons || settings.icons,
+        });
       }
     };
 
