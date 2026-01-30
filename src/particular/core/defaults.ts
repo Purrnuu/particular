@@ -26,9 +26,9 @@ export function configureParticular(configuration?: FullParticularConfig): Requi
   return { ...defaultParticular, ...defaultParticle, ...configuration };
 }
 
-export function configureParticle<T extends ParticleConfig>(
+export function configureParticle<T extends Partial<ParticleConfig>>(
   settings?: T,
   configuration?: ParticleConfig
 ): Required<ParticleConfig> & T {
-  return { ...defaultParticle, ...configuration, ...settings } as Required<ParticleConfig> & T;
+  return { ...defaultParticle, ...configuration, ...settings } as any;
 }

@@ -6,14 +6,14 @@ import { processImages } from '../components/icons';
 import { configureParticular, configureParticle } from '../core/defaults';
 import Particular from '../core/particular';
 import CanvasRenderer from '../renderers/canvasRenderer';
-import type { FullParticularConfig } from '../types';
+import type { FullParticularConfig, ParticleConfig } from '../types';
 
 interface CanvasWrapperState {
   width: number;
   height: number;
 }
 
-interface CreateSettings {
+interface CreateSettings extends Partial<ParticleConfig> {
   x?: number;
   y?: number;
   icons?: (string | HTMLImageElement)[];

@@ -23,7 +23,7 @@ export interface IEventDispatcher {
 export default class EventDispatcher implements IEventDispatcher {
   private listeners: EventListeners | null = null;
 
-  static bind<T extends { prototype: Record<string, unknown> }>(TargetClass: T): void {
+  static bind(TargetClass: any): void {
     TargetClass.prototype.dispatchEvent = EventDispatcher.prototype.dispatchEvent;
     TargetClass.prototype.hasEventListener = EventDispatcher.prototype.hasEventListener;
     TargetClass.prototype.addEventListener = EventDispatcher.prototype.addEventListener;
