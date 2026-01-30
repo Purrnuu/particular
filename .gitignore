@@ -1,8 +1,42 @@
-node_modules
-*.log
-.DS_Store
-stats.json
+# Dependencies
+node_modules/
 
-## IntelliJ GitIgnore
+# Lock files (keep package-lock.json, ignore others)
+yarn.lock
+pnpm-lock.yaml
+
+# Build outputs
+dist/
+lib/
+*.tsbuildinfo
+
+# Test coverage
+coverage/
+
+# IDE
+.vscode/
 .idea/
-*.iml
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Storybook
+storybook-static/
+
+# Stats
+stats.json
