@@ -20,12 +20,12 @@ interface CreateSettings extends Partial<ParticleConfig> {
   [key: string]: unknown;
 }
 
-export default class CanvasWrapper extends React.Component<Record<string, never>, CanvasWrapperState> {
+export default class CanvasWrapper extends React.Component<unknown, CanvasWrapperState> {
   canvas: HTMLCanvasElement | null = null;
   particular: Particular;
   configuration?: ReturnType<typeof configureParticular>;
 
-  constructor(props: Record<string, never>) {
+  constructor(props: unknown) {
     super(props);
 
     this.state = { width: 100, height: 100 };

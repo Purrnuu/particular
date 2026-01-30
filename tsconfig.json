@@ -34,8 +34,8 @@
     
     // Other
     "skipLibCheck": true,
-    "baseUrl": "./src"
+    "baseUrl": "."
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "lib", "docs", "**/*.stories.tsx", "**/*.test.tsx"]
+  "exclude": ["node_modules", "dist", "lib", "docs"]
 }

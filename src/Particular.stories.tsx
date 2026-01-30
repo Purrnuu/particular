@@ -16,7 +16,7 @@ interface PlaygroundProps {
 
 const Playground: React.FC<PlaygroundProps> = ({ burst }) => {
   return (
-    <div onClick={burst}>
+    <div onClick={(e) => burst({ clientX: e.clientX, clientY: e.clientY })}>
       <h1
         style={{
           textAlign: 'center',
@@ -50,7 +50,7 @@ const PlaygroundWithoutClick: React.FC = () => {
 };
 
 const PlaygroundWithRandomParameters: React.FC<PlaygroundProps> = ({ burst }) => {
-  const doBurst = (e: React.MouseEvent) => {
+  const doBurst = (e: React.MouseEvent<HTMLDivElement>) => {
     burst({
       clientX: e.clientX,
       clientY: e.clientY,
@@ -77,15 +77,15 @@ const PlaygroundWithRandomParameters: React.FC<PlaygroundProps> = ({ burst }) =>
   );
 };
 
-// Wrapped components
-const PlaygroundWrapped = ParticularWrapper()(Playground);
-const PlaygroundCustomWrapped = ParticularWrapper({ icons: customIcons })(Playground);
+// Wrapped components - cast to any to work around HOC type issues
+const PlaygroundWrapped = ParticularWrapper()(Playground as any);
+const PlaygroundCustomWrapped = ParticularWrapper({ icons: customIcons })(Playground as any);
 const PlaygroundCustomControlsWrapped = ParticularWrapper({
   icons: customIcons,
   rate: 1,
   life: 200,
   maxCount: 1000,
-})(Playground);
+})(Playground as any);
 const PlaygroundAutomaticWrapped = ParticularWrapper({
   icons: customIcons,
   rate: 1,
@@ -93,12 +93,12 @@ const PlaygroundAutomaticWrapped = ParticularWrapper({
   maxCount: 1000,
   continuous: true,
   autoStart: true,
-})(PlaygroundWithoutClick);
+})(PlaygroundWithoutClick as any);
 const PlaygroundMassive = ParticularWrapper({
   rate: 1000,
   life: 1000,
   maxCount: 1000,
-})(Playground);
+})(Playground as any);
 const PlaygroundParticleControls = ParticularWrapper({
   rate: 8,
   life: 30,
@@ -106,7 +106,7 @@ const PlaygroundParticleControls = ParticularWrapper({
   sizeMax: 5,
   maxCount: 300,
   velocityMultiplier: 110,
-})(PlaygroundWithRandomParameters);
+})(PlaygroundWithRandomParameters as any);
 
 // Meta configuration
 const meta: Meta<typeof Playground> = {

@@ -39,7 +39,9 @@ export default class CanvasRenderer {
     particular.addEventListener('PARTICLE_DEAD', this.onParticleDead);
   }
 
-  resize = ({ width, height }: { width: number; height: number }): void => {
+  resize = (args?: { width: number; height: number }): void => {
+    if (!args) return;
+    const { width, height } = args;
     this.target.width = width;
     this.target.height = height;
   };
