@@ -100,6 +100,8 @@ export default class CanvasRenderer {
   }
 
   drawBasicElement(particle: Particle): void {
+    this.context.save();
+    this.context.globalAlpha = particle.alpha;
     this.context.fillStyle = particle.color;
 
     this.context.beginPath();
@@ -114,6 +116,7 @@ export default class CanvasRenderer {
 
     this.context.closePath();
     this.context.fill();
+    this.context.restore();
   }
 
   destroy(): void {

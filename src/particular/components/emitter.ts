@@ -20,13 +20,15 @@ export default class Emitter {
 
   emit(): void {
     if (!this.isEmitting) return;
+    if (!this.particular) return;
+    
     for (let j = 0; j < this.configuration.rate; j++) {
       const particle = this.createParticle();
-      const icon = sample(this.configuration.icons) ?? this.configuration.icons[0];
-      if (this.particular && icon) {
-        particle.init(icon, this.particular);
-        this.particles.push(particle);
-      }
+      const icon = this.configuration.icons.length > 0 
+        ? (sample(this.configuration.icons) ?? this.configuration.icons[0])
+        : null;
+      particle.init(icon, this.particular);
+      this.particles.push(particle);
     }
   }
 

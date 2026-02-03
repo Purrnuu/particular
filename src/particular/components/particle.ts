@@ -65,7 +65,7 @@ export default class Particle {
     this.color = randomcolor();
   }
 
-  init(image: string | HTMLImageElement, particular: Particular): void {
+  init(image: string | HTMLImageElement | null, particular: Particular): void {
     this.image = image;
     this.particular = particular;
     this.dispatch('PARTICLE_CREATED', this);
