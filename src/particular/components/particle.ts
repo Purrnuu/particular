@@ -3,7 +3,7 @@ import randomcolor from 'randomcolor';
 import Vector from '../utils/vector';
 import { getRandomInt } from '../utils/math';
 import EventDispatcher from '../utils/eventDispatcher';
-import type { ParticleConstructorParams } from '../types';
+import type { ParticleConstructorParams, ParticleShape, BlendMode } from '../types';
 import type Particular from '../core/particular';
 
 export default class Particle {
@@ -25,6 +25,14 @@ export default class Particle {
   color: string;
   particular: Particular | null = null;
   image: string | HTMLImageElement | null = null;
+  
+  // Shape configuration
+  shape: ParticleShape;
+  blendMode: BlendMode;
+  glow: boolean;
+  glowSize: number;
+  trail: boolean;
+  trailLength: number;
 
   addEventListener!: EventDispatcher['addEventListener'];
   removeEventListener!: EventDispatcher['removeEventListener'];
@@ -41,6 +49,12 @@ export default class Particle {
     gravity,
     scaleStep,
     fadeTime,
+    shape = 'circle',
+    blendMode = 'normal',
+    glow = false,
+    glowSize = 10,
+    trail = false,
+    trailLength = 3,
   }: ParticleConstructorParams) {
     this.position = point ?? new Vector(0, 0);
     this.velocity = velocity ?? new Vector(0, 0);
@@ -63,6 +77,14 @@ export default class Particle {
 
     this.alpha = 1;
     this.color = randomcolor();
+    
+    // Shape configuration
+    this.shape = shape;
+    this.blendMode = blendMode;
+    this.glow = glow;
+    this.glowSize = glowSize;
+    this.trail = trail;
+    this.trailLength = trailLength;
   }
 
   init(image: string | HTMLImageElement | null, particular: Particular): void {

@@ -2,6 +2,7 @@ import React, { Component, type ComponentType } from 'react';
 import { createPortal } from 'react-dom';
 
 import CanvasWrapper from './containers/CanvasWrapper';
+import { presets } from './presets';
 import type { BurstSettings, FullParticularConfig } from './types';
 
 interface ParticularWrapperProps {
@@ -12,7 +13,7 @@ function getDisplayName<P>(WrappedComponent: ComponentType<P>): string {
   return WrappedComponent.displayName || WrappedComponent.name || 'Component';
 }
 
-const particularWrapper = (configuration: FullParticularConfig = {}) => 
+const particularWrapper = (configuration: FullParticularConfig = presets.magic) => 
   <P extends object = object>(WrappedComponent: ComponentType<P>) => {
     const { icons } = configuration;
 
@@ -83,3 +84,4 @@ const particularWrapper = (configuration: FullParticularConfig = {}) =>
   };
 
 export default particularWrapper;
+export const withParticles = particularWrapper;

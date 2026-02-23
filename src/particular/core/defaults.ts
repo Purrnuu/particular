@@ -20,6 +20,12 @@ export const defaultParticle: Required<ParticleConfig> = {
   fadeTime: 30,
   gravity: 0.15,
   scaleStep: 1,
+  shape: 'circle',
+  blendMode: 'normal',
+  glow: false,
+  glowSize: 10,
+  trail: false,
+  trailLength: 3,
 };
 
 export function configureParticular(configuration?: FullParticularConfig): Required<ParticularConfig> & Required<ParticleConfig> {

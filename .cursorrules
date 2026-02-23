@@ -1,0 +1,5 @@
+# Particular
+
+Opinionated particle engine: pretty, performant, easy setup. Keep changes tight and understandable.
+
+**Before editing**: Read `docs/LLM_CONTEXT.md` for architecture, conventions, performance rules, and where to change things. Prefer presets and one-liner APIs; avoid extra options and over-abstraction.

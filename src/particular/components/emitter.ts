@@ -24,8 +24,8 @@ export default class Emitter {
     
     for (let j = 0; j < this.configuration.rate; j++) {
       const particle = this.createParticle();
-      const icon = this.configuration.icons.length > 0 
-        ? (sample(this.configuration.icons) ?? this.configuration.icons[0])
+      const icon = this.configuration.icons.length > 0
+        ? (sample(this.configuration.icons) ?? this.configuration.icons[0]!)
         : null;
       particle.init(icon, this.particular);
       this.particles.push(particle);
@@ -68,6 +68,12 @@ export default class Emitter {
       gravity,
       scaleStep,
       fadeTime,
+      shape,
+      blendMode,
+      glow,
+      glowSize,
+      trail,
+      trailLength,
     } = this.configuration;
     const angle = velocity.getAngle() + spread - Math.random() * spread * 2;
     const magnitude = velocity.getMagnitude();
@@ -90,6 +96,12 @@ export default class Emitter {
       gravity,
       scaleStep,
       fadeTime,
+      shape,
+      blendMode,
+      glow,
+      glowSize,
+      trail,
+      trailLength,
     });
   }
 

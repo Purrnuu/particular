@@ -141,3 +141,84 @@ export const ParticleSizing: Story = {
 export const AutomaticAndContinuous: Story = {
   render: () => <PlaygroundAutomaticWrapped />,
 };
+
+// Shape variations
+const PlaygroundStars = ParticularWrapper({
+  shape: 'star',
+  sizeMin: 8,
+  sizeMax: 20,
+  glow: true,
+  glowSize: 15,
+  rate: 15,
+  life: 50,
+})(Playground as any);
+
+const PlaygroundSparkles = ParticularWrapper({
+  shape: 'sparkle',
+  blendMode: 'additive',
+  sizeMin: 10,
+  sizeMax: 25,
+  rate: 20,
+  life: 40,
+})(Playground as any);
+
+const PlaygroundWithShapeMix: React.FC<PlaygroundProps> = ({ burst }) => {
+  const doBurst = (e: React.MouseEvent<HTMLDivElement>) => {
+    const shapes = ['circle', 'square', 'triangle', 'star', 'ring', 'sparkle'] as const;
+    const randomShape = shapes[Math.floor(Math.random() * shapes.length)];
+    
+    burst({ 
+      clientX: e.clientX, 
+      clientY: e.clientY,
+      shape: randomShape,
+    });
+  };
+  
+  return (
+    <div onClick={doBurst}>
+      <h1
+        style={{
+          textAlign: 'center',
+          paddingTop: '45vh',
+          paddingBottom: '40vh',
+          pointerEvents: 'none',
+          userSelect: 'none',
+        }}
+      >
+        CLICK FOR RANDOM SHAPES
+      </h1>
+    </div>
+  );
+};
+
+const PlaygroundShapeMix = ParticularWrapper({
+  rate: 10,
+  life: 50,
+})(PlaygroundWithShapeMix as any);
+
+const PlaygroundGlowRings = ParticularWrapper({
+  shape: 'ring',
+  blendMode: 'additive',
+  glow: true,
+  glowSize: 20,
+  sizeMin: 5,
+  sizeMax: 30,
+  rate: 8,
+  life: 30,
+})(Playground as any);
+
+export const Stars: Story = {
+  render: () => <PlaygroundStars />,
+};
+
+export const Sparkles: Story = {
+  render: () => <PlaygroundSparkles />,
+};
+
+export const ShapeMix: Story = {
+  render: () => <PlaygroundShapeMix />,
+};
+
+export const GlowRings: Story = {
+  render: () => <PlaygroundGlowRings />,
+};

@@ -280,7 +280,6 @@ npm run type-check
 
 If you encounter any issues, please check:
 1. This SETUP.md file
-2. MIGRATION.md for upgrade-specific issues
-3. GitHub Issues for known problems
+2. GitHub Issues for known problems
 
 Happy coding! 🚀

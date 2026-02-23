@@ -6,6 +6,7 @@ import { processImages } from '../components/icons';
 import { configureParticular, configureParticle } from '../core/defaults';
 import Particular from '../core/particular';
 import CanvasRenderer from '../renderers/canvasRenderer';
+import { particlesBackgroundLayerStyle } from '../canvasStyles';
 import type { FullParticularConfig, ParticleConfig } from '../types';
 
 interface CanvasWrapperState {
@@ -94,15 +95,13 @@ export default class CanvasWrapper extends React.Component<unknown, CanvasWrappe
         width={this.state.width}
         height={this.state.height}
         style={{
-          width: `${this.state.width}px`,
-          height: `${this.state.height}px`,
+          ...particlesBackgroundLayerStyle,
           position: 'absolute',
-          pointerEvents: 'none',
+          width: this.state.width,
+          height: this.state.height,
           cursor: 'auto',
           opacity: 1,
-          left: 0,
-          top: 0,
-          zIndex: this.configuration?.zIndex ?? 10000,
+          zIndex: this.configuration?.zIndex ?? particlesBackgroundLayerStyle.zIndex,
         }}
       />
     );

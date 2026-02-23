@@ -1,5 +1,28 @@
 import Vector from './utils/vector';
 
+export type ParticleShape = 
+  | 'circle'
+  | 'square'
+  | 'triangle'
+  | 'star'
+  | 'ring'
+  | 'sparkle';
+
+export type BlendMode = 
+  | 'normal'
+  | 'additive'
+  | 'multiply'
+  | 'screen';
+
+export interface ShapeConfig {
+  shape?: ParticleShape;
+  blendMode?: BlendMode;
+  glow?: boolean;
+  glowSize?: number;
+  trail?: boolean;
+  trailLength?: number;
+}
+
 export interface ParticularConfig {
   pixelRatio?: number;
   zIndex?: number;
@@ -8,7 +31,7 @@ export interface ParticularConfig {
   continuous?: boolean;
 }
 
-export interface ParticleConfig {
+export interface ParticleConfig extends ShapeConfig {
   rate?: number;
   life?: number;
   velocity?: Vector;
@@ -36,7 +59,7 @@ export interface EmitterConfiguration extends ParticleConfig {
   fadeTime: number;
 }
 
-export interface ParticleConstructorParams {
+export interface ParticleConstructorParams extends ShapeConfig {
   point?: Vector;
   velocity?: Vector;
   acceleration?: Vector;

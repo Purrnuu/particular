@@ -102,20 +102,186 @@ export default class CanvasRenderer {
   drawBasicElement(particle: Particle): void {
     this.context.save();
     this.context.globalAlpha = particle.alpha;
+    
+    // Set blend mode
+    this.setBlendMode(particle.blendMode);
+    
+    // Apply glow effect if enabled
+    if (particle.glow) {
+      this.context.shadowColor = particle.color;
+      this.context.shadowBlur = particle.glowSize;
+    }
+    
+    // Draw the appropriate shape
+    switch (particle.shape) {
+      case 'circle':
+        this.drawCircle(particle);
+        break;
+      case 'square':
+        this.drawSquare(particle);
+        break;
+      case 'triangle':
+        this.drawTriangle(particle);
+        break;
+      case 'star':
+        this.drawStar(particle);
+        break;
+      case 'ring':
+        this.drawRing(particle);
+        break;
+      case 'sparkle':
+        this.drawSparkle(particle);
+        break;
+      default:
+        this.drawCircle(particle);
+    }
+    
+    this.context.restore();
+  }
+  
+  private setBlendMode(mode: string): void {
+    switch (mode) {
+      case 'additive':
+        this.context.globalCompositeOperation = 'lighter';
+        break;
+      case 'multiply':
+        this.context.globalCompositeOperation = 'multiply';
+        break;
+      case 'screen':
+        this.context.globalCompositeOperation = 'screen';
+        break;
+      default:
+        this.context.globalCompositeOperation = 'source-over';
+    }
+  }
+  
+  private drawCircle(particle: Particle): void {
     this.context.fillStyle = particle.color;
-
-    this.context.beginPath();
     const pixelRounded = particle.getRoundedLocation();
-    this.context.arc(pixelRounded[0], pixelRounded[1], particle.factoredSize, 0, Math.PI * 2, true);
-
+    
+    this.context.beginPath();
+    this.context.arc(pixelRounded[0], pixelRounded[1], particle.factoredSize, 0, Math.PI * 2);
+    this.context.closePath();
+    this.context.fill();
+    
     if (this.stroke) {
       this.context.strokeStyle = this.stroke.color;
       this.context.lineWidth = this.stroke.thickness;
       this.context.stroke();
     }
-
+  }
+  
+  private drawSquare(particle: Particle): void {
+    this.context.fillStyle = particle.color;
+    const pixelRounded = particle.getRoundedLocation();
+    const size = particle.factoredSize * 2;
+    
+    this.context.save();
+    this.context.translate(pixelRounded[0], pixelRounded[1]);
+    this.context.rotate(degToRad(particle.rotation));
+    this.context.fillRect(-particle.factoredSize, -particle.factoredSize, size, size);
+    
+    if (this.stroke) {
+      this.context.strokeStyle = this.stroke.color;
+      this.context.lineWidth = this.stroke.thickness;
+      this.context.strokeRect(-particle.factoredSize, -particle.factoredSize, size, size);
+    }
+    this.context.restore();
+  }
+  
+  private drawTriangle(particle: Particle): void {
+    this.context.fillStyle = particle.color;
+    const pixelRounded = particle.getRoundedLocation();
+    const size = particle.factoredSize;
+    
+    this.context.save();
+    this.context.translate(pixelRounded[0], pixelRounded[1]);
+    this.context.rotate(degToRad(particle.rotation));
+    
+    this.context.beginPath();
+    this.context.moveTo(0, -size);
+    this.context.lineTo(size, size);
+    this.context.lineTo(-size, size);
     this.context.closePath();
     this.context.fill();
+    
+    if (this.stroke) {
+      this.context.strokeStyle = this.stroke.color;
+      this.context.lineWidth = this.stroke.thickness;
+      this.context.stroke();
+    }
+    this.context.restore();
+  }
+  
+  private drawStar(particle: Particle): void {
+    this.context.fillStyle = particle.color;
+    const pixelRounded = particle.getRoundedLocation();
+    const outerRadius = particle.factoredSize;
+    const innerRadius = particle.factoredSize / 2;
+    const spikes = 5;
+    
+    this.context.save();
+    this.context.translate(pixelRounded[0], pixelRounded[1]);
+    this.context.rotate(degToRad(particle.rotation));
+    
+    this.context.beginPath();
+    for (let i = 0; i < spikes * 2; i++) {
+      const radius = i % 2 === 0 ? outerRadius : innerRadius;
+      const angle = (Math.PI / spikes) * i;
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius;
+      if (i === 0) {
+        this.context.moveTo(x, y);
+      } else {
+        this.context.lineTo(x, y);
+      }
+    }
+    this.context.closePath();
+    this.context.fill();
+    
+    if (this.stroke) {
+      this.context.strokeStyle = this.stroke.color;
+      this.context.lineWidth = this.stroke.thickness;
+      this.context.stroke();
+    }
+    this.context.restore();
+  }
+  
+  private drawRing(particle: Particle): void {
+    this.context.strokeStyle = particle.color;
+    this.context.lineWidth = Math.max(2, particle.factoredSize / 4);
+    const pixelRounded = particle.getRoundedLocation();
+    
+    this.context.beginPath();
+    this.context.arc(pixelRounded[0], pixelRounded[1], particle.factoredSize, 0, Math.PI * 2);
+    this.context.stroke();
+  }
+  
+  private drawSparkle(particle: Particle): void {
+    this.context.strokeStyle = particle.color;
+    this.context.lineWidth = 2;
+    const pixelRounded = particle.getRoundedLocation();
+    const size = particle.factoredSize;
+    
+    this.context.save();
+    this.context.translate(pixelRounded[0], pixelRounded[1]);
+    this.context.rotate(degToRad(particle.rotation));
+    
+    // Draw cross
+    this.context.beginPath();
+    this.context.moveTo(-size, 0);
+    this.context.lineTo(size, 0);
+    this.context.moveTo(0, -size);
+    this.context.lineTo(0, size);
+    
+    // Draw diagonals
+    const diag = size * 0.7;
+    this.context.moveTo(-diag, -diag);
+    this.context.lineTo(diag, diag);
+    this.context.moveTo(-diag, diag);
+    this.context.lineTo(diag, -diag);
+    
+    this.context.stroke();
     this.context.restore();
   }
 
