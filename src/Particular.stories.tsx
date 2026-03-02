@@ -7,6 +7,7 @@ import sad3 from './icons/smiley_sad_2.png';
 
 import { ParticularWrapper, presets } from './index';
 import type { BurstSettings, FullParticularConfig } from './particular/types';
+import Vector from './particular/utils/vector';
 
 const customIcons = [sad1, sad2, sad3];
 
@@ -14,233 +15,223 @@ interface PlaygroundProps {
   burst: (settings: BurstSettings) => void;
 }
 
-const Playground: React.FC<PlaygroundProps> = ({ burst }) => {
-  return (
-    <div onClick={(e) => burst({ clientX: e.clientX, clientY: e.clientY })}>
-      <h1
-        style={{
-          textAlign: 'center',
-          paddingTop: '45vh',
-          paddingBottom: '40vh',
-          pointerEvents: 'none',
-          userSelect: 'none',
-        }}
-      >
-        CLICK ME FOR PARTICLES
-      </h1>
-    </div>
-  );
+const Playground: React.FC<PlaygroundProps> = ({ burst }) => (
+  <div
+    onClick={(e) => burst({ clientX: e.clientX, clientY: e.clientY })}
+    style={{ minHeight: '100vh', cursor: 'pointer' }}
+  >
+    <h1
+      style={{
+        textAlign: 'center',
+        paddingTop: '45vh',
+        pointerEvents: 'none',
+        userSelect: 'none',
+      }}
+    >
+      CLICK FOR PARTICLES
+    </h1>
+  </div>
+);
+
+const PlaygroundContinuous: React.FC<PlaygroundProps> = () => (
+  <div style={{ minHeight: '100vh' }}>
+    <h1
+      style={{
+        textAlign: 'center',
+        paddingTop: '45vh',
+        pointerEvents: 'none',
+        userSelect: 'none',
+      }}
+    >
+      CONTINUOUS AUTO-START
+    </h1>
+  </div>
+);
+
+export type StoryArgs = {
+  renderer: 'canvas' | 'webgl';
+  shape: 'circle' | 'square' | 'triangle' | 'star' | 'ring' | 'sparkle';
+  blendMode: 'normal' | 'additive' | 'multiply' | 'screen';
+  glow: boolean;
+  glowSize: number;
+  rate: number;
+  life: number;
+  sizeMin: number;
+  sizeMax: number;
+  velocityMultiplier: number;
+  gravity: number;
+  maxCount: number;
+  continuous: boolean;
+  autoStart: boolean;
+  velocityAngle: number;
+  velocityMagnitude: number;
+  spread: number;
+  webglMaxInstances: number;
 };
 
-const PlaygroundWithoutClick: React.FC = () => {
-  return (
-    <div>
-      <h1
-        style={{
-          textAlign: 'center',
-          paddingTop: '45vh',
-          pointerEvents: 'none',
-          userSelect: 'none',
-        }}
-      >
-        I AM CONTINUOUS. <br />I EXIST FOREVER.
-      </h1>
-    </div>
-  );
-};
-
-const PlaygroundWithRandomParameters: React.FC<PlaygroundProps> = ({ burst }) => {
-  const doBurst = (e: React.MouseEvent<HTMLDivElement>) => {
-    burst({
-      clientX: e.clientX,
-      clientY: e.clientY,
-      sizeMin: Math.random() * 10,
-      sizeMax: 10 + Math.random() * 10,
-      velocityMultiplier: Math.random() * 15,
-      gravity: Math.random() * 0.5,
-    });
+function buildConfig(
+  base: Partial<FullParticularConfig>,
+  args: Partial<StoryArgs>
+): FullParticularConfig {
+  const angle = args.velocityAngle ?? -90;
+  const magnitude = args.velocityMagnitude ?? 5;
+  return {
+    ...presets.magic,
+    ...base,
+    renderer: args.renderer ?? 'canvas',
+    shape: args.shape ?? 'star',
+    blendMode: args.blendMode ?? 'normal',
+    glow: args.glow ?? false,
+    glowSize: args.glowSize ?? 14,
+    rate: args.rate ?? 14,
+    life: args.life ?? 32,
+    sizeMin: args.sizeMin ?? 6,
+    sizeMax: args.sizeMax ?? 16,
+    velocityMultiplier: args.velocityMultiplier ?? 5,
+    gravity: args.gravity ?? 0.1,
+    maxCount: args.maxCount ?? 350,
+    continuous: args.continuous ?? false,
+    autoStart: args.autoStart ?? false,
+    velocity: Vector.fromAngle((angle * Math.PI) / 180, magnitude),
+    spread: (args.spread ?? 1.15) * Math.PI,
+    webglMaxInstances: args.webglMaxInstances ?? 4096,
   };
-  return (
-    <div onClick={doBurst}>
-      <h1
-        style={{
-          textAlign: 'center',
-          paddingTop: '45vh',
-          paddingBottom: '40vh',
-          pointerEvents: 'none',
-          userSelect: 'none',
-        }}
-      >
-        CLICK ME FOR PARTICLES
-      </h1>
-    </div>
-  );
-};
+}
 
-// Helper to create wrapped component with renderer from args
-const withRenderer = (
-  args: StoryArgs,
-  config: FullParticularConfig,
-  Child: React.ComponentType<any>
-) => {
-  const Wrapped = ParticularWrapper({ ...config, renderer: args.renderer ?? 'canvas' })(Child);
-  return <Wrapped />;
-};
-
-// Story args include renderer (control-only, passed to withRenderer)
-type StoryArgs = { renderer?: 'canvas' | 'webgl' };
-
-const meta: Meta<typeof Playground> = {
+const meta: Meta<StoryArgs> = {
   title: 'Particular',
-  component: Playground,
+  component: () => null,
   argTypes: {
     renderer: {
       control: 'radio',
       options: ['canvas', 'webgl'],
       description: 'Rendering backend',
     },
-  } as Meta<typeof Playground>['argTypes'],
+    shape: {
+      control: 'select',
+      options: ['circle', 'square', 'triangle', 'star', 'ring', 'sparkle'],
+      description: 'Particle shape',
+    },
+    blendMode: {
+      control: 'select',
+      options: ['normal', 'additive', 'multiply', 'screen'],
+      description: 'Blend mode',
+    },
+    glow: { control: 'boolean', description: 'Enable glow effect' },
+    glowSize: { control: { type: 'number', min: 8, max: 30 }, description: 'Glow size' },
+    rate: { control: { type: 'number', min: 1, max: 100 }, description: 'Particles per burst' },
+    life: { control: { type: 'number', min: 8, max: 200 }, description: 'Emitter life (ticks)' },
+    sizeMin: { control: { type: 'number', min: 1, max: 30 }, description: 'Min particle size' },
+    sizeMax: { control: { type: 'number', min: 1, max: 50 }, description: 'Max particle size' },
+    velocityMultiplier: {
+      control: { type: 'number', min: 1, max: 15 },
+      description: 'Velocity multiplier',
+    },
+    gravity: { control: { type: 'number', min: 0, max: 0.5, step: 0.01 }, description: 'Gravity' },
+    maxCount: { control: { type: 'number', min: 50, max: 5000 }, description: 'Max particles' },
+    continuous: { control: 'boolean', description: 'Continuous emission' },
+    autoStart: { control: 'boolean', description: 'Auto-start on mount' },
+    velocityAngle: {
+      control: { type: 'number', min: -180, max: 180 },
+      description: 'Velocity angle (degrees)',
+    },
+    velocityMagnitude: {
+      control: { type: 'number', min: 1, max: 15 },
+      description: 'Velocity magnitude',
+    },
+    spread: {
+      control: { type: 'number', min: 0.2, max: 2, step: 0.1 },
+      description: 'Spread (× π)',
+    },
+    webglMaxInstances: {
+      control: { type: 'number', min: 1024, max: 65536 },
+      description: 'WebGL max instances per draw',
+    },
+  },
   args: {
     renderer: 'canvas',
-  } as Meta<typeof Playground>['args'],
+    shape: 'star',
+    blendMode: 'normal',
+    glow: true,
+    glowSize: 14,
+    rate: 14,
+    life: 32,
+    sizeMin: 6,
+    sizeMax: 16,
+    velocityMultiplier: 5,
+    gravity: 0.1,
+    maxCount: 350,
+    continuous: false,
+    autoStart: false,
+    velocityAngle: -90,
+    velocityMagnitude: 5,
+    spread: 1.15,
+    webglMaxInstances: 4096,
+  },
 };
 
 export default meta;
-type Story = StoryObj<typeof Playground> & { args?: StoryArgs };
+type Story = StoryObj<Meta<StoryArgs>>;
 
-// Stories
-export const Burst: Story = {
-  render: (args) => withRenderer(args as StoryArgs, presets.magic, Playground as any),
+const withBaseConfig = (
+  baseConfig: Partial<FullParticularConfig>
+): Story['render'] => (args: Partial<StoryArgs>) => {
+  const config = buildConfig(baseConfig, args as Partial<StoryArgs>);
+  const Child = (args as Partial<StoryArgs>).continuous ? PlaygroundContinuous : Playground;
+  const Wrapped = ParticularWrapper(config)(Child);
+  return <Wrapped burst={() => {}} key={JSON.stringify(args)} />;
 };
 
-export const BurstWithCustomIcons: Story = {
+export const Default: Story = {
+  args: {
+    renderer: 'canvas',
+    shape: 'star',
+    blendMode: 'normal',
+    glow: true,
+    glowSize: 14,
+    rate: 14,
+    life: 32,
+    maxCount: 350,
+  },
+  render: withBaseConfig(presets.magic),
+};
+
+export const WithImages: Story = {
   args: {
     renderer: 'webgl',
+    rate: 8,
+    life: 50,
+    maxCount: 300,
   },
-
-  render: (args) => withRenderer(args as StoryArgs, { icons: customIcons }, Playground as any),
+  render: withBaseConfig({ icons: customIcons, ...presets.magic }),
 };
 
-export const BurstWithCustomEmitterControls: Story = {
-  render: (args) =>
-    withRenderer(
-      args as StoryArgs,
-      { icons: customIcons, rate: 1, life: 200, maxCount: 1000 },
-      Playground as any
-    ),
+export const Complex: Story = {
+  args: {
+    renderer: 'canvas',
+    shape: 'star',
+    blendMode: 'additive',
+    glow: true,
+    glowSize: 18,
+    rate: 12,
+    life: 60,
+    continuous: true,
+    autoStart: true,
+    maxCount: 400,
+  },
+  render: withBaseConfig({ icons: customIcons, continuous: true, autoStart: true }),
 };
 
-export const PerformanceBeauty: Story = {
-  render: (args) =>
-    withRenderer(args as StoryArgs, { rate: 1000, life: 1000, maxCount: 1000 }, Playground as any),
-};
-
-export const ParticleSizing: Story = {
-  render: (args) =>
-    withRenderer(
-      args as StoryArgs,
-      {
-        rate: 8,
-        life: 30,
-        sizeMin: 1,
-        sizeMax: 5,
-        maxCount: 300,
-        velocityMultiplier: 110,
-      },
-      PlaygroundWithRandomParameters as any
-    ),
-};
-
-export const AutomaticAndContinuous: Story = {
-  render: (args) =>
-    withRenderer(
-      args as StoryArgs,
-      {
-        icons: customIcons,
-        rate: 1,
-        life: 200,
-        maxCount: 1000,
-        continuous: true,
-        autoStart: true,
-      },
-      PlaygroundWithoutClick as any
-    ),
-};
-
-// Shape variations
-const shapeStarsConfig = {
-  shape: 'star' as const,
-  sizeMin: 8,
-  sizeMax: 20,
-  glow: true,
-  glowSize: 15,
-  rate: 15,
-  life: 50,
-};
-
-const shapeSparklesConfig = {
-  shape: 'sparkle' as const,
-  blendMode: 'additive' as const,
-  sizeMin: 10,
-  sizeMax: 25,
-  rate: 20,
-  life: 40,
-};
-
-const shapeMixConfig = { rate: 10, life: 50 };
-
-const glowRingsConfig = {
-  shape: 'ring' as const,
-  blendMode: 'additive' as const,
-  glow: true,
-  glowSize: 20,
-  sizeMin: 5,
-  sizeMax: 30,
-  rate: 8,
-  life: 30,
-};
-
-const PlaygroundWithShapeMix: React.FC<PlaygroundProps> = ({ burst }) => {
-  const doBurst = (e: React.MouseEvent<HTMLDivElement>) => {
-    const shapes = ['circle', 'square', 'triangle', 'star', 'ring', 'sparkle'] as const;
-    const randomShape = shapes[Math.floor(Math.random() * shapes.length)];
-
-    burst({
-      clientX: e.clientX,
-      clientY: e.clientY,
-      shape: randomShape,
-    });
-  };
-
-  return (
-    <div onClick={doBurst}>
-      <h1
-        style={{
-          textAlign: 'center',
-          paddingTop: '45vh',
-          paddingBottom: '40vh',
-          pointerEvents: 'none',
-          userSelect: 'none',
-        }}
-      >
-        CLICK FOR RANDOM SHAPES
-      </h1>
-    </div>
-  );
-};
-
-export const Stars: Story = {
-  render: (args) => withRenderer(args as StoryArgs, shapeStarsConfig, Playground as any),
-};
-
-export const Sparkles: Story = {
-  render: (args) => withRenderer(args as StoryArgs, shapeSparklesConfig, Playground as any),
-};
-
-export const ShapeMix: Story = {
-  render: (args) => withRenderer(args as StoryArgs, shapeMixConfig, PlaygroundWithShapeMix as any),
-};
-
-export const GlowRings: Story = {
-  render: (args) => withRenderer(args as StoryArgs, glowRingsConfig, Playground as any),
+export const Gigantic: Story = {
+  args: {
+    renderer: 'webgl',
+    shape: 'circle',
+    blendMode: 'additive',
+    glow: false,
+    rate: 100,
+    life: 80,
+    maxCount: 2000,
+    webglMaxInstances: 16384,
+  },
+  render: withBaseConfig({ rate: 100, life: 80, maxCount: 2000 }),
 };

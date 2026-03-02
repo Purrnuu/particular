@@ -21,6 +21,8 @@ export interface ShapeConfig {
   glowSize?: number;
   trail?: boolean;
   trailLength?: number;
+  /** When true, tint image particles with particle color (WebGL). Default false = render images as-is. */
+  imageTint?: boolean;
 }
 
 export interface ParticularConfig {
@@ -29,6 +31,8 @@ export interface ParticularConfig {
   maxCount?: number;
   autoStart?: boolean;
   continuous?: boolean;
+  /** WebGL: max particles per draw call (default 4096). Increase for fewer draw calls with many particles. */
+  webglMaxInstances?: number;
 }
 
 export interface ParticleConfig extends ShapeConfig {

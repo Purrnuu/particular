@@ -34,16 +34,61 @@ in vec2 v_uv;
 
 uniform float u_softness;
 uniform float u_glow;
+uniform float u_glowSize;
 
 out vec4 outColor;
 
 void main() {
   float dist = length(v_uv);
-  float alpha = 1.0 - smoothstep(1.0 - u_softness, 1.0, dist);
+  float coreAlpha = 1.0 - smoothstep(1.0 - u_softness, 1.0, dist);
+  float alpha = coreAlpha;
   if (u_glow > 0.0) {
-    alpha *= 1.0 - smoothstep(0.5, 1.0, dist) * 0.5;
+    float halo = 1.0 - smoothstep(1.0, 1.0 + u_glowSize, dist);
+    alpha = max(alpha, halo * 0.8);
   }
   outColor = vec4(v_color.rgb, v_color.a * alpha);
+}
+`;
+
+const IMAGE_VERTEX_SHADER = `#version 300 es
+in vec2 a_position;
+in vec2 a_particle_pos;
+in float a_particle_size;
+in float a_particle_rotation;
+in vec4 a_particle_color;
+
+uniform vec2 u_resolution;
+
+out vec4 v_color;
+out vec2 v_uv;
+
+void main() {
+  float c = cos(a_particle_rotation);
+  float s = sin(a_particle_rotation);
+  vec2 rotated = vec2(a_position.x * c - a_position.y * s, a_position.x * s + a_position.y * c);
+  vec2 pos = (a_particle_pos + rotated * a_particle_size) / u_resolution * 2.0 - 1.0;
+  pos.y = -pos.y;
+  gl_Position = vec4(pos, 0.0, 1.0);
+  v_color = a_particle_color;
+  v_uv = a_position * 0.5 + 0.5;
+}
+`;
+
+const IMAGE_FRAGMENT_SHADER = `#version 300 es
+precision mediump float;
+
+in vec4 v_color;
+in vec2 v_uv;
+
+uniform sampler2D u_texture;
+uniform float u_tint;
+
+out vec4 outColor;
+
+void main() {
+  vec4 tex = texture(u_texture, v_uv);
+  vec3 rgb = mix(tex.rgb, tex.rgb * v_color.rgb, u_tint);
+  outColor = vec4(rgb, tex.a * v_color.a);
 }
 `;
 
@@ -79,23 +124,45 @@ function setBlendMode(gl: WebGL2RenderingContext, mode: BlendMode): void {
   }
 }
 
+interface DrawBatch {
+  type: 'circle' | 'image';
+  blendMode: BlendMode;
+  glow?: boolean;
+  glowSize?: number;
+  texture?: WebGLTexture;
+  image?: HTMLImageElement;
+  imageTint?: boolean;
+  particles: Particle[];
+}
+
+export interface WebGLRendererOptions {
+  /** Max particles per draw call (default 4096). Increase for fewer draw calls with many particles. */
+  maxInstances?: number;
+}
+
 export default class WebGLRenderer {
   target: HTMLCanvasElement;
   gl: WebGL2RenderingContext | null = null;
   program: WebGLProgram | null = null;
+  imageProgram: WebGLProgram | null = null;
   quadBuffer: WebGLBuffer | null = null;
   instanceBuffer: WebGLBuffer | null = null;
   particular: Particular | null = null;
   pixelRatio = 2;
   private instanceData: Float32Array;
-  private maxInstances = 4096;
-  private instanceStride = 9; // pos(2) + size(1) + rotation(1) + color(4) + alpha(1) = 9? Actually color is 4, so pos(2)+size(1)+rot(1)+color(4) = 8. Alpha is in color. So 8.
+  private maxInstances: number;
+  private instanceStride = 8;
   private resolutionUniform: WebGLUniformLocation | null = null;
   private softnessUniform: WebGLUniformLocation | null = null;
   private glowUniform: WebGLUniformLocation | null = null;
+  private glowSizeUniform: WebGLUniformLocation | null = null;
+  private imageResolutionUniform: WebGLUniformLocation | null = null;
+  private imageTintUniform: WebGLUniformLocation | null = null;
+  private textureCache = new Map<HTMLImageElement, WebGLTexture>();
 
-  constructor(target: HTMLCanvasElement) {
+  constructor(target: HTMLCanvasElement, options?: WebGLRendererOptions) {
     this.target = target;
+    this.maxInstances = options?.maxInstances ?? 4096;
     this.instanceStride = 8; // x, y, size, rotation, r, g, b, a
     this.instanceData = new Float32Array(this.maxInstances * this.instanceStride);
   }
@@ -104,7 +171,10 @@ export default class WebGLRenderer {
     this.particular = particular;
     this.pixelRatio = pixelRatio;
 
-    const gl = this.target.getContext('webgl2');
+    const gl = this.target.getContext('webgl2', {
+      alpha: true,
+      premultipliedAlpha: false,
+    });
     if (!gl) {
       throw new Error('WebGL2 not supported');
     }
@@ -121,10 +191,24 @@ export default class WebGLRenderer {
       throw new Error('Shader link error: ' + gl.getProgramInfoLog(program));
     }
     this.program = program;
-
     this.resolutionUniform = gl.getUniformLocation(program, 'u_resolution');
     this.softnessUniform = gl.getUniformLocation(program, 'u_softness');
     this.glowUniform = gl.getUniformLocation(program, 'u_glow');
+    this.glowSizeUniform = gl.getUniformLocation(program, 'u_glowSize');
+
+    const imageVs = this.compileShader(gl.VERTEX_SHADER, IMAGE_VERTEX_SHADER);
+    const imageFs = this.compileShader(gl.FRAGMENT_SHADER, IMAGE_FRAGMENT_SHADER);
+    const imageProgram = gl.createProgram();
+    if (!imageProgram) throw new Error('Failed to create image program');
+    gl.attachShader(imageProgram, imageVs);
+    gl.attachShader(imageProgram, imageFs);
+    gl.linkProgram(imageProgram);
+    if (!gl.getProgramParameter(imageProgram, gl.LINK_STATUS)) {
+      throw new Error('Image shader link error: ' + gl.getProgramInfoLog(imageProgram));
+    }
+    this.imageProgram = imageProgram;
+    this.imageResolutionUniform = gl.getUniformLocation(imageProgram, 'u_resolution');
+    this.imageTintUniform = gl.getUniformLocation(imageProgram, 'u_tint');
 
     // Quad vertices (NDC-style -1 to 1)
     const quadData = new Float32Array([
@@ -145,6 +229,23 @@ export default class WebGLRenderer {
     particular.addEventListener('UPDATE', this.onUpdate);
     particular.addEventListener('UPDATE_AFTER', this.onUpdateAfter);
     particular.addEventListener('RESIZE', this.resize);
+  }
+
+  private getOrCreateTexture(image: HTMLImageElement): WebGLTexture | null {
+    if (!image.complete || image.naturalWidth === 0) return null;
+    let tex = this.textureCache.get(image);
+    if (tex) return tex;
+    const gl = this.gl!;
+    tex = gl.createTexture();
+    if (!tex) return null;
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+    this.textureCache.set(image, tex);
+    return tex;
   }
 
   private compileShader(type: number, source: string): WebGLShader {
@@ -175,99 +276,192 @@ export default class WebGLRenderer {
     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
   };
 
+  private buildBatches(particles: Particle[]): DrawBatch[] {
+    const batches: DrawBatch[] = [];
+    let current: DrawBatch | null = null;
+
+    for (const p of particles) {
+      const img = p.image && p.image instanceof HTMLImageElement ? p.image : null;
+      const tex = img ? this.getOrCreateTexture(img) : null;
+      const isImage = !!tex;
+
+      const blendMode = p.blendMode;
+      const imageTint = !!p.imageTint;
+      const sameBatch =
+        current &&
+        current.type === (isImage ? 'image' : 'circle') &&
+        current.blendMode === blendMode &&
+        (isImage
+          ? current.texture === tex && current.imageTint === imageTint
+          : current.glow === p.glow && (!p.glow || current.glowSize === p.glowSize));
+
+      if (!sameBatch) {
+        current = {
+          type: isImage ? 'image' : 'circle',
+          blendMode,
+          particles: [],
+        };
+        if (isImage && tex) {
+          current.texture = tex;
+          current.image = img!;
+          current.imageTint = imageTint;
+        } else {
+          current.glow = p.glow;
+          current.glowSize = p.glowSize;
+        }
+        batches.push(current);
+      }
+      current!.particles.push(p);
+    }
+    return batches;
+  }
+
+  private fillInstanceData(particles: Particle[]): void {
+    let offset = 0;
+    for (const p of particles) {
+      const [r, g, b] = hexToRgba(p.color);
+      this.instanceData[offset++] = p.position.x;
+      this.instanceData[offset++] = p.position.y;
+      this.instanceData[offset++] = p.factoredSize;
+      this.instanceData[offset++] = (p.rotation * Math.PI) / 180;
+      this.instanceData[offset++] = r;
+      this.instanceData[offset++] = g;
+      this.instanceData[offset++] = b;
+      this.instanceData[offset++] = p.alpha;
+    }
+  }
+
+  private drawCircleBatch(batch: DrawBatch): void {
+    const gl = this.gl!;
+    const list = batch.particles;
+    setBlendMode(gl, batch.blendMode);
+    gl.uniform1f(this.softnessUniform!, 0.1);
+    gl.uniform1f(this.glowUniform!, batch.glow ? 1 : 0);
+    gl.uniform1f(this.glowSizeUniform!, Math.min(0.5, (batch.glowSize ?? 10) / 30));
+
+    const stride = this.instanceStride;
+    for (let i = 0; i < list.length; i += this.maxInstances) {
+      const chunk = list.slice(i, i + this.maxInstances);
+      this.fillInstanceData(chunk);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.instanceData.subarray(0, chunk.length * stride));
+
+    const posLoc2 = gl.getAttribLocation(this.program!, 'a_particle_pos');
+    gl.enableVertexAttribArray(posLoc2);
+    gl.vertexAttribPointer(posLoc2, 2, gl.FLOAT, false, stride * 4, 0);
+    gl.vertexAttribDivisor(posLoc2, 1);
+
+    const sizeLoc = gl.getAttribLocation(this.program!, 'a_particle_size');
+    gl.enableVertexAttribArray(sizeLoc);
+    gl.vertexAttribPointer(sizeLoc, 1, gl.FLOAT, false, stride * 4, 8);
+    gl.vertexAttribDivisor(sizeLoc, 1);
+
+    const rotLoc = gl.getAttribLocation(this.program!, 'a_particle_rotation');
+    gl.enableVertexAttribArray(rotLoc);
+    gl.vertexAttribPointer(rotLoc, 1, gl.FLOAT, false, stride * 4, 12);
+    gl.vertexAttribDivisor(rotLoc, 1);
+
+    const colLoc = gl.getAttribLocation(this.program!, 'a_particle_color');
+    gl.enableVertexAttribArray(colLoc);
+    gl.vertexAttribPointer(colLoc, 4, gl.FLOAT, false, stride * 4, 16);
+    gl.vertexAttribDivisor(colLoc, 1);
+
+      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, chunk.length);
+
+      gl.vertexAttribDivisor(posLoc2, 0);
+      gl.vertexAttribDivisor(sizeLoc, 0);
+      gl.vertexAttribDivisor(rotLoc, 0);
+      gl.vertexAttribDivisor(colLoc, 0);
+    }
+  }
+
+  private drawImageBatch(batch: DrawBatch, logicalW: number, logicalH: number): void {
+    const gl = this.gl!;
+    const list = batch.particles;
+    if (!this.imageProgram || !batch.texture || !this.imageResolutionUniform || !this.imageTintUniform) return;
+
+    setBlendMode(gl, batch.blendMode);
+    gl.useProgram(this.imageProgram);
+    gl.uniform2f(this.imageResolutionUniform, logicalW, logicalH);
+    gl.uniform1f(this.imageTintUniform, batch.imageTint ? 1 : 0);
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, batch.texture);
+    const texLoc = gl.getUniformLocation(this.imageProgram, 'u_texture');
+    gl.uniform1i(texLoc, 0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuffer);
+    const posLoc = gl.getAttribLocation(this.imageProgram, 'a_position');
+    gl.enableVertexAttribArray(posLoc);
+    gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+    const stride = this.instanceStride;
+    for (let i = 0; i < list.length; i += this.maxInstances) {
+      const chunk = list.slice(i, i + this.maxInstances);
+      this.fillInstanceData(chunk);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.instanceData.subarray(0, chunk.length * stride));
+
+      const posLoc2 = gl.getAttribLocation(this.imageProgram, 'a_particle_pos');
+      gl.enableVertexAttribArray(posLoc2);
+      gl.vertexAttribPointer(posLoc2, 2, gl.FLOAT, false, stride * 4, 0);
+      gl.vertexAttribDivisor(posLoc2, 1);
+
+      const sizeLoc = gl.getAttribLocation(this.imageProgram, 'a_particle_size');
+      gl.enableVertexAttribArray(sizeLoc);
+      gl.vertexAttribPointer(sizeLoc, 1, gl.FLOAT, false, stride * 4, 8);
+      gl.vertexAttribDivisor(sizeLoc, 1);
+
+      const rotLoc = gl.getAttribLocation(this.imageProgram, 'a_particle_rotation');
+      gl.enableVertexAttribArray(rotLoc);
+      gl.vertexAttribPointer(rotLoc, 1, gl.FLOAT, false, stride * 4, 12);
+      gl.vertexAttribDivisor(rotLoc, 1);
+
+      const colLoc = gl.getAttribLocation(this.imageProgram, 'a_particle_color');
+      gl.enableVertexAttribArray(colLoc);
+      gl.vertexAttribPointer(colLoc, 4, gl.FLOAT, false, stride * 4, 16);
+      gl.vertexAttribDivisor(colLoc, 1);
+
+      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, chunk.length);
+
+      gl.vertexAttribDivisor(posLoc2, 0);
+      gl.vertexAttribDivisor(sizeLoc, 0);
+      gl.vertexAttribDivisor(rotLoc, 0);
+      gl.vertexAttribDivisor(colLoc, 0);
+    }
+  }
+
   onUpdateAfter = (): void => {
     if (!this.gl || !this.particular || !this.program) return;
 
     const particles = this.particular.getAllParticles();
     const pixelRatio = this.particular.pixelRatio;
-    // Use canvas buffer size (fallback to engine size if canvas not yet resized)
     const w = this.target.width || this.particular.width;
     const h = this.target.height || this.particular.height;
     const logicalW = w / pixelRatio;
     const logicalH = h / pixelRatio;
     if (logicalW <= 0 || logicalH <= 0) return;
 
-    // Group by (blendMode, glow) for efficient batching
-    const groups = new Map<string, Particle[]>();
-    for (const p of particles) {
-      if (p.image) continue; // Skip image particles in WebGL v1
-      const key = `${p.blendMode}:${p.glow ? 1 : 0}`;
-      let list = groups.get(key);
-      if (!list) {
-        list = [];
-        groups.set(key, list);
-      }
-      list.push(p);
-    }
-
-    if (!this.resolutionUniform || !this.softnessUniform || !this.glowUniform) return;
+    const batches = this.buildBatches(particles);
+    if (!this.resolutionUniform || !this.softnessUniform || !this.glowUniform || !this.glowSizeUniform) return;
 
     this.gl.useProgram(this.program);
     this.gl.uniform2f(this.resolutionUniform, logicalW, logicalH);
-
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
-    const posLoc = this.gl.getAttribLocation(this.program!, 'a_position');
+    const posLoc = this.gl.getAttribLocation(this.program, 'a_position');
     this.gl.enableVertexAttribArray(posLoc);
     this.gl.vertexAttribPointer(posLoc, 2, this.gl.FLOAT, false, 0, 0);
 
-    for (const [key, list] of groups) {
-      const [blendMode, glow] = key.split(':');
-      setBlendMode(this.gl, blendMode as BlendMode);
-
-      // Use creation order (no sorting)—stable layering so particles don't jump
-      // when moving or scaling; first-created = bottom, last-created = top
-      const drawList = list;
-      this.gl.uniform1f(this.softnessUniform, 0.1);
-      this.gl.uniform1f(this.glowUniform, glow === '1' ? 1 : 0);
-
-      let offset = 0;
-      const stride = this.instanceStride;
-      for (const p of drawList) {
-        const [r, g, b] = hexToRgba(p.color);
-        this.instanceData[offset++] = p.position.x;
-        this.instanceData[offset++] = p.position.y;
-        this.instanceData[offset++] = p.factoredSize;
-        this.instanceData[offset++] = (p.rotation * Math.PI) / 180;
-        this.instanceData[offset++] = r;
-        this.instanceData[offset++] = g;
-        this.instanceData[offset++] = b;
-        this.instanceData[offset++] = p.alpha;
+    for (const batch of batches) {
+      if (batch.type === 'circle') {
+        this.drawCircleBatch(batch);
+      } else {
+        this.drawImageBatch(batch, logicalW, logicalH);
+        this.gl.useProgram(this.program);
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
+        this.gl.enableVertexAttribArray(posLoc);
+        this.gl.vertexAttribPointer(posLoc, 2, this.gl.FLOAT, false, 0, 0);
       }
-
-      const count = drawList.length;
-      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.instanceBuffer);
-      this.gl.bufferSubData(
-        this.gl.ARRAY_BUFFER,
-        0,
-        this.instanceData.subarray(0, count * stride),
-      );
-
-      const posLoc2 = this.gl.getAttribLocation(this.program!, 'a_particle_pos');
-      this.gl.enableVertexAttribArray(posLoc2);
-      this.gl.vertexAttribPointer(posLoc2, 2, this.gl.FLOAT, false, stride * 4, 0);
-      this.gl.vertexAttribDivisor(posLoc2, 1);
-
-      const sizeLoc = this.gl.getAttribLocation(this.program!, 'a_particle_size');
-      this.gl.enableVertexAttribArray(sizeLoc);
-      this.gl.vertexAttribPointer(sizeLoc, 1, this.gl.FLOAT, false, stride * 4, 8);
-      this.gl.vertexAttribDivisor(sizeLoc, 1);
-
-      const rotLoc = this.gl.getAttribLocation(this.program!, 'a_particle_rotation');
-      this.gl.enableVertexAttribArray(rotLoc);
-      this.gl.vertexAttribPointer(rotLoc, 1, this.gl.FLOAT, false, stride * 4, 12);
-      this.gl.vertexAttribDivisor(rotLoc, 1);
-
-      const colLoc = this.gl.getAttribLocation(this.program!, 'a_particle_color');
-      this.gl.enableVertexAttribArray(colLoc);
-      this.gl.vertexAttribPointer(colLoc, 4, this.gl.FLOAT, false, stride * 4, 16);
-      this.gl.vertexAttribDivisor(colLoc, 1);
-
-      this.gl.drawArraysInstanced(this.gl.TRIANGLES, 0, 6, count);
-
-      this.gl.vertexAttribDivisor(posLoc2, 0);
-      this.gl.vertexAttribDivisor(sizeLoc, 0);
-      this.gl.vertexAttribDivisor(rotLoc, 0);
-      this.gl.vertexAttribDivisor(colLoc, 0);
     }
   };
 
@@ -285,10 +479,16 @@ export default class WebGLRenderer {
     if (this.quadBuffer) this.gl!.deleteBuffer(this.quadBuffer);
     if (this.instanceBuffer) this.gl!.deleteBuffer(this.instanceBuffer);
     if (this.program) this.gl!.deleteProgram(this.program);
+    if (this.imageProgram) this.gl!.deleteProgram(this.imageProgram);
+    for (const tex of this.textureCache.values()) {
+      this.gl!.deleteTexture(tex);
+    }
+    this.textureCache.clear();
 
     this.particular = null;
     this.gl = null;
     this.program = null;
+    this.imageProgram = null;
     this.quadBuffer = null;
     this.instanceBuffer = null;
   }

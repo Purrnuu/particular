@@ -5,7 +5,10 @@ export { default as Vector } from './particular/utils/vector';
 export { default as Emitter } from './particular/components/emitter';
 export { default as Particle } from './particular/components/particle';
 export { default as CanvasRenderer } from './particular/renderers/canvasRenderer';
-export { default as WebGLRenderer } from './particular/renderers/webglRenderer';
+export {
+  default as WebGLRenderer,
+  type WebGLRendererOptions,
+} from './particular/renderers/webglRenderer';
 export { presets } from './particular/presets';
 export {
   particlesBackgroundLayerStyle,

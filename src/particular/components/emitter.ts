@@ -74,6 +74,7 @@ export default class Emitter {
       glowSize,
       trail,
       trailLength,
+      imageTint,
     } = this.configuration;
     const angle = velocity.getAngle() + spread - Math.random() * spread * 2;
     const magnitude = velocity.getMagnitude();
@@ -102,6 +103,7 @@ export default class Emitter {
       glowSize,
       trail,
       trailLength,
+      imageTint,
     });
   }
 

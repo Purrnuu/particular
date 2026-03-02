@@ -12,6 +12,7 @@ export const defaultParticular: Required<ParticularConfig> = {
   maxCount: 300,
   autoStart: false,
   continuous: false,
+  webglMaxInstances: 4096,
 };
 
 export const defaultParticle: Required<ParticleConfig> = {
@@ -31,6 +32,7 @@ export const defaultParticle: Required<ParticleConfig> = {
   glowSize: 10,
   trail: false,
   trailLength: 3,
+  imageTint: false,
 };
 
 export function configureParticular(

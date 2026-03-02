@@ -33,6 +33,7 @@ export default class Particle {
   glowSize: number;
   trail: boolean;
   trailLength: number;
+  imageTint: boolean;
 
   addEventListener!: EventDispatcher['addEventListener'];
   removeEventListener!: EventDispatcher['removeEventListener'];
@@ -55,6 +56,7 @@ export default class Particle {
     glowSize = 10,
     trail = false,
     trailLength = 3,
+    imageTint = false,
   }: ParticleConstructorParams) {
     this.position = point ?? new Vector(0, 0);
     this.velocity = velocity ?? new Vector(0, 0);
@@ -85,6 +87,7 @@ export default class Particle {
     this.glowSize = glowSize;
     this.trail = trail;
     this.trailLength = trailLength;
+    this.imageTint = imageTint;
   }
 
   init(image: string | HTMLImageElement | null, particular: Particular): void {

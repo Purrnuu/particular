@@ -56,9 +56,13 @@ export default class CanvasWrapper extends React.Component<unknown, CanvasWrappe
     this.particular.initialize(this.configuration);
     
     if (this.canvas) {
-      const RendererClass =
-        this.configuration?.renderer === 'webgl' ? WebGLRenderer : CanvasRenderer;
-      this.particular.addRenderer(new RendererClass(this.canvas));
+      const renderer =
+        this.configuration?.renderer === 'webgl'
+          ? new WebGLRenderer(this.canvas, {
+              maxInstances: this.configuration?.webglMaxInstances,
+            })
+          : new CanvasRenderer(this.canvas);
+      this.particular.addRenderer(renderer);
     }
     
     if (this.configuration.autoStart) {

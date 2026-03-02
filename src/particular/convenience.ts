@@ -52,7 +52,11 @@ export function createParticles({
 
   engine.initialize(mergedConfig);
   if (renderer === 'webgl') {
-    engine.addRenderer(new WebGLRenderer(canvas));
+    engine.addRenderer(
+      new WebGLRenderer(canvas, {
+        maxInstances: mergedConfig.webglMaxInstances,
+      }),
+    );
   } else {
     engine.addRenderer(new CanvasRenderer(canvas));
   }
