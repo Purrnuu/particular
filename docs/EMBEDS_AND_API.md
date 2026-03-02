@@ -32,6 +32,18 @@ For a full-viewport click-through canvas, apply the shared style:
 </script>
 ```
 
+### WebGL renderer (higher performance)
+
+Use `renderer: 'webgl'` for GPU-accelerated rendering. Requires WebGL2 support. Custom images are not supported yet (particles with icons fall back to invisible in WebGL).
+
+```ts
+createParticles({ canvas, preset: "magic", renderer: "webgl" });
+```
+
+```tsx
+useParticles({ preset: "magic", renderer: "webgl" });
+```
+
 ### Raw API via script tag
 
 If you prefer the core classes instead of `createParticles`:

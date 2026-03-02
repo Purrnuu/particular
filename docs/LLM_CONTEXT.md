@@ -20,7 +20,7 @@ Use this file to stay aligned with the project when making changes. Keep edits *
 | **Defaults** | `src/particular/core/defaults.ts` | `defaultParticular`, `defaultParticle`, `configureParticular`, `configureParticle`. |
 | **Particle lifecycle** | `src/particular/components/particle.ts` | Position, alpha, shape, blend, glow. No allocation in hot path. |
 | **Emission** | `src/particular/components/emitter.ts` | Creates particles, passes config (shape, blend, glow). Presets applied here. |
-| **Rendering** | `src/particular/renderers/canvasRenderer.ts` | Subscribes to UPDATE (clear), PARTICLE_UPDATE (draw), UPDATE_AFTER (restore). **Batch by (blendMode, glow)**; set composite/shadow once per group. |
+| **Rendering** | `src/particular/renderers/canvasRenderer.ts`, `webglRenderer.ts` | Canvas: per-particle draw, batched by blend/glow. WebGL: instanced batch draw in UPDATE_AFTER, grouped by (blendMode, glow). Use `renderer: 'webgl'` in createParticles/useParticles. |
 | **Presets** | `src/particular/presets.ts` | Named presets (confetti, sparkles, magic, …). Add new ones here; keep them visually distinct. |
 | **Types** | `src/particular/types.ts` | `ParticularConfig`, `ParticleConfig`, `FullParticularConfig`, shapes, blend modes. |
 | **React** | `ParticularWrapper.tsx`, `useParticles.ts`, `containers/CanvasWrapper.tsx` | HOC uses portal + CanvasWrapper; hook uses `createParticles` + ref. |
