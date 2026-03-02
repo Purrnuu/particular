@@ -25,65 +25,57 @@ const Playground: React.FC<PlaygroundProps> = ({ burst }) => (
   </div>
 );
 
+type StoryArgs = { renderer?: 'canvas' | 'webgl' };
+
 const meta: Meta<typeof Playground> = {
   title: 'Particular/Presets',
   component: Playground,
+  argTypes: {
+    renderer: {
+      control: 'radio',
+      options: ['canvas', 'webgl'],
+      description: 'Rendering backend',
+    },
+  } as Meta<typeof Playground>['argTypes'],
+  args: {
+    renderer: 'canvas',
+  } as Meta<typeof Playground>['args'],
 };
 
 export default meta;
-type Story = StoryObj<typeof Playground>;
+type Story = StoryObj<typeof Playground> & { args?: StoryArgs };
+
+const withRenderer = (args: StoryArgs, preset: typeof presets.confetti) => {
+  const Wrapped = ParticularWrapper({ ...preset, renderer: args.renderer ?? 'canvas' })(
+    Playground as any,
+  );
+  return <Wrapped />;
+};
 
 export const Confetti: Story = {
-  render: () => {
-    const Wrapped = ParticularWrapper(presets.confetti)(Playground as any);
-    return <Wrapped />;
-  },
+  render: (args) => withRenderer(args as StoryArgs, presets.confetti),
 };
 export const Sparkles: Story = {
-  render: () => {
-    const Wrapped = ParticularWrapper(presets.sparkles)(Playground as any);
-    return <Wrapped />;
-  },
+  render: (args) => withRenderer(args as StoryArgs, presets.sparkles),
 };
 export const Stardust: Story = {
-  render: () => {
-    const Wrapped = ParticularWrapper(presets.stardust)(Playground as any);
-    return <Wrapped />;
-  },
+  render: (args) => withRenderer(args as StoryArgs, presets.stardust),
 };
 export const Fireworks: Story = {
-  render: () => {
-    const Wrapped = ParticularWrapper(presets.fireworks)(Playground as any);
-    return <Wrapped />;
-  },
+  render: (args) => withRenderer(args as StoryArgs, presets.fireworks),
 };
 export const Bubbles: Story = {
-  render: () => {
-    const Wrapped = ParticularWrapper(presets.bubbles)(Playground as any);
-    return <Wrapped />;
-  },
+  render: (args) => withRenderer(args as StoryArgs, presets.bubbles),
 };
 export const Magic: Story = {
-  render: () => {
-    const Wrapped = ParticularWrapper(presets.magic)(Playground as any);
-    return <Wrapped />;
-  },
+  render: (args) => withRenderer(args as StoryArgs, presets.magic),
 };
 export const Snow: Story = {
-  render: () => {
-    const Wrapped = ParticularWrapper(presets.snow)(Playground as any);
-    return <Wrapped />;
-  },
+  render: (args) => withRenderer(args as StoryArgs, presets.snow),
 };
 export const Embers: Story = {
-  render: () => {
-    const Wrapped = ParticularWrapper(presets.embers)(Playground as any);
-    return <Wrapped />;
-  },
+  render: (args) => withRenderer(args as StoryArgs, presets.embers),
 };
 export const ConfettiSharp: Story = {
-  render: () => {
-    const Wrapped = ParticularWrapper(presets.confettiSharp)(Playground as any);
-    return <Wrapped />;
-  },
+  render: (args) => withRenderer(args as StoryArgs, presets.confettiSharp),
 };

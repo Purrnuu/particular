@@ -5,8 +5,8 @@ import sad1 from './icons/smiley_sad.png';
 import sad2 from './icons/smiley_cry.png';
 import sad3 from './icons/smiley_sad_2.png';
 
-import { ParticularWrapper } from './index';
-import type { BurstSettings } from './particular/types';
+import { ParticularWrapper, presets } from './index';
+import type { BurstSettings, FullParticularConfig } from './particular/types';
 
 const customIcons = [sad1, sad2, sad3];
 
@@ -77,103 +77,141 @@ const PlaygroundWithRandomParameters: React.FC<PlaygroundProps> = ({ burst }) =>
   );
 };
 
-// Wrapped components - cast to any to work around HOC type issues
-const PlaygroundWrapped = ParticularWrapper()(Playground as any);
-const PlaygroundCustomWrapped = ParticularWrapper({ icons: customIcons })(Playground as any);
-const PlaygroundCustomControlsWrapped = ParticularWrapper({
-  icons: customIcons,
-  rate: 1,
-  life: 200,
-  maxCount: 1000,
-})(Playground as any);
-const PlaygroundAutomaticWrapped = ParticularWrapper({
-  icons: customIcons,
-  rate: 1,
-  life: 200,
-  maxCount: 1000,
-  continuous: true,
-  autoStart: true,
-})(PlaygroundWithoutClick as any);
-const PlaygroundMassive = ParticularWrapper({
-  rate: 1000,
-  life: 1000,
-  maxCount: 1000,
-})(Playground as any);
-const PlaygroundParticleControls = ParticularWrapper({
-  rate: 8,
-  life: 30,
-  sizeMin: 1,
-  sizeMax: 5,
-  maxCount: 300,
-  velocityMultiplier: 110,
-})(PlaygroundWithRandomParameters as any);
+// Helper to create wrapped component with renderer from args
+const withRenderer = (
+  args: StoryArgs,
+  config: FullParticularConfig,
+  Child: React.ComponentType<any>
+) => {
+  const Wrapped = ParticularWrapper({ ...config, renderer: args.renderer ?? 'canvas' })(Child);
+  return <Wrapped />;
+};
 
-// Meta configuration
+// Story args include renderer (control-only, passed to withRenderer)
+type StoryArgs = { renderer?: 'canvas' | 'webgl' };
+
 const meta: Meta<typeof Playground> = {
   title: 'Particular',
   component: Playground,
+  argTypes: {
+    renderer: {
+      control: 'radio',
+      options: ['canvas', 'webgl'],
+      description: 'Rendering backend',
+    },
+  } as Meta<typeof Playground>['argTypes'],
+  args: {
+    renderer: 'canvas',
+  } as Meta<typeof Playground>['args'],
 };
 
 export default meta;
-type Story = StoryObj<typeof Playground>;
+type Story = StoryObj<typeof Playground> & { args?: StoryArgs };
 
 // Stories
 export const Burst: Story = {
-  render: () => <PlaygroundWrapped />,
+  render: (args) => withRenderer(args as StoryArgs, presets.magic, Playground as any),
 };
 
 export const BurstWithCustomIcons: Story = {
-  render: () => <PlaygroundCustomWrapped />,
+  args: {
+    renderer: 'webgl',
+  },
+
+  render: (args) => withRenderer(args as StoryArgs, { icons: customIcons }, Playground as any),
 };
 
 export const BurstWithCustomEmitterControls: Story = {
-  render: () => <PlaygroundCustomControlsWrapped />,
+  render: (args) =>
+    withRenderer(
+      args as StoryArgs,
+      { icons: customIcons, rate: 1, life: 200, maxCount: 1000 },
+      Playground as any
+    ),
 };
 
 export const PerformanceBeauty: Story = {
-  render: () => <PlaygroundMassive />,
+  render: (args) =>
+    withRenderer(args as StoryArgs, { rate: 1000, life: 1000, maxCount: 1000 }, Playground as any),
 };
 
 export const ParticleSizing: Story = {
-  render: () => <PlaygroundParticleControls />,
+  render: (args) =>
+    withRenderer(
+      args as StoryArgs,
+      {
+        rate: 8,
+        life: 30,
+        sizeMin: 1,
+        sizeMax: 5,
+        maxCount: 300,
+        velocityMultiplier: 110,
+      },
+      PlaygroundWithRandomParameters as any
+    ),
 };
 
 export const AutomaticAndContinuous: Story = {
-  render: () => <PlaygroundAutomaticWrapped />,
+  render: (args) =>
+    withRenderer(
+      args as StoryArgs,
+      {
+        icons: customIcons,
+        rate: 1,
+        life: 200,
+        maxCount: 1000,
+        continuous: true,
+        autoStart: true,
+      },
+      PlaygroundWithoutClick as any
+    ),
 };
 
 // Shape variations
-const PlaygroundStars = ParticularWrapper({
-  shape: 'star',
+const shapeStarsConfig = {
+  shape: 'star' as const,
   sizeMin: 8,
   sizeMax: 20,
   glow: true,
   glowSize: 15,
   rate: 15,
   life: 50,
-})(Playground as any);
+};
 
-const PlaygroundSparkles = ParticularWrapper({
-  shape: 'sparkle',
-  blendMode: 'additive',
+const shapeSparklesConfig = {
+  shape: 'sparkle' as const,
+  blendMode: 'additive' as const,
   sizeMin: 10,
   sizeMax: 25,
   rate: 20,
   life: 40,
-})(Playground as any);
+};
+
+const shapeMixConfig = { rate: 10, life: 50 };
+
+const glowRingsConfig = {
+  shape: 'ring' as const,
+  blendMode: 'additive' as const,
+  glow: true,
+  glowSize: 20,
+  sizeMin: 5,
+  sizeMax: 30,
+  rate: 8,
+  life: 30,
+};
 
 const PlaygroundWithShapeMix: React.FC<PlaygroundProps> = ({ burst }) => {
   const doBurst = (e: React.MouseEvent<HTMLDivElement>) => {
     const shapes = ['circle', 'square', 'triangle', 'star', 'ring', 'sparkle'] as const;
     const randomShape = shapes[Math.floor(Math.random() * shapes.length)];
-    
-    burst({ 
-      clientX: e.clientX, 
+
+    burst({
+      clientX: e.clientX,
       clientY: e.clientY,
       shape: randomShape,
     });
   };
-  
+
   return (
     <div onClick={doBurst}>
       <h1
@@ -191,34 +229,18 @@ const PlaygroundWithShapeMix: React.FC<PlaygroundProps> = ({ burst }) => {
   );
 };
 
-const PlaygroundShapeMix = ParticularWrapper({
-  rate: 10,
-  life: 50,
-})(PlaygroundWithShapeMix as any);
-
-const PlaygroundGlowRings = ParticularWrapper({
-  shape: 'ring',
-  blendMode: 'additive',
-  glow: true,
-  glowSize: 20,
-  sizeMin: 5,
-  sizeMax: 30,
-  rate: 8,
-  life: 30,
-})(Playground as any);
-
 export const Stars: Story = {
-  render: () => <PlaygroundStars />,
+  render: (args) => withRenderer(args as StoryArgs, shapeStarsConfig, Playground as any),
 };
 
 export const Sparkles: Story = {
-  render: () => <PlaygroundSparkles />,
+  render: (args) => withRenderer(args as StoryArgs, shapeSparklesConfig, Playground as any),
 };
 
 export const ShapeMix: Story = {
-  render: () => <PlaygroundShapeMix />,
+  render: (args) => withRenderer(args as StoryArgs, shapeMixConfig, PlaygroundWithShapeMix as any),
 };
 
 export const GlowRings: Story = {
-  render: () => <PlaygroundGlowRings />,
+  render: (args) => withRenderer(args as StoryArgs, glowRingsConfig, Playground as any),
 };

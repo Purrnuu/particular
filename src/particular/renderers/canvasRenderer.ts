@@ -102,14 +102,17 @@ export default class CanvasRenderer {
   drawBasicElement(particle: Particle): void {
     this.context.save();
     this.context.globalAlpha = particle.alpha;
-    
+
     // Set blend mode
     this.setBlendMode(particle.blendMode);
-    
-    // Apply glow effect if enabled
+
+    // Apply glow effect if enabled; always reset when not, to avoid bleed from previous particle
     if (particle.glow) {
       this.context.shadowColor = particle.color;
       this.context.shadowBlur = particle.glowSize;
+    } else {
+      this.context.shadowColor = 'transparent';
+      this.context.shadowBlur = 0;
     }
     
     // Draw the appropriate shape

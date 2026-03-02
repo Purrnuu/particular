@@ -61,6 +61,10 @@ export default class Particular implements IEventDispatcher {
     this.renderers.push(renderer);
     renderer.init(this, this.pixelRatio);
     this.start();
+    // Ensure new renderer gets current dimensions (RESIZE may have fired before it was added)
+    if (this.width > 0 && this.height > 0) {
+      this.dispatchEvent(Particular.RESIZE, { width: this.width, height: this.height });
+    }
   }
 
   addEmitter(emitter: Emitter): void {

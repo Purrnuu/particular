@@ -6,6 +6,7 @@ import { processImages } from '../components/icons';
 import { configureParticular, configureParticle } from '../core/defaults';
 import Particular from '../core/particular';
 import CanvasRenderer from '../renderers/canvasRenderer';
+import WebGLRenderer from '../renderers/webglRenderer';
 import { particlesBackgroundLayerStyle } from '../canvasStyles';
 import type { FullParticularConfig, ParticleConfig } from '../types';
 
@@ -55,7 +56,9 @@ export default class CanvasWrapper extends React.Component<unknown, CanvasWrappe
     this.particular.initialize(this.configuration);
     
     if (this.canvas) {
-      this.particular.addRenderer(new CanvasRenderer(this.canvas));
+      const RendererClass =
+        this.configuration?.renderer === 'webgl' ? WebGLRenderer : CanvasRenderer;
+      this.particular.addRenderer(new RendererClass(this.canvas));
     }
     
     if (this.configuration.autoStart) {

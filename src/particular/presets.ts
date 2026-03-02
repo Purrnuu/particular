@@ -96,10 +96,10 @@ export const presets = {
     maxCount: 200,
   } satisfies FullParticularConfig,
 
-  /** Stars + glow + additive; strong “magic” effect */
+  /** Stars + glow; strong “magic” effect */
   magic: {
     shape: 'star' as const,
-    blendMode: 'additive' as const,
+    blendMode: 'normal' as const,
     glow: true,
     glowSize: 14,
     rate: 14,

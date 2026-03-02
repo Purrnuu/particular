@@ -1,5 +1,10 @@
 import Vector from '../utils/vector';
-import type { ParticularConfig, ParticleConfig, FullParticularConfig } from '../types';
+import type {
+  ParticularConfig,
+  ParticleConfig,
+  FullParticularConfig,
+  RendererType,
+} from '../types';
 
 export const defaultParticular: Required<ParticularConfig> = {
   pixelRatio: 2,
@@ -28,7 +33,9 @@ export const defaultParticle: Required<ParticleConfig> = {
   trailLength: 3,
 };
 
-export function configureParticular(configuration?: FullParticularConfig): Required<ParticularConfig> & Required<ParticleConfig> {
+export function configureParticular(
+  configuration?: FullParticularConfig,
+): Required<ParticularConfig> & Required<ParticleConfig> & { renderer?: RendererType } {
   return { ...defaultParticular, ...defaultParticle, ...configuration };
 }
 

@@ -79,4 +79,7 @@ export interface BurstSettings {
 
 export interface FullParticularConfig extends ParticularConfig, ParticleConfig {
   icons?: (string | HTMLImageElement)[];
+  renderer?: RendererType;
 }
+
+export type RendererType = 'canvas' | 'webgl';

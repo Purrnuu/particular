@@ -14,6 +14,7 @@ import type { PresetName } from './presets';
 export interface UseParticlesOptions {
   preset?: PresetName;
   config?: Partial<FullParticularConfig>;
+  renderer?: 'canvas' | 'webgl';
   autoResize?: boolean;
   autoClick?: boolean;
   clickTarget?: EventTarget;
@@ -48,6 +49,7 @@ export interface UseParticlesResult {
 export function useParticles({
   preset = 'magic',
   config,
+  renderer = 'canvas',
   autoResize = true,
   autoClick = false,
   clickTarget,
@@ -66,11 +68,12 @@ export function useParticles({
       canvas: null as unknown as HTMLCanvasElement,
       preset,
       config,
+      renderer,
       autoResize,
       autoClick,
       clickTarget,
     }),
-    [preset, config, autoResize, autoClick, clickTarget],
+    [preset, config, renderer, autoResize, autoClick, clickTarget],
   );
 
   useEffect(() => {

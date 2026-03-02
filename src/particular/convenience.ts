@@ -4,8 +4,9 @@ import { configureParticular, configureParticle } from './core/defaults';
 import Particular from './core/particular';
 import { presets, type PresetName } from './presets';
 import CanvasRenderer from './renderers/canvasRenderer';
+import WebGLRenderer from './renderers/webglRenderer';
 import Vector from './utils/vector';
-import type { FullParticularConfig } from './types';
+import type { FullParticularConfig, RendererType } from './types';
 
 export interface BurstOptions extends Partial<FullParticularConfig> {
   x: number;
@@ -16,6 +17,7 @@ export interface CreateParticlesOptions {
   canvas: HTMLCanvasElement;
   preset?: PresetName;
   config?: Partial<FullParticularConfig>;
+  renderer?: RendererType;
   autoResize?: boolean;
   autoClick?: boolean;
   clickTarget?: EventTarget;
@@ -39,6 +41,7 @@ export function createParticles({
   canvas,
   preset = 'magic',
   config,
+  renderer = 'canvas',
   autoResize = true,
   autoClick = false,
   clickTarget,
@@ -48,7 +51,11 @@ export function createParticles({
   const mergedConfig = configureParticular({ ...basePreset, ...config });
 
   engine.initialize(mergedConfig);
-  engine.addRenderer(new CanvasRenderer(canvas));
+  if (renderer === 'webgl') {
+    engine.addRenderer(new WebGLRenderer(canvas));
+  } else {
+    engine.addRenderer(new CanvasRenderer(canvas));
+  }
   engine.onResize();
 
   const cleanups: Array<() => void> = [];
