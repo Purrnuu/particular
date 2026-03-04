@@ -30,6 +30,8 @@ export const defaultParticle: Required<ParticleConfig> = {
   blendMode: 'normal',
   glow: false,
   glowSize: 10,
+  glowColor: '#ffffff',
+  glowAlpha: 0.35,
   trail: false,
   trailLength: 3,
   imageTint: false,

@@ -139,7 +139,12 @@ export default class CanvasRenderer {
   
   private applyShadow(particle: Particle): void {
     if (particle.glow) {
-      this.context.shadowColor = particle.color;
+      const hex = particle.glowColor;
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      const glowAlpha = Math.max(0, Math.min(1, particle.glowAlpha));
+      this.context.shadowColor = `rgba(${r},${g},${b},${glowAlpha})`;
       this.context.shadowBlur = particle.glowSize;
       this.context.shadowOffsetX = 0;
       this.context.shadowOffsetY = 0;

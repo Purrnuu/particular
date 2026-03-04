@@ -31,6 +31,8 @@ export default class Particle {
   blendMode: BlendMode;
   glow: boolean;
   glowSize: number;
+  glowColor: string;
+  glowAlpha: number;
   trail: boolean;
   trailLength: number;
   imageTint: boolean;
@@ -61,6 +63,8 @@ export default class Particle {
     blendMode = 'normal',
     glow = false,
     glowSize = 10,
+    glowColor = '#ffffff',
+    glowAlpha = 0.35,
     trail = false,
     trailLength = 3,
     imageTint = false,
@@ -99,6 +103,8 @@ export default class Particle {
     this.blendMode = blendMode;
     this.glow = glow;
     this.glowSize = glowSize;
+    this.glowColor = glowColor;
+    this.glowAlpha = glowAlpha;
     this.trail = trail;
     this.trailLength = trailLength;
     this.imageTint = imageTint;

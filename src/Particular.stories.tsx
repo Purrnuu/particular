@@ -54,6 +54,8 @@ export type StoryArgs = {
   blendMode: 'normal' | 'additive' | 'multiply' | 'screen';
   glow: boolean;
   glowSize: number;
+  glowColor: string;
+  glowAlpha: number;
   shadow: boolean;
   shadowBlur: number;
   shadowOffsetX: number;
@@ -89,6 +91,8 @@ function buildConfig(
     blendMode: args.blendMode ?? 'normal',
     glow: args.glow ?? false,
     glowSize: args.glowSize ?? 14,
+    glowColor: args.glowColor ?? '#ffffff',
+    glowAlpha: args.glowAlpha ?? 0.35,
     shadow: args.shadow ?? false,
     shadowBlur: args.shadowBlur ?? 8,
     shadowOffsetX: args.shadowOffsetX ?? 4,
@@ -131,6 +135,8 @@ const meta: Meta<StoryArgs> = {
     },
     glow: { control: 'boolean', description: 'Enable glow effect' },
     glowSize: { control: { type: 'number', min: 8, max: 30 }, description: 'Glow size' },
+    glowColor: { control: 'color', description: 'Glow color' },
+    glowAlpha: { control: { type: 'number', min: 0, max: 1, step: 0.05 }, description: 'Glow opacity' },
     shadow: { control: 'boolean', description: 'Enable drop shadow' },
     shadowBlur: { control: { type: 'number', min: 0, max: 40 }, description: 'Shadow blur radius (px)' },
     shadowOffsetX: { control: { type: 'number', min: -30, max: 30 }, description: 'Shadow X offset (px)' },
@@ -172,6 +178,8 @@ const meta: Meta<StoryArgs> = {
     blendMode: 'normal',
     glow: true,
     glowSize: 14,
+    glowColor: '#ffffff',
+    glowAlpha: 0.35,
     shadow: false,
     shadowBlur: 8,
     shadowOffsetX: 4,

@@ -19,6 +19,10 @@ export interface ShapeConfig {
   blendMode?: BlendMode;
   glow?: boolean;
   glowSize?: number;
+  /** Glow color as hex string. Default '#ffffff'. */
+  glowColor?: string;
+  /** Glow opacity (0–1). Default 0.35. */
+  glowAlpha?: number;
   trail?: boolean;
   trailLength?: number;
   /** When true, tint image particles with particle color (WebGL). Default false = render images as-is. */

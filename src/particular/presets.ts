@@ -102,6 +102,8 @@ export const presets = {
     blendMode: 'normal' as const,
     glow: true,
     glowSize: 14,
+    glowColor: '#f6f7ff',
+    glowAlpha: 0.45,
     rate: 14,
     life: 32,
     velocity: Vector.fromAngle(-90, 5),

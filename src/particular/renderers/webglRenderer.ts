@@ -35,6 +35,7 @@ in vec2 v_uv;
 uniform float u_softness;
 uniform float u_glow;
 uniform float u_glowSize;
+uniform vec4 u_glowColor;
 uniform float u_isShadow;
 uniform vec4 u_shadowColor;
 uniform float u_shadowBlur;
@@ -54,11 +55,15 @@ void main() {
 
   float coreAlpha = 1.0 - smoothstep(1.0 - u_softness, 1.0, dist);
   float alpha = coreAlpha;
+  vec3 rgb = v_color.rgb;
   if (u_glow > 0.0) {
     float halo = 1.0 - smoothstep(1.0, 1.0 + u_glowSize, dist);
-    alpha = max(alpha, halo * 0.8);
+    float glowAlpha = halo * u_glowColor.a;
+    alpha = max(alpha, glowAlpha);
+    float glowMix = clamp((1.0 - coreAlpha) * glowAlpha, 0.0, 1.0);
+    rgb = mix(rgb, u_glowColor.rgb, glowMix);
   }
-  outColor = vec4(v_color.rgb, v_color.a * alpha);
+  outColor = vec4(rgb, v_color.a * alpha);
 }
 `;
 
@@ -164,6 +169,8 @@ interface DrawBatch {
   blendMode: BlendMode;
   glow?: boolean;
   glowSize?: number;
+  glowColor?: string;
+  glowAlpha?: number;
   texture?: WebGLTexture;
   image?: HTMLImageElement;
   imageTint?: boolean;
@@ -198,6 +205,7 @@ export default class WebGLRenderer {
   private softnessUniform: WebGLUniformLocation | null = null;
   private glowUniform: WebGLUniformLocation | null = null;
   private glowSizeUniform: WebGLUniformLocation | null = null;
+  private glowColorUniform: WebGLUniformLocation | null = null;
   private isShadowUniform: WebGLUniformLocation | null = null;
   private shadowColorUniform: WebGLUniformLocation | null = null;
   private shadowBlurUniform: WebGLUniformLocation | null = null;
@@ -243,6 +251,7 @@ export default class WebGLRenderer {
     this.softnessUniform = gl.getUniformLocation(program, 'u_softness');
     this.glowUniform = gl.getUniformLocation(program, 'u_glow');
     this.glowSizeUniform = gl.getUniformLocation(program, 'u_glowSize');
+    this.glowColorUniform = gl.getUniformLocation(program, 'u_glowColor');
     this.isShadowUniform = gl.getUniformLocation(program, 'u_isShadow');
     this.shadowColorUniform = gl.getUniformLocation(program, 'u_shadowColor');
     this.shadowBlurUniform = gl.getUniformLocation(program, 'u_shadowBlur');
@@ -364,7 +373,11 @@ export default class WebGLRenderer {
         )) &&
         (isImage
           ? current.texture === tex && current.imageTint === imageTint
-          : current.glow === p.glow && (!p.glow || current.glowSize === p.glowSize));
+          : current.glow === p.glow &&
+            (!p.glow ||
+              (current.glowSize === p.glowSize &&
+                current.glowColor === p.glowColor &&
+                current.glowAlpha === p.glowAlpha)));
 
       if (!sameBatch) {
         current = {
@@ -385,6 +398,8 @@ export default class WebGLRenderer {
         } else {
           current.glow = p.glow;
           current.glowSize = p.glowSize;
+          current.glowColor = p.glowColor;
+          current.glowAlpha = p.glowAlpha;
         }
         batches.push(current);
       }
@@ -505,6 +520,8 @@ export default class WebGLRenderer {
     gl.uniform1f(this.softnessUniform!, 0.1);
     gl.uniform1f(this.glowUniform!, batch.glow ? 1 : 0);
     gl.uniform1f(this.glowSizeUniform!, Math.min(0.5, (batch.glowSize ?? 10) / 30));
+    const [gr, gg, gb] = hexToRgba(batch.glowColor ?? '#ffffff');
+    gl.uniform4f(this.glowColorUniform!, gr, gg, gb, Math.max(0, Math.min(1, batch.glowAlpha ?? 0.35)));
     this.drawCircleInstances(list, 0, 0);
   }
 
@@ -614,7 +631,13 @@ export default class WebGLRenderer {
     if (logicalW <= 0 || logicalH <= 0) return;
 
     const batches = this.buildBatches(particles);
-    if (!this.resolutionUniform || !this.softnessUniform || !this.glowUniform || !this.glowSizeUniform) return;
+    if (
+      !this.resolutionUniform ||
+      !this.softnessUniform ||
+      !this.glowUniform ||
+      !this.glowSizeUniform ||
+      !this.glowColorUniform
+    ) return;
 
     this.gl.useProgram(this.program);
     this.gl.uniform2f(this.resolutionUniform, logicalW, logicalH);
