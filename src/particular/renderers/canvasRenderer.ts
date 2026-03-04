@@ -144,8 +144,9 @@ export default class CanvasRenderer {
       const g = parseInt(hex.slice(3, 5), 16);
       const b = parseInt(hex.slice(5, 7), 16);
       const glowAlpha = Math.max(0, Math.min(1, particle.glowAlpha));
+      const glowScale = Math.max(0.75, Math.min(2.5, particle.factoredSize / 12));
       this.context.shadowColor = `rgba(${r},${g},${b},${glowAlpha})`;
-      this.context.shadowBlur = particle.glowSize;
+      this.context.shadowBlur = particle.glowSize * glowScale;
       this.context.shadowOffsetX = 0;
       this.context.shadowOffsetY = 0;
     } else if (particle.shadow) {

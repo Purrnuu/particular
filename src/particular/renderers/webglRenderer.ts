@@ -13,6 +13,7 @@ uniform vec2 u_resolution;
 
 out vec4 v_color;
 out vec2 v_uv;
+out float v_particle_size;
 
 void main() {
   float c = cos(a_particle_rotation);
@@ -23,6 +24,7 @@ void main() {
   gl_Position = vec4(pos, 0.0, 1.0);
   v_color = a_particle_color;
   v_uv = a_position;
+  v_particle_size = a_particle_size;
 }
 `;
 
@@ -31,6 +33,7 @@ precision mediump float;
 
 in vec4 v_color;
 in vec2 v_uv;
+in float v_particle_size;
 
 uniform float u_softness;
 uniform float u_glow;
@@ -57,7 +60,11 @@ void main() {
   float alpha = coreAlpha;
   vec3 rgb = v_color.rgb;
   if (u_glow > 0.0) {
-    float halo = 1.0 - smoothstep(1.0, 1.0 + u_glowSize, dist);
+    float glowScale = mix(0.75, 1.75, clamp((v_particle_size - 4.0) / 20.0, 0.0, 1.0));
+    float glowRange = u_glowSize * glowScale;
+    float halo = 1.0 - smoothstep(1.0, 1.0 + glowRange, dist);
+    // Quadratic tail softens the outer edge so glow fades more naturally.
+    halo = halo * halo;
     float glowAlpha = halo * u_glowColor.a;
     alpha = max(alpha, glowAlpha);
     float glowMix = clamp((1.0 - coreAlpha) * glowAlpha, 0.0, 1.0);
