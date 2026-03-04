@@ -29,7 +29,7 @@ function App() {
 }
 ```
 
-The canvas is full-viewport and click-through by default. Use any preset: `"magic"`, `"confetti"`, or `"fireworks"`.
+The canvas is full-viewport and click-through by default. Use any preset: `"magic"`, `"confetti"`, `"fireworks"`, or `"images"`.
 
 ### Vanilla (no build)
 

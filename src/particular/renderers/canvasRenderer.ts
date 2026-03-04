@@ -156,6 +156,7 @@ export default class CanvasRenderer {
     } else if (particle.shadow) {
       const hex = particle.shadowColor;
       const shadowScale = Math.max(0, Math.min(1, particle.alpha));
+      const sizeScale = Math.max(0.45, Math.min(2.2, particle.factoredSize / 12));
       const earlyShadowFade = Math.max(0, Math.min(1, (particle.alpha - 0.1) / 0.95));
       const alpha = particle.shadowAlpha * earlyShadowFade;
       const baseDistance = Math.hypot(particle.shadowOffsetX, particle.shadowOffsetY);
@@ -174,9 +175,9 @@ export default class CanvasRenderer {
       const g = parseInt(hex.slice(3, 5), 16);
       const b = parseInt(hex.slice(5, 7), 16);
       this.context.shadowColor = `rgba(${r},${g},${b},${alpha})`;
-      this.context.shadowBlur = particle.shadowBlur * shadowScale;
-      this.context.shadowOffsetX = offsetX * shadowScale;
-      this.context.shadowOffsetY = offsetY * shadowScale;
+      this.context.shadowBlur = particle.shadowBlur * shadowScale * sizeScale;
+      this.context.shadowOffsetX = offsetX * shadowScale * sizeScale;
+      this.context.shadowOffsetY = offsetY * shadowScale * sizeScale;
     } else {
       this.context.shadowColor = 'transparent';
       this.context.shadowBlur = 0;

@@ -105,7 +105,8 @@ void main() {
 
   if (u_isShadow > 0.0) {
     float retraction = clamp(v_color.a, 0.0, 1.0);
-    float effectiveShadowBlur = u_shadowBlur * retraction;
+    float sizeScale = clamp(v_particle_size / 12.0, 0.45, 2.2);
+    float effectiveShadowBlur = u_shadowBlur * retraction * sizeScale;
     float shadowAlpha = 1.0 - smoothstep(-0.02, effectiveShadowBlur, sd);
     outColor = vec4(u_shadowColor.rgb, u_shadowColor.a * shadowAlpha * retraction);
     return;
@@ -140,6 +141,7 @@ uniform vec2 u_resolution;
 
 out vec4 v_color;
 out vec2 v_uv;
+out float v_particle_size;
 
 void main() {
   float c = cos(a_particle_rotation);
@@ -150,6 +152,7 @@ void main() {
   gl_Position = vec4(pos, 0.0, 1.0);
   v_color = a_particle_color;
   v_uv = a_position * 0.5 + 0.5;
+  v_particle_size = a_particle_size;
 }
 `;
 
@@ -158,6 +161,7 @@ precision mediump float;
 
 in vec4 v_color;
 in vec2 v_uv;
+in float v_particle_size;
 
 uniform sampler2D u_texture;
 uniform float u_tint;
@@ -173,7 +177,8 @@ void main() {
   if (u_isShadow > 0.0) {
     vec2 texel = 1.0 / vec2(textureSize(u_texture, 0));
     float retraction = clamp(v_color.a, 0.0, 1.0);
-    vec2 blur = texel * (u_shadowBlur * retraction);
+    float sizeScale = clamp(v_particle_size / 12.0, 0.45, 2.2);
+    vec2 blur = texel * (u_shadowBlur * retraction * sizeScale);
 
     // 9-tap weighted blur on alpha for softer image shadows.
     float a = tex.a * 0.28;
@@ -513,8 +518,11 @@ export default class WebGLRenderer {
 
       if (scaleOffsetByAlpha) {
         const retraction = Math.max(0, Math.min(1, p.alpha));
+        const sizeScale = Math.max(0.45, Math.min(2.2, p.factoredSize / 12));
         effectiveOffsetX *= retraction;
         effectiveOffsetY *= retraction;
+        effectiveOffsetX *= sizeScale;
+        effectiveOffsetY *= sizeScale;
       }
       this.instanceData[offset++] = p.position.x + effectiveOffsetX;
       this.instanceData[offset++] = p.position.y + effectiveOffsetY;

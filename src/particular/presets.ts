@@ -3,10 +3,10 @@ import type { FullParticularConfig } from './types';
 
 /**
  * Pre-defined particle presets for beautiful, aesthetic effects out of the box.
- * Use with ParticularWrapper: e.g. ParticularWrapper(presets.confetti)(MyComponent)
- * Combine with custom options: ParticularWrapper({ ...presets.sparkles, rate: 20 })(MyComponent)
+ * Use with ParticularWrapper: e.g. ParticularWrapper(presets.Burst.confetti)(MyComponent)
+ * Combine with custom options: ParticularWrapper({ ...presets.Burst.magic, rate: 20 })(MyComponent)
  */
-export const presets = {
+const Burst = {
   /** Polished confetti burst: playful, readable, and balanced */
   confetti: {
     shape: 'square' as const,
@@ -64,4 +64,46 @@ export const presets = {
   } satisfies FullParticularConfig,
 } as const;
 
-export type PresetName = keyof typeof presets;
+const Images = {
+  /** Tuned for icon/image particles (no tint by default). */
+  showcase: {
+    shape: 'roundedRectangle' as const,
+    blendMode: 'normal' as const,
+    imageTint: false,
+    glow: false,
+    rate: 12,
+    life: 36,
+    velocity: Vector.fromAngle(-90, 5),
+    spread: Math.PI * 1.0,
+    sizeMin: 12,
+    sizeMax: 22,
+    velocityMultiplier: 4,
+    fadeTime: 30,
+    gravity: 0.12,
+    scaleStep: 0.8,
+    maxCount: 380,
+  } satisfies FullParticularConfig,
+} as const;
+
+const presetRegistry = {
+  confetti: Burst.confetti,
+  magic: Burst.magic,
+  fireworks: Burst.fireworks,
+  images: Images.showcase,
+} as const;
+
+export const presets = {
+  Burst,
+  Images,
+  // Backward-compatible aliases
+  confetti: Burst.confetti,
+  magic: Burst.magic,
+  fireworks: Burst.fireworks,
+  images: Images.showcase,
+} as const;
+
+export type PresetName = keyof typeof presetRegistry;
+
+export function getPreset(name: PresetName): FullParticularConfig {
+  return presetRegistry[name];
+}

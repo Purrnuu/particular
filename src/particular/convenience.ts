@@ -2,7 +2,7 @@ import Emitter from './components/emitter';
 import { processImages } from './components/icons';
 import { configureParticular, configureParticle } from './core/defaults';
 import Particular from './core/particular';
-import { presets, type PresetName } from './presets';
+import { getPreset, type PresetName } from './presets';
 import CanvasRenderer from './renderers/canvasRenderer';
 import WebGLRenderer from './renderers/webglRenderer';
 import Vector from './utils/vector';
@@ -47,7 +47,7 @@ export function createParticles({
   clickTarget,
 }: CreateParticlesOptions): ParticlesController {
   const engine = new Particular();
-  const basePreset = presets[preset];
+  const basePreset = getPreset(preset);
   const mergedConfig = configureParticular({ ...basePreset, ...config });
 
   engine.initialize(mergedConfig);

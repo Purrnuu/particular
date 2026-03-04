@@ -27,9 +27,10 @@ Particular is a browser particle engine with:
 
 Current preset set is intentionally small and curated:
 
-- `confetti`
-- `magic`
-- `fireworks`
+- `presets.Burst.confetti`
+- `presets.Burst.magic`
+- `presets.Burst.fireworks`
+- `presets.Images.showcase` (for image/icon particles)
 
 ## Main Entry Points
 
@@ -139,9 +140,10 @@ Do not add many presets casually; prefer polishing these first.
 
 Current presets:
 
-- `confetti`: balanced readable celebration
-- `magic`: soft white magical stars (signature look)
-- `fireworks`: energetic additive circles with warm glow
+- `presets.Burst.confetti`: balanced readable celebration
+- `presets.Burst.magic`: soft white magical stars (signature look)
+- `presets.Burst.fireworks`: energetic additive circles with warm glow
+- `presets.Images.showcase`: tuned for icon/image particles
 
 ## API Surface to Keep Stable
 

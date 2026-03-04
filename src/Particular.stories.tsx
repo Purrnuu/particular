@@ -156,7 +156,7 @@ function buildConfig(base: Partial<FullParticularConfig>, args: Partial<StoryArg
 }
 
 const meta: Meta<StoryArgs> = {
-  title: 'Particular',
+  title: 'Particular/Burst',
   component: () => null,
   argTypes: {
     renderer: {
@@ -213,7 +213,7 @@ const meta: Meta<StoryArgs> = {
       description: 'WebGL max instances per draw',
     },
   },
-  args: toStoryArgs({ ...presets.magic, renderer: 'webgl' }),
+  args: toStoryArgs({ ...presets.Burst.magic, renderer: 'webgl' }),
 };
 
 export default meta;
@@ -229,29 +229,34 @@ const withBaseConfig = (
 };
 
 export const Confetti: Story = {
-  args: toStoryArgs({ ...presets.confetti, renderer: 'webgl' }),
-  render: withBaseConfig(presets.confetti),
+  args: toStoryArgs({ ...presets.Burst.confetti, renderer: 'webgl' }),
+  render: withBaseConfig(presets.Burst.confetti),
 };
 
 export const Magic: Story = {
-  args: toStoryArgs({ ...presets.magic, renderer: 'webgl' }),
-  render: withBaseConfig({ ...presets.magic, icons: customIcons }),
+  args: toStoryArgs({ ...presets.Burst.magic, renderer: 'webgl' }),
+  render: withBaseConfig(presets.Burst.magic),
+};
+
+export const Images: Story = {
+  args: toStoryArgs({ ...presets.Images.showcase, renderer: 'webgl' }),
+  render: withBaseConfig({ ...presets.Images.showcase, icons: customIcons }),
 };
 
 export const Fireworks: Story = {
-  args: toStoryArgs({ ...presets.fireworks, renderer: 'webgl' }),
-  render: withBaseConfig(presets.fireworks),
+  args: toStoryArgs({ ...presets.Burst.fireworks, renderer: 'webgl' }),
+  render: withBaseConfig(presets.Burst.fireworks),
 };
 
 export const Continuous: Story = {
   args: toStoryArgs({
-    ...presets.magic,
+    ...presets.Burst.magic,
     renderer: 'webgl',
     continuous: true,
     autoStart: true,
   }),
   render: withBaseConfig({
-    ...presets.magic,
+    ...presets.Burst.magic,
     icons: customIcons,
     continuous: true,
     autoStart: true,
@@ -260,7 +265,7 @@ export const Continuous: Story = {
 
 export const Performance5000: Story = {
   args: toStoryArgs({
-    ...presets.fireworks,
+    ...presets.Burst.fireworks,
     renderer: 'webgl',
     rate: 220,
     life: 120,
@@ -272,7 +277,7 @@ export const Performance5000: Story = {
     shadow: false,
   }),
   render: withBaseConfig({
-    ...presets.fireworks,
+    ...presets.Burst.fireworks,
     rate: 220,
     life: 120,
     maxCount: 5000,

@@ -13,7 +13,7 @@ function getDisplayName<P>(WrappedComponent: ComponentType<P>): string {
   return WrappedComponent.displayName || WrappedComponent.name || 'Component';
 }
 
-const particularWrapper = (configuration: FullParticularConfig = presets.magic) => 
+const particularWrapper = (configuration: FullParticularConfig = presets.Burst.magic) => 
   <P extends object = object>(WrappedComponent: ComponentType<P>) => {
     const { icons } = configuration;
 
