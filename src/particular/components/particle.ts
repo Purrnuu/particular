@@ -6,6 +6,15 @@ import EventDispatcher from '../utils/eventDispatcher';
 import type { ParticleConstructorParams, ParticleShape, BlendMode } from '../types';
 import type Particular from '../core/particular';
 
+export interface TrailSegment {
+  x: number;
+  y: number;
+  size: number;
+  rotation: number;
+  alpha: number;
+  age: number;
+}
+
 export default class Particle {
   position: Vector;
   velocity: Vector;
@@ -43,6 +52,7 @@ export default class Particle {
   shadowColor: string;
   shadowAlpha: number;
   shadowLightOrigin: Vector;
+  trailSegments: TrailSegment[] = [];
 
   addEventListener!: EventDispatcher['addEventListener'];
   removeEventListener!: EventDispatcher['removeEventListener'];
@@ -123,6 +133,7 @@ export default class Particle {
   }
 
   update(): void {
+    this.updateTrail(true);
     this.velocity.add(this.acceleration);
     this.velocity.addFriction(this.friction);
     this.velocity.addGravity(this.gravity);
@@ -132,6 +143,36 @@ export default class Particle {
     this.alpha = Math.min(1, Math.max((this.lifeTime - this.lifeTick) / this.fadeTime, 0));
     this.lifeTick++;
     this.dispatch('PARTICLE_UPDATE', this);
+  }
+
+  advanceTrail(): void {
+    this.updateTrail(false);
+  }
+
+  private updateTrail(addCurrentPoint: boolean): void {
+    if (!this.trail || this.trailLength <= 0) {
+      if (this.trailSegments.length) this.trailSegments = [];
+      return;
+    }
+
+    const maxAge = Math.max(1, Math.floor(this.trailLength));
+    this.trailSegments = this.trailSegments
+      .map((segment) => ({ ...segment, age: segment.age + 1 }))
+      .filter((segment) => segment.age < maxAge);
+
+    if (!addCurrentPoint) return;
+
+    // Do not add new trail points once particle is fully transparent.
+    if (this.alpha <= 0) return;
+
+    this.trailSegments.push({
+      x: this.position.x,
+      y: this.position.y,
+      size: this.factoredSize,
+      rotation: this.rotation,
+      alpha: this.alpha,
+      age: 0,
+    });
   }
 
   resetImage(): void {

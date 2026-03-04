@@ -62,7 +62,9 @@ export default class CanvasRenderer {
 
   onParticleUpdated = (particle?: Particle): void => {
     if (!particle) return;
-    
+
+    this.drawTrails(particle);
+
     if (particle.image) {
       if (particle.image instanceof Image) {
         this.drawImage(particle);
@@ -139,6 +141,43 @@ export default class CanvasRenderer {
     }
     
     this.context.restore();
+  }
+
+  private drawTrails(particle: Particle): void {
+    if (!particle.trail || particle.trailSegments.length === 0) return;
+
+    const maxAge = Math.max(1, Math.floor(particle.trailLength));
+    for (const segment of particle.trailSegments) {
+      const life = 1 - segment.age / maxAge;
+      if (life <= 0) continue;
+
+      const ghost = this.makeTrailGhost(particle, segment, life);
+      if (ghost.image) {
+        this.drawImage(ghost);
+      } else {
+        this.drawBasicElement(ghost);
+      }
+    }
+  }
+
+  private makeTrailGhost(particle: Particle, segment: Particle['trailSegments'][number], life: number): Particle {
+    const sizeScale = 0.55 + life * 0.45;
+    const alphaScale = life * 0.75;
+
+    return {
+      ...particle,
+      position: { x: segment.x, y: segment.y } as any,
+      factoredSize: Math.max(0.1, segment.size * sizeScale),
+      rotation: segment.rotation,
+      alpha: segment.alpha * alphaScale,
+      glow: false,
+      shadow: false,
+      trailSegments: [],
+      getRoundedLocation: () => [
+        ((segment.x * 10) << 0) * 0.1,
+        ((segment.y * 10) << 0) * 0.1,
+      ],
+    } as unknown as Particle;
   }
   
   private applyShadow(particle: Particle): void {

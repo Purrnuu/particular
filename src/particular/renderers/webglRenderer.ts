@@ -432,6 +432,36 @@ export default class WebGLRenderer {
     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
   };
 
+  private expandParticlesWithTrails(particles: Particle[]): Particle[] {
+    const expanded: Particle[] = [];
+    for (const particle of particles) {
+      expanded.push(particle);
+
+      if (!particle.trail || particle.trailSegments.length === 0) continue;
+      const maxAge = Math.max(1, Math.floor(particle.trailLength));
+
+      for (const segment of particle.trailSegments) {
+        const life = 1 - segment.age / maxAge;
+        if (life <= 0) continue;
+
+        const sizeScale = 0.55 + life * 0.45;
+        const alphaScale = life * 0.75;
+        const ghost = {
+          ...particle,
+          position: { x: segment.x, y: segment.y },
+          factoredSize: Math.max(0.1, segment.size * sizeScale),
+          rotation: segment.rotation,
+          alpha: segment.alpha * alphaScale,
+          glow: false,
+          shadow: false,
+          trailSegments: [],
+        } as unknown as Particle;
+        expanded.push(ghost);
+      }
+    }
+    return expanded;
+  }
+
   private buildBatches(particles: Particle[]): DrawBatch[] {
     const batches: DrawBatch[] = [];
     let current: DrawBatch | null = null;
@@ -717,7 +747,7 @@ export default class WebGLRenderer {
   onUpdateAfter = (): void => {
     if (!this.gl || !this.particular || !this.program) return;
 
-    const particles = this.particular.getAllParticles();
+    const particles = this.expandParticlesWithTrails(this.particular.getAllParticles());
     const pixelRatio = this.particular.pixelRatio;
     const w = this.target.width || this.particular.width;
     const h = this.target.height || this.particular.height;

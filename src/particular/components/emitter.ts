@@ -41,8 +41,27 @@ export default class Emitter {
 
     forEach(this.particles, (particle) => {
       const pos = particle.position;
-      if (!(pos.x < 0 || pos.x > boundsX || pos.y < -boundsY || pos.y > boundsY)) {
-        particle.update();
+      if (pos.x < 0 || pos.x > boundsX || pos.y < -boundsY || pos.y > boundsY) {
+        const hasTrail = particle.trail && particle.trailSegments.length > 0;
+        if (hasTrail) {
+          particle.advanceTrail();
+          if (particle.trailSegments.length > 0) {
+            currentParticles.push(particle);
+          } else {
+            particle.destroy();
+          }
+        } else {
+          particle.destroy();
+        }
+        return;
+      }
+
+      particle.update();
+      const trailActive = particle.trail && particle.trailSegments.length > 0;
+      const fadedOut = particle.alpha <= 0 && particle.lifeTick >= particle.lifeTime;
+
+      // Keep particle alive until trail has fully faded out.
+      if (!fadedOut || trailActive) {
         currentParticles.push(particle);
       } else {
         particle.destroy();
