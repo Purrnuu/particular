@@ -50,7 +50,7 @@ export default class Emitter {
     });
 
     this.particles = currentParticles;
-    this.isEmitting = this.lifeCycle < this.configuration.life;
+    this.isEmitting = this.particular?.continuous ? true : this.lifeCycle < this.configuration.life;
   }
 
   isAlive(): boolean {

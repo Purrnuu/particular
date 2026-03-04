@@ -116,7 +116,11 @@ export default class CanvasRenderer {
         this.drawCircle(particle);
         break;
       case 'square':
+      case 'rectangle':
         this.drawSquare(particle);
+        break;
+      case 'roundedRectangle':
+        this.drawRoundedRectangle(particle);
         break;
       case 'triangle':
         this.drawTriangle(particle);
@@ -227,6 +231,28 @@ export default class CanvasRenderer {
       this.context.strokeStyle = this.stroke.color;
       this.context.lineWidth = this.stroke.thickness;
       this.context.strokeRect(-particle.factoredSize, -particle.factoredSize, size, size);
+    }
+    this.context.restore();
+  }
+
+  private drawRoundedRectangle(particle: Particle): void {
+    this.context.fillStyle = particle.color;
+    const pixelRounded = particle.getRoundedLocation();
+    const size = particle.factoredSize * 2;
+    const radius = Math.min(particle.factoredSize * 0.35, size / 2);
+
+    this.context.save();
+    this.context.translate(pixelRounded[0], pixelRounded[1]);
+    this.context.rotate(degToRad(particle.rotation));
+    this.context.beginPath();
+    this.context.roundRect(-particle.factoredSize, -particle.factoredSize, size, size, radius);
+    this.context.closePath();
+    this.context.fill();
+
+    if (this.stroke) {
+      this.context.strokeStyle = this.stroke.color;
+      this.context.lineWidth = this.stroke.thickness;
+      this.context.stroke();
     }
     this.context.restore();
   }

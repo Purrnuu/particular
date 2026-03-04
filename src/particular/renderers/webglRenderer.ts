@@ -8,12 +8,14 @@ in vec2 a_particle_pos;
 in float a_particle_size;
 in float a_particle_rotation;
 in vec4 a_particle_color;
+in float a_particle_shape;
 
 uniform vec2 u_resolution;
 
 out vec4 v_color;
 out vec2 v_uv;
 out float v_particle_size;
+out float v_particle_shape;
 
 void main() {
   float c = cos(a_particle_rotation);
@@ -25,6 +27,7 @@ void main() {
   v_color = a_particle_color;
   v_uv = a_position;
   v_particle_size = a_particle_size;
+  v_particle_shape = a_particle_shape;
 }
 `;
 
@@ -34,6 +37,7 @@ precision mediump float;
 in vec4 v_color;
 in vec2 v_uv;
 in float v_particle_size;
+in float v_particle_shape;
 
 uniform float u_softness;
 uniform float u_glow;
@@ -45,29 +49,75 @@ uniform float u_shadowBlur;
 
 out vec4 outColor;
 
+float sdBox(vec2 p, vec2 b) {
+  vec2 d = abs(p) - b;
+  return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+}
+
+float sdRoundedBox(vec2 p, vec2 b, float r) {
+  vec2 q = abs(p) - b + vec2(r);
+  return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
+}
+
+float sdEquilateralTriangle(vec2 p) {
+  const float k = 1.7320508;
+  p.x = abs(p.x) - 1.0;
+  p.y = p.y + 1.0 / k;
+  if (p.x + k * p.y > 0.0) {
+    p = vec2(p.x - k * p.y, -k * p.x - p.y) / 2.0;
+  }
+  p.x -= clamp(p.x, -2.0, 0.0);
+  return -length(p) * sign(p.y);
+}
+
+float sdStar5(vec2 p, float r, float rf) {
+  const vec2 k1 = vec2(0.809016994375, -0.587785252292);
+  const vec2 k2 = vec2(-k1.x, k1.y);
+  p.x = abs(p.x);
+  p -= 2.0 * max(dot(k1, p), 0.0) * k1;
+  p -= 2.0 * max(dot(k2, p), 0.0) * k2;
+  p.x = abs(p.x);
+  p.y -= r;
+  vec2 ba = rf * vec2(-k1.y, k1.x) - vec2(0.0, 1.0);
+  float h = clamp(dot(p, ba) / dot(ba, ba), 0.0, r);
+  return length(p - ba * h) * sign(p.y * ba.x - p.x * ba.y);
+}
+
+float shapeSdf(vec2 p, float shapeId) {
+  if (shapeId < 0.5) {
+    return length(p) - 1.0; // circle
+  }
+  if (shapeId < 1.5) {
+    return sdBox(p, vec2(1.0)); // rectangle/square
+  }
+  if (shapeId < 2.5) {
+    return sdEquilateralTriangle(p); // triangle
+  }
+  if (shapeId < 3.5) {
+    return sdStar5(p, 1.0, 0.45); // star
+  }
+  return sdRoundedBox(p, vec2(0.75), 0.25); // rounded rectangle
+}
+
 void main() {
-  float dist = length(v_uv);
+  float sd = shapeSdf(v_uv, v_particle_shape);
   float particleAlpha = pow(clamp(v_color.a, 0.0, 1.0), 0.8);
 
   if (u_isShadow > 0.0) {
-    // Keep blur around a bit longer than linear alpha for smoother retraction.
-    float retraction = sqrt(max(v_color.a, 0.0));
-    // Shadow should die earlier than the main particle to avoid dark center residue.
-    float shadowParticleFade = pow(max(v_color.a, 0.0), 1.8);
+    float retraction = clamp(v_color.a, 0.0, 1.0);
     float effectiveShadowBlur = u_shadowBlur * retraction;
-    float shadowAlpha = 1.0 - smoothstep(0.7, 1.0 + effectiveShadowBlur, dist);
-    float shadowFade = smoothstep(0.20, 1.0, v_color.a);
-    outColor = vec4(u_shadowColor.rgb, u_shadowColor.a * shadowAlpha * shadowParticleFade * shadowFade);
+    float shadowAlpha = 1.0 - smoothstep(-0.02, effectiveShadowBlur, sd);
+    outColor = vec4(u_shadowColor.rgb, u_shadowColor.a * shadowAlpha * retraction);
     return;
   }
 
-  float coreAlpha = 1.0 - smoothstep(1.0 - u_softness, 1.0, dist);
+  float coreAlpha = 1.0 - smoothstep(-u_softness, u_softness, sd);
   float alpha = coreAlpha;
   vec3 rgb = v_color.rgb;
   if (u_glow > 0.0) {
     float glowScale = mix(0.75, 1.75, clamp((v_particle_size - 4.0) / 20.0, 0.0, 1.0));
     float glowRange = u_glowSize * glowScale;
-    float halo = 1.0 - smoothstep(1.0, 1.0 + glowRange, dist);
+    float halo = 1.0 - smoothstep(0.0, glowRange, sd);
     // Quadratic tail softens the outer edge so glow fades more naturally.
     halo = halo * halo;
     float glowAlpha = halo * u_glowColor.a;
@@ -122,8 +172,7 @@ void main() {
 
   if (u_isShadow > 0.0) {
     vec2 texel = 1.0 / vec2(textureSize(u_texture, 0));
-    float retraction = sqrt(max(v_color.a, 0.0));
-    float shadowParticleFade = pow(max(v_color.a, 0.0), 1.8);
+    float retraction = clamp(v_color.a, 0.0, 1.0);
     vec2 blur = texel * (u_shadowBlur * retraction);
 
     // 9-tap weighted blur on alpha for softer image shadows.
@@ -136,8 +185,7 @@ void main() {
     a += texture(u_texture, v_uv + vec2(-blur.x,  blur.y)).a * 0.06;
     a += texture(u_texture, v_uv + vec2( blur.x, -blur.y)).a * 0.06;
     a += texture(u_texture, v_uv + vec2(-blur.x, -blur.y)).a * 0.06;
-    float shadowFade = smoothstep(0.20, 1.0, v_color.a);
-    outColor = vec4(u_shadowColor.rgb, min(1.0, a) * u_shadowColor.a * shadowParticleFade * shadowFade);
+    outColor = vec4(u_shadowColor.rgb, min(1.0, a) * u_shadowColor.a * retraction);
     return;
   }
 
@@ -156,6 +204,22 @@ function hexToRgba(hex: string): [number, number, number, number] {
     parseInt(match[3]!, 16) / 255,
     1,
   ];
+}
+
+function shapeToId(shape: Particle['shape']): number {
+  switch (shape) {
+    case 'square':
+    case 'rectangle':
+      return 1;
+    case 'triangle':
+      return 2;
+    case 'star':
+      return 3;
+    case 'roundedRectangle':
+      return 4;
+    default:
+      return 0;
+  }
 }
 
 function setBlendMode(gl: WebGL2RenderingContext, mode: BlendMode): void {
@@ -215,7 +279,7 @@ export default class WebGLRenderer {
   pixelRatio = 2;
   private instanceData: Float32Array;
   private maxInstances: number;
-  private instanceStride = 8;
+  private instanceStride = 9;
   private resolutionUniform: WebGLUniformLocation | null = null;
   private softnessUniform: WebGLUniformLocation | null = null;
   private glowUniform: WebGLUniformLocation | null = null;
@@ -234,7 +298,7 @@ export default class WebGLRenderer {
   constructor(target: HTMLCanvasElement, options?: WebGLRendererOptions) {
     this.target = target;
     this.maxInstances = options?.maxInstances ?? 4096;
-    this.instanceStride = 8; // x, y, size, rotation, r, g, b, a
+    this.instanceStride = 9; // x, y, size, rotation, r, g, b, a, shape
     this.instanceData = new Float32Array(this.maxInstances * this.instanceStride);
   }
 
@@ -448,7 +512,7 @@ export default class WebGLRenderer {
       }
 
       if (scaleOffsetByAlpha) {
-        const retraction = Math.max(0, Math.min(1, (p.alpha - 0.1) / 0.9));
+        const retraction = Math.max(0, Math.min(1, p.alpha));
         effectiveOffsetX *= retraction;
         effectiveOffsetY *= retraction;
       }
@@ -460,6 +524,7 @@ export default class WebGLRenderer {
       this.instanceData[offset++] = g;
       this.instanceData[offset++] = b;
       this.instanceData[offset++] = p.alpha;
+      this.instanceData[offset++] = shapeToId(p.shape);
     }
   }
 
@@ -476,6 +541,7 @@ export default class WebGLRenderer {
     const sizeLoc = gl.getAttribLocation(this.program!, 'a_particle_size');
     const rotLoc = gl.getAttribLocation(this.program!, 'a_particle_rotation');
     const colLoc = gl.getAttribLocation(this.program!, 'a_particle_color');
+    const shapeLoc = gl.getAttribLocation(this.program!, 'a_particle_shape');
 
     for (let i = 0; i < list.length; i += this.maxInstances) {
       const chunk = list.slice(i, i + this.maxInstances);
@@ -505,12 +571,17 @@ export default class WebGLRenderer {
       gl.vertexAttribPointer(colLoc, 4, gl.FLOAT, false, stride * 4, 16);
       gl.vertexAttribDivisor(colLoc, 1);
 
+      gl.enableVertexAttribArray(shapeLoc);
+      gl.vertexAttribPointer(shapeLoc, 1, gl.FLOAT, false, stride * 4, 32);
+      gl.vertexAttribDivisor(shapeLoc, 1);
+
       gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, chunk.length);
 
       gl.vertexAttribDivisor(posLoc2, 0);
       gl.vertexAttribDivisor(sizeLoc, 0);
       gl.vertexAttribDivisor(rotLoc, 0);
       gl.vertexAttribDivisor(colLoc, 0);
+      gl.vertexAttribDivisor(shapeLoc, 0);
     }
   }
 

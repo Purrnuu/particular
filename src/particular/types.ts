@@ -2,7 +2,9 @@ import Vector from './utils/vector';
 
 export type ParticleShape = 
   | 'circle'
+  | 'rectangle'
   | 'square'
+  | 'roundedRectangle'
   | 'triangle'
   | 'star'
   | 'ring'

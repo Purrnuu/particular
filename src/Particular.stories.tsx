@@ -51,7 +51,7 @@ const PlaygroundContinuous: React.FC<PlaygroundProps> = () => (
 
 export type StoryArgs = {
   renderer: 'canvas' | 'webgl';
-  shape: 'circle' | 'square' | 'triangle' | 'star' | 'ring' | 'sparkle';
+  shape: 'circle' | 'rectangle' | 'square' | 'roundedRectangle' | 'triangle' | 'star' | 'ring' | 'sparkle';
   blendMode: 'normal' | 'additive' | 'multiply' | 'screen';
   glow: boolean;
   glowSize: number;
@@ -166,7 +166,7 @@ const meta: Meta<StoryArgs> = {
     },
     shape: {
       control: 'select',
-      options: ['circle', 'square', 'triangle', 'star', 'ring', 'sparkle'],
+      options: ['circle', 'rectangle', 'square', 'roundedRectangle', 'triangle', 'star', 'ring', 'sparkle'],
       description: 'Particle shape',
     },
     blendMode: {
@@ -228,29 +228,57 @@ const withBaseConfig = (
   return <Wrapped burst={() => {}} key={JSON.stringify(args)} />;
 };
 
-export const Default: Story = {
+export const Confetti: Story = {
+  args: toStoryArgs({ ...presets.confetti, renderer: 'webgl' }),
+  render: withBaseConfig(presets.confetti),
+};
+
+export const Magic: Story = {
   args: toStoryArgs({ ...presets.magic, renderer: 'webgl' }),
-  render: withBaseConfig(presets.magic),
+  render: withBaseConfig({ ...presets.magic, icons: customIcons }),
 };
 
-export const WithImages: Story = {
-  args: toStoryArgs({ ...presets.magic, renderer: 'webgl' }),
-  render: withBaseConfig({ icons: customIcons, ...presets.magic }),
+export const Fireworks: Story = {
+  args: toStoryArgs({ ...presets.fireworks, renderer: 'webgl' }),
+  render: withBaseConfig(presets.fireworks),
 };
 
-export const Complex: Story = {
-  args: toStoryArgs({ ...presets.fireworks, renderer: 'webgl', continuous: true, autoStart: true }),
-  render: withBaseConfig({ ...presets.fireworks, icons: customIcons, continuous: true, autoStart: true }),
+export const Continuous: Story = {
+  args: toStoryArgs({
+    ...presets.magic,
+    renderer: 'webgl',
+    continuous: true,
+    autoStart: true,
+  }),
+  render: withBaseConfig({
+    ...presets.magic,
+    icons: customIcons,
+    continuous: true,
+    autoStart: true,
+  }),
 };
 
-export const Gigantic: Story = {
+export const Performance5000: Story = {
   args: toStoryArgs({
     ...presets.fireworks,
     renderer: 'webgl',
-    rate: 100,
-    life: 80,
-    maxCount: 2000,
+    rate: 220,
+    life: 120,
+    maxCount: 5000,
     webglMaxInstances: 16384,
+    continuous: true,
+    autoStart: true,
+    glow: false,
+    shadow: false,
   }),
-  render: withBaseConfig({ ...presets.fireworks, rate: 100, life: 80, maxCount: 2000 }),
+  render: withBaseConfig({
+    ...presets.fireworks,
+    rate: 220,
+    life: 120,
+    maxCount: 5000,
+    continuous: true,
+    autoStart: true,
+    glow: false,
+    shadow: false,
+  }),
 };

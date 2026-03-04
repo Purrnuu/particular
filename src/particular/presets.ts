@@ -28,10 +28,7 @@ export const presets = {
   magic: {
     shape: 'star' as const,
     blendMode: 'normal' as const,
-    glow: true,
-    glowSize: 16,
-    glowColor: '#f6f7ff',
-    glowAlpha: 0.45,
+    glow: false,  
     rate: 14,
     life: 34,
     velocity: Vector.fromAngle(-90, 5),

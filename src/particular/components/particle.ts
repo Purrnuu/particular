@@ -70,10 +70,10 @@ export default class Particle {
     imageTint = false,
     shadow = false,
     shadowBlur = 8,
-    shadowOffsetX = 4,
-    shadowOffsetY = 4,
+    shadowOffsetX = 3,
+    shadowOffsetY = 3,
     shadowColor = '#000000',
-    shadowAlpha = 0.5,
+    shadowAlpha = 0.3,
   }: ParticleConstructorParams) {
     this.position = point ?? new Vector(0, 0);
     this.shadowLightOrigin = new Vector(this.position.x, this.position.y);

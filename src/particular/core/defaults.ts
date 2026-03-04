@@ -9,7 +9,7 @@ import type {
 export const defaultParticular: Required<ParticularConfig> = {
   pixelRatio: 2,
   zIndex: 10000,
-  maxCount: 300,
+  maxCount: 500,
   autoStart: false,
   continuous: false,
   webglMaxInstances: 4096,
@@ -31,16 +31,16 @@ export const defaultParticle: Required<ParticleConfig> = {
   glow: false,
   glowSize: 10,
   glowColor: '#ffffff',
-  glowAlpha: 0.35,
+  glowAlpha: 0.25,
   trail: false,
   trailLength: 3,
   imageTint: false,
   shadow: true,
-  shadowBlur: 6,
+  shadowBlur: 9,
   shadowOffsetX: 3,
   shadowOffsetY: 3,
   shadowColor: '#333333',
-  shadowAlpha: 0.3,
+  shadowAlpha: 0.15,
 };
 
 export function configureParticular(
