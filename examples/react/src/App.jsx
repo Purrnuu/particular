@@ -3,8 +3,9 @@ import { presets, useParticles } from "particular";
 
 export default function App() {
   const { canvasRef, canvasStyle, burstFromEvent } = useParticles({
-    preset: "stardust",
-    config: { ...presets.stardust, maxCount: 450 },
+    preset: "magic",
+    renderer: "webgl",
+    config: { ...presets.magic, maxCount: 450 },
   });
 
   return (

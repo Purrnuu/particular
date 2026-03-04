@@ -35,12 +35,12 @@ export const defaultParticle: Required<ParticleConfig> = {
   trail: false,
   trailLength: 3,
   imageTint: false,
-  shadow: false,
-  shadowBlur: 8,
-  shadowOffsetX: 4,
-  shadowOffsetY: 4,
-  shadowColor: '#000000',
-  shadowAlpha: 0.5,
+  shadow: true,
+  shadowBlur: 6,
+  shadowOffsetX: 3,
+  shadowOffsetY: 3,
+  shadowColor: '#333333',
+  shadowAlpha: 0.3,
 };
 
 export function configureParticular(

@@ -6,6 +6,7 @@ import sad2 from './icons/smiley_cry.png';
 import sad3 from './icons/smiley_sad_2.png';
 
 import { ParticularWrapper, presets } from './index';
+import { defaultParticular, defaultParticle } from './particular/core/defaults';
 import type { BurstSettings, FullParticularConfig } from './particular/types';
 import Vector from './particular/utils/vector';
 
@@ -77,40 +78,80 @@ export type StoryArgs = {
   webglMaxInstances: number;
 };
 
-function buildConfig(
-  base: Partial<FullParticularConfig>,
-  args: Partial<StoryArgs>
-): FullParticularConfig {
-  const angle = args.velocityAngle ?? -90;
-  const magnitude = args.velocityMagnitude ?? 5;
+function toStoryArgs(config: Partial<FullParticularConfig>): StoryArgs {
+  const merged = {
+    ...defaultParticular,
+    ...defaultParticle,
+    ...config,
+  };
+  const velocity = merged.velocity ?? defaultParticle.velocity;
   return {
-    ...presets.magic,
+    renderer: merged.renderer ?? 'webgl',
+    shape: merged.shape,
+    blendMode: merged.blendMode,
+    glow: merged.glow,
+    glowSize: merged.glowSize,
+    glowColor: merged.glowColor,
+    glowAlpha: merged.glowAlpha,
+    shadow: merged.shadow,
+    shadowBlur: merged.shadowBlur,
+    shadowOffsetX: merged.shadowOffsetX,
+    shadowOffsetY: merged.shadowOffsetY,
+    shadowColor: merged.shadowColor,
+    shadowAlpha: merged.shadowAlpha,
+    rate: merged.rate,
+    life: merged.life,
+    sizeMin: merged.sizeMin,
+    sizeMax: merged.sizeMax,
+    velocityMultiplier: merged.velocityMultiplier,
+    gravity: merged.gravity,
+    maxCount: merged.maxCount,
+    continuous: merged.continuous,
+    autoStart: merged.autoStart,
+    velocityAngle: (velocity.getAngle() * 180) / Math.PI,
+    velocityMagnitude: velocity.getMagnitude(),
+    spread: merged.spread / Math.PI,
+    webglMaxInstances: merged.webglMaxInstances,
+  };
+}
+
+function buildConfig(base: Partial<FullParticularConfig>, args: Partial<StoryArgs>): FullParticularConfig {
+  const mergedBase = {
+    ...defaultParticular,
+    ...defaultParticle,
     ...base,
-    renderer: args.renderer ?? 'canvas',
-    shape: args.shape ?? 'star',
-    blendMode: args.blendMode ?? 'normal',
-    glow: args.glow ?? false,
-    glowSize: args.glowSize ?? 14,
-    glowColor: args.glowColor ?? '#ffffff',
-    glowAlpha: args.glowAlpha ?? 0.35,
-    shadow: args.shadow ?? false,
-    shadowBlur: args.shadowBlur ?? 8,
-    shadowOffsetX: args.shadowOffsetX ?? 4,
-    shadowOffsetY: args.shadowOffsetY ?? 4,
-    shadowColor: args.shadowColor ?? '#000000',
-    shadowAlpha: args.shadowAlpha ?? 0.5,
-    rate: args.rate ?? 14,
-    life: args.life ?? 32,
-    sizeMin: args.sizeMin ?? 6,
-    sizeMax: args.sizeMax ?? 16,
-    velocityMultiplier: args.velocityMultiplier ?? 5,
-    gravity: args.gravity ?? 0.1,
-    maxCount: args.maxCount ?? 350,
-    continuous: args.continuous ?? false,
-    autoStart: args.autoStart ?? false,
+  };
+  const baseVelocity = mergedBase.velocity ?? defaultParticle.velocity;
+  const angle = args.velocityAngle ?? (baseVelocity.getAngle() * 180) / Math.PI;
+  const magnitude = args.velocityMagnitude ?? baseVelocity.getMagnitude();
+
+  return {
+    ...mergedBase,
+    renderer: args.renderer ?? (mergedBase.renderer ?? 'webgl'),
+    shape: args.shape ?? mergedBase.shape,
+    blendMode: args.blendMode ?? mergedBase.blendMode,
+    glow: args.glow ?? mergedBase.glow,
+    glowSize: args.glowSize ?? mergedBase.glowSize,
+    glowColor: args.glowColor ?? mergedBase.glowColor,
+    glowAlpha: args.glowAlpha ?? mergedBase.glowAlpha,
+    shadow: args.shadow ?? mergedBase.shadow,
+    shadowBlur: args.shadowBlur ?? mergedBase.shadowBlur,
+    shadowOffsetX: args.shadowOffsetX ?? mergedBase.shadowOffsetX,
+    shadowOffsetY: args.shadowOffsetY ?? mergedBase.shadowOffsetY,
+    shadowColor: args.shadowColor ?? mergedBase.shadowColor,
+    shadowAlpha: args.shadowAlpha ?? mergedBase.shadowAlpha,
+    rate: args.rate ?? mergedBase.rate,
+    life: args.life ?? mergedBase.life,
+    sizeMin: args.sizeMin ?? mergedBase.sizeMin,
+    sizeMax: args.sizeMax ?? mergedBase.sizeMax,
+    velocityMultiplier: args.velocityMultiplier ?? mergedBase.velocityMultiplier,
+    gravity: args.gravity ?? mergedBase.gravity,
+    maxCount: args.maxCount ?? mergedBase.maxCount,
+    continuous: args.continuous ?? mergedBase.continuous,
+    autoStart: args.autoStart ?? mergedBase.autoStart,
     velocity: Vector.fromAngle((angle * Math.PI) / 180, magnitude),
-    spread: (args.spread ?? 1.15) * Math.PI,
-    webglMaxInstances: args.webglMaxInstances ?? 4096,
+    spread: (args.spread ?? mergedBase.spread / Math.PI) * Math.PI,
+    webglMaxInstances: args.webglMaxInstances ?? mergedBase.webglMaxInstances,
   };
 }
 
@@ -172,34 +213,7 @@ const meta: Meta<StoryArgs> = {
       description: 'WebGL max instances per draw',
     },
   },
-  args: {
-    renderer: 'canvas',
-    shape: 'star',
-    blendMode: 'normal',
-    glow: true,
-    glowSize: 14,
-    glowColor: '#ffffff',
-    glowAlpha: 0.35,
-    shadow: false,
-    shadowBlur: 8,
-    shadowOffsetX: 4,
-    shadowOffsetY: 4,
-    shadowColor: '#000000',
-    shadowAlpha: 0.5,
-    rate: 14,
-    life: 32,
-    sizeMin: 6,
-    sizeMax: 16,
-    velocityMultiplier: 5,
-    gravity: 0.1,
-    maxCount: 350,
-    continuous: false,
-    autoStart: false,
-    velocityAngle: -90,
-    velocityMagnitude: 5,
-    spread: 1.15,
-    webglMaxInstances: 4096,
-  },
+  args: toStoryArgs({ ...presets.magic, renderer: 'webgl' }),
 };
 
 export default meta;
@@ -215,55 +229,28 @@ const withBaseConfig = (
 };
 
 export const Default: Story = {
-  args: {
-    renderer: 'canvas',
-    shape: 'star',
-    blendMode: 'normal',
-    glow: true,
-    glowSize: 14,
-    rate: 14,
-    life: 32,
-    maxCount: 350,
-  },
+  args: toStoryArgs({ ...presets.magic, renderer: 'webgl' }),
   render: withBaseConfig(presets.magic),
 };
 
 export const WithImages: Story = {
-  args: {
-    renderer: 'webgl',
-    rate: 8,
-    life: 50,
-    maxCount: 300,
-  },
+  args: toStoryArgs({ ...presets.magic, renderer: 'webgl' }),
   render: withBaseConfig({ icons: customIcons, ...presets.magic }),
 };
 
 export const Complex: Story = {
-  args: {
-    renderer: 'canvas',
-    shape: 'star',
-    blendMode: 'additive',
-    glow: true,
-    glowSize: 18,
-    rate: 12,
-    life: 60,
-    continuous: true,
-    autoStart: true,
-    maxCount: 400,
-  },
-  render: withBaseConfig({ icons: customIcons, continuous: true, autoStart: true }),
+  args: toStoryArgs({ ...presets.fireworks, renderer: 'webgl', continuous: true, autoStart: true }),
+  render: withBaseConfig({ ...presets.fireworks, icons: customIcons, continuous: true, autoStart: true }),
 };
 
 export const Gigantic: Story = {
-  args: {
+  args: toStoryArgs({
+    ...presets.fireworks,
     renderer: 'webgl',
-    shape: 'circle',
-    blendMode: 'additive',
-    glow: false,
     rate: 100,
     life: 80,
     maxCount: 2000,
     webglMaxInstances: 16384,
-  },
-  render: withBaseConfig({ rate: 100, life: 80, maxCount: 2000 }),
+  }),
+  render: withBaseConfig({ ...presets.fireworks, rate: 100, life: 80, maxCount: 2000 }),
 };

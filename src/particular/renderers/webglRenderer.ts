@@ -47,14 +47,17 @@ out vec4 outColor;
 
 void main() {
   float dist = length(v_uv);
+  float particleAlpha = pow(clamp(v_color.a, 0.0, 1.0), 0.8);
 
   if (u_isShadow > 0.0) {
     // Keep blur around a bit longer than linear alpha for smoother retraction.
     float retraction = sqrt(max(v_color.a, 0.0));
+    // Shadow should die earlier than the main particle to avoid dark center residue.
+    float shadowParticleFade = pow(max(v_color.a, 0.0), 1.8);
     float effectiveShadowBlur = u_shadowBlur * retraction;
     float shadowAlpha = 1.0 - smoothstep(0.7, 1.0 + effectiveShadowBlur, dist);
-    float shadowFade = smoothstep(0.10, 1.0, v_color.a);
-    outColor = vec4(u_shadowColor.rgb, u_shadowColor.a * shadowAlpha * v_color.a * shadowFade);
+    float shadowFade = smoothstep(0.20, 1.0, v_color.a);
+    outColor = vec4(u_shadowColor.rgb, u_shadowColor.a * shadowAlpha * shadowParticleFade * shadowFade);
     return;
   }
 
@@ -72,7 +75,7 @@ void main() {
     float glowMix = clamp((1.0 - coreAlpha) * glowAlpha, 0.0, 1.0);
     rgb = mix(rgb, u_glowColor.rgb, glowMix);
   }
-  outColor = vec4(rgb, v_color.a * alpha);
+  outColor = vec4(rgb, particleAlpha * alpha);
 }
 `;
 
@@ -120,6 +123,7 @@ void main() {
   if (u_isShadow > 0.0) {
     vec2 texel = 1.0 / vec2(textureSize(u_texture, 0));
     float retraction = sqrt(max(v_color.a, 0.0));
+    float shadowParticleFade = pow(max(v_color.a, 0.0), 1.8);
     vec2 blur = texel * (u_shadowBlur * retraction);
 
     // 9-tap weighted blur on alpha for softer image shadows.
@@ -132,13 +136,14 @@ void main() {
     a += texture(u_texture, v_uv + vec2(-blur.x,  blur.y)).a * 0.06;
     a += texture(u_texture, v_uv + vec2( blur.x, -blur.y)).a * 0.06;
     a += texture(u_texture, v_uv + vec2(-blur.x, -blur.y)).a * 0.06;
-    float shadowFade = smoothstep(0.10, 1.0, v_color.a);
-    outColor = vec4(u_shadowColor.rgb, min(1.0, a) * u_shadowColor.a * v_color.a * shadowFade);
+    float shadowFade = smoothstep(0.20, 1.0, v_color.a);
+    outColor = vec4(u_shadowColor.rgb, min(1.0, a) * u_shadowColor.a * shadowParticleFade * shadowFade);
     return;
   }
 
   vec3 rgb = mix(tex.rgb, tex.rgb * v_color.rgb, u_tint);
-  outColor = vec4(rgb, tex.a * v_color.a);
+  float particleAlpha = pow(clamp(v_color.a, 0.0, 1.0), 0.8);
+  outColor = vec4(rgb, tex.a * particleAlpha);
 }
 `;
 
@@ -157,19 +162,19 @@ function setBlendMode(gl: WebGL2RenderingContext, mode: BlendMode): void {
   gl.enable(gl.BLEND);
   switch (mode) {
     case 'additive':
-      gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+      gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
       gl.blendEquation(gl.FUNC_ADD);
       break;
     case 'multiply':
-      gl.blendFunc(gl.DST_COLOR, gl.ZERO);
+      gl.blendFuncSeparate(gl.DST_COLOR, gl.ZERO, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
       gl.blendEquation(gl.FUNC_ADD);
       break;
     case 'screen':
-      gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_COLOR);
+      gl.blendFuncSeparate(gl.ONE, gl.ONE_MINUS_SRC_COLOR, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
       gl.blendEquation(gl.FUNC_ADD);
       break;
     default:
-      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
       gl.blendEquation(gl.FUNC_ADD);
   }
 }
@@ -239,7 +244,7 @@ export default class WebGLRenderer {
 
     const gl = this.target.getContext('webgl2', {
       alpha: true,
-      premultipliedAlpha: false,
+      premultipliedAlpha: true,
     });
     if (!gl) {
       throw new Error('WebGL2 not supported');
@@ -443,7 +448,7 @@ export default class WebGLRenderer {
       }
 
       if (scaleOffsetByAlpha) {
-        const retraction = Math.sqrt(Math.max(0, p.alpha));
+        const retraction = Math.max(0, Math.min(1, (p.alpha - 0.1) / 0.9));
         effectiveOffsetX *= retraction;
         effectiveOffsetY *= retraction;
       }
@@ -517,7 +522,7 @@ export default class WebGLRenderer {
     if (batch.shadow) {
       const [sr, sg, sb] = hexToRgba(batch.shadowColor ?? '#000000');
       const sa = batch.shadowAlpha ?? 0.5;
-      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
       gl.blendEquation(gl.FUNC_ADD);
       gl.uniform1f(this.isShadowUniform!, 1);
       gl.uniform4f(this.shadowColorUniform!, sr, sg, sb, sa);
@@ -616,7 +621,7 @@ export default class WebGLRenderer {
     if (batch.shadow) {
       const [sr, sg, sb] = hexToRgba(batch.shadowColor ?? '#000000');
       const sa = batch.shadowAlpha ?? 0.5;
-      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
       gl.blendEquation(gl.FUNC_ADD);
       gl.uniform1f(this.imageIsShadowUniform!, 1);
       gl.uniform4f(this.imageShadowColorUniform!, sr, sg, sb, sa);

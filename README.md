@@ -16,7 +16,10 @@ npm install particular
 import { useParticles } from "particular";
 
 function App() {
-  const { canvasRef, canvasStyle, burstFromEvent } = useParticles({ preset: "magic" });
+  const { canvasRef, canvasStyle, burstFromEvent } = useParticles({
+    preset: "magic",
+    renderer: "webgl",
+  });
   return (
     <>
       <canvas ref={canvasRef} style={canvasStyle} />
@@ -26,7 +29,7 @@ function App() {
 }
 ```
 
-The canvas is full-viewport and click-through by default. Use any preset: `"magic"`, `"stardust"`, `"confetti"`, `"sparkles"`, and more.
+The canvas is full-viewport and click-through by default. Use any preset: `"magic"`, `"confetti"`, or `"fireworks"`.
 
 ### Vanilla (no build)
 
@@ -37,6 +40,7 @@ The canvas is full-viewport and click-through by default. Use any preset: `"magi
   window.Particular.createParticles({
     canvas: document.getElementById("particles"),
     preset: "magic",
+    renderer: "webgl",
     autoClick: true
   });
 </script>

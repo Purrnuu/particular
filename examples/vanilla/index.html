@@ -45,7 +45,8 @@
       const canvas = document.getElementById("particles");
       const particles = createParticles({
         canvas,
-        preset: "sparkles",
+        preset: "magic",
+        renderer: "webgl",
         config: {
           ...presets.magic,
           pixelRatio: Math.min(window.devicePixelRatio || 1, 2),

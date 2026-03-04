@@ -157,6 +157,8 @@ Avoid breaking these exports without explicit migration/update work.
 
 ## Known Guidance for Future Changes
 
+- Default to WebGL for stories/examples and recommended integration paths.
+- Keep Canvas available as an explicit fallback/choice when needed.
 - Keep Canvas and WebGL feature parity whenever feasible.
 - When changing visual behavior, validate both renderers.
 - For WebGL effect tweaks, preserve batching compatibility.
