@@ -49,7 +49,9 @@ void main() {
   float dist = length(v_uv);
 
   if (u_isShadow > 0.0) {
-    float effectiveShadowBlur = u_shadowBlur * v_color.a;
+    // Keep blur around a bit longer than linear alpha for smoother retraction.
+    float retraction = sqrt(max(v_color.a, 0.0));
+    float effectiveShadowBlur = u_shadowBlur * retraction;
     float shadowAlpha = 1.0 - smoothstep(0.7, 1.0 + effectiveShadowBlur, dist);
     float shadowFade = smoothstep(0.10, 1.0, v_color.a);
     outColor = vec4(u_shadowColor.rgb, u_shadowColor.a * shadowAlpha * v_color.a * shadowFade);
@@ -117,7 +119,8 @@ void main() {
 
   if (u_isShadow > 0.0) {
     vec2 texel = 1.0 / vec2(textureSize(u_texture, 0));
-    vec2 blur = texel * (u_shadowBlur * v_color.a);
+    float retraction = sqrt(max(v_color.a, 0.0));
+    vec2 blur = texel * (u_shadowBlur * retraction);
 
     // 9-tap weighted blur on alpha for softer image shadows.
     float a = tex.a * 0.28;
@@ -440,8 +443,9 @@ export default class WebGLRenderer {
       }
 
       if (scaleOffsetByAlpha) {
-        effectiveOffsetX *= p.alpha;
-        effectiveOffsetY *= p.alpha;
+        const retraction = Math.sqrt(Math.max(0, p.alpha));
+        effectiveOffsetX *= retraction;
+        effectiveOffsetY *= retraction;
       }
       this.instanceData[offset++] = p.position.x + effectiveOffsetX;
       this.instanceData[offset++] = p.position.y + effectiveOffsetY;
