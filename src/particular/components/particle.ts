@@ -34,6 +34,13 @@ export default class Particle {
   trail: boolean;
   trailLength: number;
   imageTint: boolean;
+  shadow: boolean;
+  shadowBlur: number;
+  shadowOffsetX: number;
+  shadowOffsetY: number;
+  shadowColor: string;
+  shadowAlpha: number;
+  shadowLightOrigin: Vector;
 
   addEventListener!: EventDispatcher['addEventListener'];
   removeEventListener!: EventDispatcher['removeEventListener'];
@@ -57,8 +64,15 @@ export default class Particle {
     trail = false,
     trailLength = 3,
     imageTint = false,
+    shadow = false,
+    shadowBlur = 8,
+    shadowOffsetX = 4,
+    shadowOffsetY = 4,
+    shadowColor = '#000000',
+    shadowAlpha = 0.5,
   }: ParticleConstructorParams) {
     this.position = point ?? new Vector(0, 0);
+    this.shadowLightOrigin = new Vector(this.position.x, this.position.y);
     this.velocity = velocity ?? new Vector(0, 0);
     this.acceleration = acceleration ?? new Vector(0, 0);
     this.friction = friction ?? 0;
@@ -88,6 +102,12 @@ export default class Particle {
     this.trail = trail;
     this.trailLength = trailLength;
     this.imageTint = imageTint;
+    this.shadow = shadow;
+    this.shadowBlur = shadowBlur;
+    this.shadowOffsetX = shadowOffsetX;
+    this.shadowOffsetY = shadowOffsetY;
+    this.shadowColor = shadowColor;
+    this.shadowAlpha = shadowAlpha;
   }
 
   init(image: string | HTMLImageElement | null, particular: Particular): void {
@@ -103,7 +123,7 @@ export default class Particle {
     this.position.add(this.velocity);
     this.rotation = this.rotation + this.rotationVelocity;
     this.factoredSize = Math.min(this.factoredSize + this.scaleStep, this.size);
-    this.alpha = Math.max((this.lifeTime - this.lifeTick) / this.fadeTime, 0);
+    this.alpha = Math.min(1, Math.max((this.lifeTime - this.lifeTick) / this.fadeTime, 0));
     this.lifeTick++;
     this.dispatch('PARTICLE_UPDATE', this);
   }

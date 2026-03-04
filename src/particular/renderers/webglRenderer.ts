@@ -35,11 +35,23 @@ in vec2 v_uv;
 uniform float u_softness;
 uniform float u_glow;
 uniform float u_glowSize;
+uniform float u_isShadow;
+uniform vec4 u_shadowColor;
+uniform float u_shadowBlur;
 
 out vec4 outColor;
 
 void main() {
   float dist = length(v_uv);
+
+  if (u_isShadow > 0.0) {
+    float effectiveShadowBlur = u_shadowBlur * v_color.a;
+    float shadowAlpha = 1.0 - smoothstep(0.7, 1.0 + effectiveShadowBlur, dist);
+    float shadowFade = smoothstep(0.10, 1.0, v_color.a);
+    outColor = vec4(u_shadowColor.rgb, u_shadowColor.a * shadowAlpha * v_color.a * shadowFade);
+    return;
+  }
+
   float coreAlpha = 1.0 - smoothstep(1.0 - u_softness, 1.0, dist);
   float alpha = coreAlpha;
   if (u_glow > 0.0) {
@@ -82,11 +94,34 @@ in vec2 v_uv;
 
 uniform sampler2D u_texture;
 uniform float u_tint;
+uniform float u_isShadow;
+uniform vec4 u_shadowColor;
+uniform float u_shadowBlur;
 
 out vec4 outColor;
 
 void main() {
   vec4 tex = texture(u_texture, v_uv);
+
+  if (u_isShadow > 0.0) {
+    vec2 texel = 1.0 / vec2(textureSize(u_texture, 0));
+    vec2 blur = texel * (u_shadowBlur * v_color.a);
+
+    // 9-tap weighted blur on alpha for softer image shadows.
+    float a = tex.a * 0.28;
+    a += texture(u_texture, v_uv + vec2( blur.x, 0.0)).a * 0.12;
+    a += texture(u_texture, v_uv + vec2(-blur.x, 0.0)).a * 0.12;
+    a += texture(u_texture, v_uv + vec2(0.0,  blur.y)).a * 0.12;
+    a += texture(u_texture, v_uv + vec2(0.0, -blur.y)).a * 0.12;
+    a += texture(u_texture, v_uv + vec2( blur.x,  blur.y)).a * 0.06;
+    a += texture(u_texture, v_uv + vec2(-blur.x,  blur.y)).a * 0.06;
+    a += texture(u_texture, v_uv + vec2( blur.x, -blur.y)).a * 0.06;
+    a += texture(u_texture, v_uv + vec2(-blur.x, -blur.y)).a * 0.06;
+    float shadowFade = smoothstep(0.10, 1.0, v_color.a);
+    outColor = vec4(u_shadowColor.rgb, min(1.0, a) * u_shadowColor.a * v_color.a * shadowFade);
+    return;
+  }
+
   vec3 rgb = mix(tex.rgb, tex.rgb * v_color.rgb, u_tint);
   outColor = vec4(rgb, tex.a * v_color.a);
 }
@@ -132,6 +167,12 @@ interface DrawBatch {
   texture?: WebGLTexture;
   image?: HTMLImageElement;
   imageTint?: boolean;
+  shadow?: boolean;
+  shadowBlur?: number;
+  shadowOffsetX?: number;
+  shadowOffsetY?: number;
+  shadowColor?: string;
+  shadowAlpha?: number;
   particles: Particle[];
 }
 
@@ -146,6 +187,7 @@ export default class WebGLRenderer {
   program: WebGLProgram | null = null;
   imageProgram: WebGLProgram | null = null;
   quadBuffer: WebGLBuffer | null = null;
+  circleQuadBuffer: WebGLBuffer | null = null;
   instanceBuffer: WebGLBuffer | null = null;
   particular: Particular | null = null;
   pixelRatio = 2;
@@ -156,8 +198,14 @@ export default class WebGLRenderer {
   private softnessUniform: WebGLUniformLocation | null = null;
   private glowUniform: WebGLUniformLocation | null = null;
   private glowSizeUniform: WebGLUniformLocation | null = null;
+  private isShadowUniform: WebGLUniformLocation | null = null;
+  private shadowColorUniform: WebGLUniformLocation | null = null;
+  private shadowBlurUniform: WebGLUniformLocation | null = null;
   private imageResolutionUniform: WebGLUniformLocation | null = null;
   private imageTintUniform: WebGLUniformLocation | null = null;
+  private imageIsShadowUniform: WebGLUniformLocation | null = null;
+  private imageShadowColorUniform: WebGLUniformLocation | null = null;
+  private imageShadowBlurUniform: WebGLUniformLocation | null = null;
   private textureCache = new Map<HTMLImageElement, WebGLTexture>();
 
   constructor(target: HTMLCanvasElement, options?: WebGLRendererOptions) {
@@ -195,6 +243,9 @@ export default class WebGLRenderer {
     this.softnessUniform = gl.getUniformLocation(program, 'u_softness');
     this.glowUniform = gl.getUniformLocation(program, 'u_glow');
     this.glowSizeUniform = gl.getUniformLocation(program, 'u_glowSize');
+    this.isShadowUniform = gl.getUniformLocation(program, 'u_isShadow');
+    this.shadowColorUniform = gl.getUniformLocation(program, 'u_shadowColor');
+    this.shadowBlurUniform = gl.getUniformLocation(program, 'u_shadowBlur');
 
     const imageVs = this.compileShader(gl.VERTEX_SHADER, IMAGE_VERTEX_SHADER);
     const imageFs = this.compileShader(gl.FRAGMENT_SHADER, IMAGE_FRAGMENT_SHADER);
@@ -209,14 +260,26 @@ export default class WebGLRenderer {
     this.imageProgram = imageProgram;
     this.imageResolutionUniform = gl.getUniformLocation(imageProgram, 'u_resolution');
     this.imageTintUniform = gl.getUniformLocation(imageProgram, 'u_tint');
+    this.imageIsShadowUniform = gl.getUniformLocation(imageProgram, 'u_isShadow');
+    this.imageShadowColorUniform = gl.getUniformLocation(imageProgram, 'u_shadowColor');
+    this.imageShadowBlurUniform = gl.getUniformLocation(imageProgram, 'u_shadowBlur');
 
-    // Quad vertices (NDC-style -1 to 1)
+    // Quad for image particles: exactly [-1, 1] so UV maps to [0, 1]
     const quadData = new Float32Array([
       -1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1,
     ]);
     this.quadBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, quadData, gl.STATIC_DRAW);
+
+    // Larger quad for circles: extends beyond the circle edge so glow has room
+    // in all directions (not just corners). Glow reaches dist ~1.5 max, so 2.0 is safe.
+    const circleQuadData = new Float32Array([
+      -2, -2, 2, -2, -2, 2, -2, 2, 2, -2, 2, 2,
+    ]);
+    this.circleQuadBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.circleQuadBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, circleQuadData, gl.STATIC_DRAW);
 
     this.instanceBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
@@ -291,6 +354,14 @@ export default class WebGLRenderer {
         current &&
         current.type === (isImage ? 'image' : 'circle') &&
         current.blendMode === blendMode &&
+        current.shadow === p.shadow &&
+        (!p.shadow || (
+          current.shadowOffsetX === p.shadowOffsetX &&
+          current.shadowOffsetY === p.shadowOffsetY &&
+          current.shadowBlur === p.shadowBlur &&
+          current.shadowColor === p.shadowColor &&
+          current.shadowAlpha === p.shadowAlpha
+        )) &&
         (isImage
           ? current.texture === tex && current.imageTint === imageTint
           : current.glow === p.glow && (!p.glow || current.glowSize === p.glowSize));
@@ -299,6 +370,12 @@ export default class WebGLRenderer {
         current = {
           type: isImage ? 'image' : 'circle',
           blendMode,
+          shadow: p.shadow,
+          shadowBlur: p.shadowBlur,
+          shadowOffsetX: p.shadowOffsetX,
+          shadowOffsetY: p.shadowOffsetY,
+          shadowColor: p.shadowColor,
+          shadowAlpha: p.shadowAlpha,
           particles: [],
         };
         if (isImage && tex) {
@@ -316,12 +393,36 @@ export default class WebGLRenderer {
     return batches;
   }
 
-  private fillInstanceData(particles: Particle[]): void {
+  private fillInstanceData(
+    particles: Particle[],
+    offsetX = 0,
+    offsetY = 0,
+    scaleOffsetByAlpha = false,
+    directionalFromLightOrigin = false,
+  ): void {
     let offset = 0;
     for (const p of particles) {
       const [r, g, b] = hexToRgba(p.color);
-      this.instanceData[offset++] = p.position.x;
-      this.instanceData[offset++] = p.position.y;
+      let effectiveOffsetX = offsetX;
+      let effectiveOffsetY = offsetY;
+
+      if (directionalFromLightOrigin) {
+        const baseDistance = Math.hypot(offsetX, offsetY);
+        const lightDx = p.position.x - p.shadowLightOrigin.x;
+        const lightDy = p.position.y - p.shadowLightOrigin.y;
+        const lightDist = Math.hypot(lightDx, lightDy);
+        if (baseDistance > 0 && lightDist > 0.0001) {
+          effectiveOffsetX = (lightDx / lightDist) * baseDistance;
+          effectiveOffsetY = (lightDy / lightDist) * baseDistance;
+        }
+      }
+
+      if (scaleOffsetByAlpha) {
+        effectiveOffsetX *= p.alpha;
+        effectiveOffsetY *= p.alpha;
+      }
+      this.instanceData[offset++] = p.position.x + effectiveOffsetX;
+      this.instanceData[offset++] = p.position.y + effectiveOffsetY;
       this.instanceData[offset++] = p.factoredSize;
       this.instanceData[offset++] = (p.rotation * Math.PI) / 180;
       this.instanceData[offset++] = r;
@@ -331,40 +432,123 @@ export default class WebGLRenderer {
     }
   }
 
+  private drawCircleInstances(
+    list: Particle[],
+    offsetX: number,
+    offsetY: number,
+    scaleOffsetByAlpha = false,
+    directionalFromLightOrigin = false,
+  ): void {
+    const gl = this.gl!;
+    const stride = this.instanceStride;
+    const posLoc2 = gl.getAttribLocation(this.program!, 'a_particle_pos');
+    const sizeLoc = gl.getAttribLocation(this.program!, 'a_particle_size');
+    const rotLoc = gl.getAttribLocation(this.program!, 'a_particle_rotation');
+    const colLoc = gl.getAttribLocation(this.program!, 'a_particle_color');
+
+    for (let i = 0; i < list.length; i += this.maxInstances) {
+      const chunk = list.slice(i, i + this.maxInstances);
+      this.fillInstanceData(
+        chunk,
+        offsetX,
+        offsetY,
+        scaleOffsetByAlpha,
+        directionalFromLightOrigin,
+      );
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.instanceData.subarray(0, chunk.length * stride));
+
+      gl.enableVertexAttribArray(posLoc2);
+      gl.vertexAttribPointer(posLoc2, 2, gl.FLOAT, false, stride * 4, 0);
+      gl.vertexAttribDivisor(posLoc2, 1);
+
+      gl.enableVertexAttribArray(sizeLoc);
+      gl.vertexAttribPointer(sizeLoc, 1, gl.FLOAT, false, stride * 4, 8);
+      gl.vertexAttribDivisor(sizeLoc, 1);
+
+      gl.enableVertexAttribArray(rotLoc);
+      gl.vertexAttribPointer(rotLoc, 1, gl.FLOAT, false, stride * 4, 12);
+      gl.vertexAttribDivisor(rotLoc, 1);
+
+      gl.enableVertexAttribArray(colLoc);
+      gl.vertexAttribPointer(colLoc, 4, gl.FLOAT, false, stride * 4, 16);
+      gl.vertexAttribDivisor(colLoc, 1);
+
+      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, chunk.length);
+
+      gl.vertexAttribDivisor(posLoc2, 0);
+      gl.vertexAttribDivisor(sizeLoc, 0);
+      gl.vertexAttribDivisor(rotLoc, 0);
+      gl.vertexAttribDivisor(colLoc, 0);
+    }
+  }
+
   private drawCircleBatch(batch: DrawBatch): void {
     const gl = this.gl!;
     const list = batch.particles;
+
+    // Shadow pass — drawn first so it sits behind the particle
+    if (batch.shadow) {
+      const [sr, sg, sb] = hexToRgba(batch.shadowColor ?? '#000000');
+      const sa = batch.shadowAlpha ?? 0.5;
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.blendEquation(gl.FUNC_ADD);
+      gl.uniform1f(this.isShadowUniform!, 1);
+      gl.uniform4f(this.shadowColorUniform!, sr, sg, sb, sa);
+      gl.uniform1f(this.shadowBlurUniform!, Math.min(1.0, (batch.shadowBlur ?? 8) / 20));
+      this.drawCircleInstances(list, batch.shadowOffsetX ?? 4, batch.shadowOffsetY ?? 4, true, true);
+      gl.uniform1f(this.isShadowUniform!, 0);
+    }
+
+    // Main pass
     setBlendMode(gl, batch.blendMode);
     gl.uniform1f(this.softnessUniform!, 0.1);
     gl.uniform1f(this.glowUniform!, batch.glow ? 1 : 0);
     gl.uniform1f(this.glowSizeUniform!, Math.min(0.5, (batch.glowSize ?? 10) / 30));
+    this.drawCircleInstances(list, 0, 0);
+  }
 
+  private drawImageInstances(
+    list: Particle[],
+    offsetX: number,
+    offsetY: number,
+    scaleOffsetByAlpha = false,
+    directionalFromLightOrigin = false,
+  ): void {
+    const gl = this.gl!;
     const stride = this.instanceStride;
+    const posLoc2 = gl.getAttribLocation(this.imageProgram!, 'a_particle_pos');
+    const sizeLoc = gl.getAttribLocation(this.imageProgram!, 'a_particle_size');
+    const rotLoc = gl.getAttribLocation(this.imageProgram!, 'a_particle_rotation');
+    const colLoc = gl.getAttribLocation(this.imageProgram!, 'a_particle_color');
+
     for (let i = 0; i < list.length; i += this.maxInstances) {
       const chunk = list.slice(i, i + this.maxInstances);
-      this.fillInstanceData(chunk);
+      this.fillInstanceData(
+        chunk,
+        offsetX,
+        offsetY,
+        scaleOffsetByAlpha,
+        directionalFromLightOrigin,
+      );
       gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.instanceData.subarray(0, chunk.length * stride));
 
-    const posLoc2 = gl.getAttribLocation(this.program!, 'a_particle_pos');
-    gl.enableVertexAttribArray(posLoc2);
-    gl.vertexAttribPointer(posLoc2, 2, gl.FLOAT, false, stride * 4, 0);
-    gl.vertexAttribDivisor(posLoc2, 1);
+      gl.enableVertexAttribArray(posLoc2);
+      gl.vertexAttribPointer(posLoc2, 2, gl.FLOAT, false, stride * 4, 0);
+      gl.vertexAttribDivisor(posLoc2, 1);
 
-    const sizeLoc = gl.getAttribLocation(this.program!, 'a_particle_size');
-    gl.enableVertexAttribArray(sizeLoc);
-    gl.vertexAttribPointer(sizeLoc, 1, gl.FLOAT, false, stride * 4, 8);
-    gl.vertexAttribDivisor(sizeLoc, 1);
+      gl.enableVertexAttribArray(sizeLoc);
+      gl.vertexAttribPointer(sizeLoc, 1, gl.FLOAT, false, stride * 4, 8);
+      gl.vertexAttribDivisor(sizeLoc, 1);
 
-    const rotLoc = gl.getAttribLocation(this.program!, 'a_particle_rotation');
-    gl.enableVertexAttribArray(rotLoc);
-    gl.vertexAttribPointer(rotLoc, 1, gl.FLOAT, false, stride * 4, 12);
-    gl.vertexAttribDivisor(rotLoc, 1);
+      gl.enableVertexAttribArray(rotLoc);
+      gl.vertexAttribPointer(rotLoc, 1, gl.FLOAT, false, stride * 4, 12);
+      gl.vertexAttribDivisor(rotLoc, 1);
 
-    const colLoc = gl.getAttribLocation(this.program!, 'a_particle_color');
-    gl.enableVertexAttribArray(colLoc);
-    gl.vertexAttribPointer(colLoc, 4, gl.FLOAT, false, stride * 4, 16);
-    gl.vertexAttribDivisor(colLoc, 1);
+      gl.enableVertexAttribArray(colLoc);
+      gl.vertexAttribPointer(colLoc, 4, gl.FLOAT, false, stride * 4, 16);
+      gl.vertexAttribDivisor(colLoc, 1);
 
       gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, chunk.length);
 
@@ -378,9 +562,14 @@ export default class WebGLRenderer {
   private drawImageBatch(batch: DrawBatch, logicalW: number, logicalH: number): void {
     const gl = this.gl!;
     const list = batch.particles;
-    if (!this.imageProgram || !batch.texture || !this.imageResolutionUniform || !this.imageTintUniform) return;
+    if (
+      !this.imageProgram ||
+      !batch.texture ||
+      !this.imageResolutionUniform ||
+      !this.imageTintUniform ||
+      !this.imageShadowBlurUniform
+    ) return;
 
-    setBlendMode(gl, batch.blendMode);
     gl.useProgram(this.imageProgram);
     gl.uniform2f(this.imageResolutionUniform, logicalW, logicalH);
     gl.uniform1f(this.imageTintUniform, batch.imageTint ? 1 : 0);
@@ -395,40 +584,22 @@ export default class WebGLRenderer {
     gl.enableVertexAttribArray(posLoc);
     gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
 
-    const stride = this.instanceStride;
-    for (let i = 0; i < list.length; i += this.maxInstances) {
-      const chunk = list.slice(i, i + this.maxInstances);
-      this.fillInstanceData(chunk);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
-      gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.instanceData.subarray(0, chunk.length * stride));
-
-      const posLoc2 = gl.getAttribLocation(this.imageProgram, 'a_particle_pos');
-      gl.enableVertexAttribArray(posLoc2);
-      gl.vertexAttribPointer(posLoc2, 2, gl.FLOAT, false, stride * 4, 0);
-      gl.vertexAttribDivisor(posLoc2, 1);
-
-      const sizeLoc = gl.getAttribLocation(this.imageProgram, 'a_particle_size');
-      gl.enableVertexAttribArray(sizeLoc);
-      gl.vertexAttribPointer(sizeLoc, 1, gl.FLOAT, false, stride * 4, 8);
-      gl.vertexAttribDivisor(sizeLoc, 1);
-
-      const rotLoc = gl.getAttribLocation(this.imageProgram, 'a_particle_rotation');
-      gl.enableVertexAttribArray(rotLoc);
-      gl.vertexAttribPointer(rotLoc, 1, gl.FLOAT, false, stride * 4, 12);
-      gl.vertexAttribDivisor(rotLoc, 1);
-
-      const colLoc = gl.getAttribLocation(this.imageProgram, 'a_particle_color');
-      gl.enableVertexAttribArray(colLoc);
-      gl.vertexAttribPointer(colLoc, 4, gl.FLOAT, false, stride * 4, 16);
-      gl.vertexAttribDivisor(colLoc, 1);
-
-      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, chunk.length);
-
-      gl.vertexAttribDivisor(posLoc2, 0);
-      gl.vertexAttribDivisor(sizeLoc, 0);
-      gl.vertexAttribDivisor(rotLoc, 0);
-      gl.vertexAttribDivisor(colLoc, 0);
+    // Shadow pass
+    if (batch.shadow) {
+      const [sr, sg, sb] = hexToRgba(batch.shadowColor ?? '#000000');
+      const sa = batch.shadowAlpha ?? 0.5;
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.blendEquation(gl.FUNC_ADD);
+      gl.uniform1f(this.imageIsShadowUniform!, 1);
+      gl.uniform4f(this.imageShadowColorUniform!, sr, sg, sb, sa);
+      gl.uniform1f(this.imageShadowBlurUniform, Math.max(0, batch.shadowBlur ?? 8));
+      this.drawImageInstances(list, batch.shadowOffsetX ?? 4, batch.shadowOffsetY ?? 4, true, true);
+      gl.uniform1f(this.imageIsShadowUniform!, 0);
     }
+
+    // Main pass
+    setBlendMode(gl, batch.blendMode);
+    this.drawImageInstances(list, 0, 0);
   }
 
   onUpdateAfter = (): void => {
@@ -447,7 +618,7 @@ export default class WebGLRenderer {
 
     this.gl.useProgram(this.program);
     this.gl.uniform2f(this.resolutionUniform, logicalW, logicalH);
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.circleQuadBuffer);
     const posLoc = this.gl.getAttribLocation(this.program, 'a_position');
     this.gl.enableVertexAttribArray(posLoc);
     this.gl.vertexAttribPointer(posLoc, 2, this.gl.FLOAT, false, 0, 0);
@@ -458,7 +629,7 @@ export default class WebGLRenderer {
       } else {
         this.drawImageBatch(batch, logicalW, logicalH);
         this.gl.useProgram(this.program);
-        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.quadBuffer);
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.circleQuadBuffer);
         this.gl.enableVertexAttribArray(posLoc);
         this.gl.vertexAttribPointer(posLoc, 2, this.gl.FLOAT, false, 0, 0);
       }
@@ -477,6 +648,7 @@ export default class WebGLRenderer {
     this.particular.removeEventListener('RESIZE', this.resize);
 
     if (this.quadBuffer) this.gl!.deleteBuffer(this.quadBuffer);
+    if (this.circleQuadBuffer) this.gl!.deleteBuffer(this.circleQuadBuffer);
     if (this.instanceBuffer) this.gl!.deleteBuffer(this.instanceBuffer);
     if (this.program) this.gl!.deleteProgram(this.program);
     if (this.imageProgram) this.gl!.deleteProgram(this.imageProgram);
@@ -490,6 +662,7 @@ export default class WebGLRenderer {
     this.program = null;
     this.imageProgram = null;
     this.quadBuffer = null;
+    this.circleQuadBuffer = null;
     this.instanceBuffer = null;
   }
 }

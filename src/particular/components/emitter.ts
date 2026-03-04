@@ -75,6 +75,12 @@ export default class Emitter {
       trail,
       trailLength,
       imageTint,
+      shadow,
+      shadowBlur,
+      shadowOffsetX,
+      shadowOffsetY,
+      shadowColor,
+      shadowAlpha,
     } = this.configuration;
     const angle = velocity.getAngle() + spread - Math.random() * spread * 2;
     const magnitude = velocity.getMagnitude();
@@ -104,6 +110,12 @@ export default class Emitter {
       trail,
       trailLength,
       imageTint,
+      shadow,
+      shadowBlur,
+      shadowOffsetX,
+      shadowOffsetY,
+      shadowColor,
+      shadowAlpha,
     });
   }
 

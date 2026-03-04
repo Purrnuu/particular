@@ -54,6 +54,12 @@ export type StoryArgs = {
   blendMode: 'normal' | 'additive' | 'multiply' | 'screen';
   glow: boolean;
   glowSize: number;
+  shadow: boolean;
+  shadowBlur: number;
+  shadowOffsetX: number;
+  shadowOffsetY: number;
+  shadowColor: string;
+  shadowAlpha: number;
   rate: number;
   life: number;
   sizeMin: number;
@@ -83,6 +89,12 @@ function buildConfig(
     blendMode: args.blendMode ?? 'normal',
     glow: args.glow ?? false,
     glowSize: args.glowSize ?? 14,
+    shadow: args.shadow ?? false,
+    shadowBlur: args.shadowBlur ?? 8,
+    shadowOffsetX: args.shadowOffsetX ?? 4,
+    shadowOffsetY: args.shadowOffsetY ?? 4,
+    shadowColor: args.shadowColor ?? '#000000',
+    shadowAlpha: args.shadowAlpha ?? 0.5,
     rate: args.rate ?? 14,
     life: args.life ?? 32,
     sizeMin: args.sizeMin ?? 6,
@@ -119,6 +131,12 @@ const meta: Meta<StoryArgs> = {
     },
     glow: { control: 'boolean', description: 'Enable glow effect' },
     glowSize: { control: { type: 'number', min: 8, max: 30 }, description: 'Glow size' },
+    shadow: { control: 'boolean', description: 'Enable drop shadow' },
+    shadowBlur: { control: { type: 'number', min: 0, max: 40 }, description: 'Shadow blur radius (px)' },
+    shadowOffsetX: { control: { type: 'number', min: -30, max: 30 }, description: 'Shadow X offset (px)' },
+    shadowOffsetY: { control: { type: 'number', min: -30, max: 30 }, description: 'Shadow Y offset (px)' },
+    shadowColor: { control: 'color', description: 'Shadow color' },
+    shadowAlpha: { control: { type: 'number', min: 0, max: 1, step: 0.05 }, description: 'Shadow opacity' },
     rate: { control: { type: 'number', min: 1, max: 100 }, description: 'Particles per burst' },
     life: { control: { type: 'number', min: 8, max: 200 }, description: 'Emitter life (ticks)' },
     sizeMin: { control: { type: 'number', min: 1, max: 30 }, description: 'Min particle size' },
@@ -154,6 +172,12 @@ const meta: Meta<StoryArgs> = {
     blendMode: 'normal',
     glow: true,
     glowSize: 14,
+    shadow: false,
+    shadowBlur: 8,
+    shadowOffsetX: 4,
+    shadowOffsetY: 4,
+    shadowColor: '#000000',
+    shadowAlpha: 0.5,
     rate: 14,
     life: 32,
     sizeMin: 6,

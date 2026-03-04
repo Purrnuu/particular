@@ -84,6 +84,8 @@ export default class CanvasRenderer {
     this.context.save();
     this.context.globalAlpha = particle.alpha;
 
+    this.applyShadow(particle);
+
     const pixelRounded = particle.getRoundedLocation();
     this.context.translate(pixelRounded[0], pixelRounded[1]);
     this.context.rotate(degToRad(particle.rotation));
@@ -106,14 +108,7 @@ export default class CanvasRenderer {
     // Set blend mode
     this.setBlendMode(particle.blendMode);
 
-    // Apply glow effect if enabled; always reset when not, to avoid bleed from previous particle
-    if (particle.glow) {
-      this.context.shadowColor = particle.color;
-      this.context.shadowBlur = particle.glowSize;
-    } else {
-      this.context.shadowColor = 'transparent';
-      this.context.shadowBlur = 0;
-    }
+    this.applyShadow(particle);
     
     // Draw the appropriate shape
     switch (particle.shape) {
@@ -142,6 +137,44 @@ export default class CanvasRenderer {
     this.context.restore();
   }
   
+  private applyShadow(particle: Particle): void {
+    if (particle.glow) {
+      this.context.shadowColor = particle.color;
+      this.context.shadowBlur = particle.glowSize;
+      this.context.shadowOffsetX = 0;
+      this.context.shadowOffsetY = 0;
+    } else if (particle.shadow) {
+      const hex = particle.shadowColor;
+      const shadowScale = Math.max(0, Math.min(1, particle.alpha));
+      const earlyShadowFade = Math.max(0, Math.min(1, (particle.alpha - 0.1) / 0.95));
+      const alpha = particle.shadowAlpha * earlyShadowFade;
+      const baseDistance = Math.hypot(particle.shadowOffsetX, particle.shadowOffsetY);
+      const lightDx = particle.position.x - particle.shadowLightOrigin.x;
+      const lightDy = particle.position.y - particle.shadowLightOrigin.y;
+      const lightDist = Math.hypot(lightDx, lightDy);
+
+      let offsetX = particle.shadowOffsetX;
+      let offsetY = particle.shadowOffsetY;
+      if (baseDistance > 0 && lightDist > 0.0001) {
+        offsetX = (lightDx / lightDist) * baseDistance;
+        offsetY = (lightDy / lightDist) * baseDistance;
+      }
+      // Convert hex to rgba for Canvas 2D shadowColor
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      this.context.shadowColor = `rgba(${r},${g},${b},${alpha})`;
+      this.context.shadowBlur = particle.shadowBlur * shadowScale;
+      this.context.shadowOffsetX = offsetX * shadowScale;
+      this.context.shadowOffsetY = offsetY * shadowScale;
+    } else {
+      this.context.shadowColor = 'transparent';
+      this.context.shadowBlur = 0;
+      this.context.shadowOffsetX = 0;
+      this.context.shadowOffsetY = 0;
+    }
+  }
+
   private setBlendMode(mode: string): void {
     switch (mode) {
       case 'additive':

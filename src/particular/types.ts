@@ -23,6 +23,18 @@ export interface ShapeConfig {
   trailLength?: number;
   /** When true, tint image particles with particle color (WebGL). Default false = render images as-is. */
   imageTint?: boolean;
+  /** Enable drop shadow. */
+  shadow?: boolean;
+  /** Shadow blur radius in pixels. Default 8. */
+  shadowBlur?: number;
+  /** Shadow horizontal offset in pixels. Default 4. */
+  shadowOffsetX?: number;
+  /** Shadow vertical offset in pixels. Default 4. */
+  shadowOffsetY?: number;
+  /** Shadow color as hex string. Default '#000000'. */
+  shadowColor?: string;
+  /** Shadow opacity (0–1). Default 0.5. */
+  shadowAlpha?: number;
 }
 
 export interface ParticularConfig {
