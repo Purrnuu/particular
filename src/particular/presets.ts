@@ -1,6 +1,17 @@
 import Vector from './utils/vector';
 import type { FullParticularConfig } from './types';
 
+// ── Color Palettes ──────────────────────────────────────────────────────────
+
+const snowPalette: string[] = ['#ffffff', '#f8f9fa', '#f1f3f5', '#e9ecef', '#dee2e6'];
+const grayscalePalette: string[] = ['#f8f9fa', '#dee2e6', '#adb5bd', '#868e96', '#495057', '#212529'];
+const monochromePalette: string[] = ['#d0ebff', '#a5d8ff', '#74c0fc', '#4dabf7', '#339af0', '#228be6'];
+const mutedPalette: string[] = ['#d4a373', '#ccd5ae', '#e9edc9', '#a8dadc', '#b5838d', '#e5989b', '#8d99ae'];
+const finlandPalette: string[] = ['#003580', '#002f6c', '#ffffff', '#f8f9fa'];
+const usaPalette: string[] = ['#B22234', '#ffffff', '#3C3B6E'];
+
+// ── Presets ─────────────────────────────────────────────────────────────────
+
 /**
  * Pre-defined particle presets for beautiful, aesthetic effects out of the box.
  * Use with ParticularWrapper: e.g. ParticularWrapper(presets.Burst.confetti)(MyComponent)
@@ -22,13 +33,14 @@ const Burst = {
     gravity: 0.1,
     scaleStep: 0.85,
     maxCount: 420,
+    colors: mutedPalette,
   } satisfies FullParticularConfig,
 
   /** Signature magical burst: soft white glow + star silhouettes */
   magic: {
     shape: 'circle' as const,
     blendMode: 'normal' as const,
-    glow: false,  
+    glow: false,
     rate: 14,
     life: 34,
     velocity: Vector.fromAngle(-90, 5),
@@ -42,6 +54,7 @@ const Burst = {
     maxCount: 360,
     trail: true,
     trailLength: 12,
+    colors: monochromePalette,
   } satisfies FullParticularConfig,
 
   /** Cinematic fireworks: energetic additive circles with bright bloom */
@@ -63,6 +76,7 @@ const Burst = {
     gravity: 0.18,
     scaleStep: 1.15,
     maxCount: 520,
+    colors: mutedPalette,
   } satisfies FullParticularConfig,
 } as const;
 
@@ -87,21 +101,72 @@ const Images = {
   } satisfies FullParticularConfig,
 } as const;
 
+const Ambient = {
+  /** Gentle snowfall: soft white particles drifting downward across the viewport */
+  snow: {
+    shape: 'circle' as const,
+    blendMode: 'normal' as const,
+    glow: true,
+    glowSize: 8,
+    glowColor: '#ffffff',
+    glowAlpha: 0.2,
+    shadow: false,
+    rate: 0.4,
+    life: 999999,
+    particleLife: 400,
+    velocity: Vector.fromAngle(Math.PI / 2, 0.8),
+    spread: Math.PI * 0.15,
+    sizeMin: 2,
+    sizeMax: 6,
+    velocityMultiplier: 1.5,
+    fadeTime: 60,
+    gravity: 0.02,
+    scaleStep: 1,
+    maxCount: 200,
+    continuous: true,
+    autoStart: true,
+    colors: snowPalette,
+  } satisfies FullParticularConfig,
+} as const;
+
+// ── Spreadable Color Presets ────────────────────────────────────────────────
+
+const Colors = {
+  /** White to offwhite range */
+  snow: { colors: snowPalette },
+  /** Full black-to-white range */
+  grayscale: { colors: grayscalePalette },
+  /** Single-hue cool blue-grey range */
+  monochrome: { colors: monochromePalette },
+  /** Desaturated warm/cool mix */
+  muted: { colors: mutedPalette },
+  /** Finnish flag blue and white */
+  finland: { colors: finlandPalette },
+  /** American flag red, white, blue */
+  usa: { colors: usaPalette },
+} as const;
+
+// ── Registry & Exports ─────────────────────────────────────────────────────
+
 const presetRegistry = {
   confetti: Burst.confetti,
   magic: Burst.magic,
   fireworks: Burst.fireworks,
   images: Images.showcase,
+  snow: Ambient.snow,
 } as const;
 
 export const presets = {
   Burst,
   Images,
+  Ambient,
+  Colors,
   // Backward-compatible aliases
   confetti: Burst.confetti,
   magic: Burst.magic,
   fireworks: Burst.fireworks,
   images: Images.showcase,
+  snow: Ambient.snow,
 } as const;
 
 export type PresetName = keyof typeof presetRegistry;

@@ -31,14 +31,15 @@ Current preset set is intentionally small and curated:
 - `presets.Burst.magic`
 - `presets.Burst.fireworks`
 - `presets.Images.showcase` (for image/icon particles)
+- `presets.Ambient.snow` (continuous snowfall)
 
 ## Main Entry Points
 
 - Public exports: `src/index.ts`
 - Core engine loop: `src/particular/core/particular.ts`
 - Defaults merge logic: `src/particular/core/defaults.ts`
-- Convenience API: `src/particular/convenience.ts`
-- React hook API: `src/particular/useParticles.ts`
+- Convenience API: `src/particular/convenience.ts` (`createParticles`, `startScreensaver`)
+- React hook API: `src/particular/useParticles.ts` (`useParticles`, `useScreensaver`)
 - Presets: `src/particular/presets.ts`
 
 ## Config Model
@@ -55,6 +56,7 @@ Important effect fields:
 - Shadow: `shadow`, `shadowBlur`, `shadowOffsetX`, `shadowOffsetY`, `shadowColor`, `shadowAlpha`
 - WebGL image tint: `imageTint`
 - WebGL batching safety: `webglMaxInstances`
+- Spawn area: `spawnWidth`, `spawnHeight` — randomize particle spawn position within a rectangle centered on the emitter point. Default 0 (point spawn). Used by the screensaver API to spread particles across the viewport width.
 
 Defaults (used when no presets/custom values provided):
 
@@ -74,6 +76,24 @@ Defaults (used when no presets/custom values provided):
    - `UPDATE` event (renderers clear/setup)
    - emitters emit/update particles
    - `UPDATE_AFTER` event (renderers draw all particles)
+
+## Delta-Time Normalization
+
+The engine uses normalized delta-time (`dt`) for refresh-rate independence. At 60fps `dt = 1.0`; at 120fps `dt ≈ 0.5`; at 30fps `dt ≈ 2.0`. This keeps particle speed, gravity, emission rate, and lifetime consistent across display refresh rates.
+
+Computation in the RAF loop (`particular.ts`):
+```
+dt = clamp((timestamp - lastTimestamp) * 60 / 1000, 0, 3)
+```
+The upper clamp of 3 (~20fps floor) prevents teleportation after tab-backgrounding.
+
+Flow: `Particular.update(timestamp)` → `updateEmitters(dt)` → `emitter.emit(dt)` / `mouseForce.decay(dt)` / `emitter.update(..., dt)` → `particle.update(forces, dt)`.
+
+Scaling rules:
+- Additive per-frame values (velocity, gravity, position, rotation, scale, lifetime): multiply by `dt`.
+- Exponential decay (friction, mouse damping): use `Math.pow(base, dt)`.
+- `Vector.add(v, scale)` accepts an optional scale parameter (default 1) for dt-scaled addition.
+- Emitter `lifeCycle` counter is a particle count, not time — not scaled by dt.
 
 ## Renderer Behavior
 
@@ -140,16 +160,38 @@ File: `src/particular/components/attractor.ts`
 
 Attractors are engine-level point forces that affect all particles regardless of emitter. They apply force during each particle's update step (after gravity, before position integration).
 
-- `Attractor(x, y, strength?, radius?)` — position in engine coordinates, strength default 1, radius default 200.
+- `Attractor(config: AttractorConfig)` — constructed from a config object. Position in engine coordinates, strength default 1, radius default 200.
 - `getForce(particlePosition)` — returns a force Vector with linear falloff (`1 - dist/radius`), zero outside radius.
 - Negative strength = repulsion.
 - Engine manages attractors via `addAttractor()` / `removeAttractor()`, same pattern as emitters.
 - Convenience API: `controller.addAttractor(config)` / `controller.removeAttractor(attractor)`.
 - Coordinates: attractors work in engine space (screen coords / pixelRatio). The convenience `addAttractor` takes engine coordinates directly (unlike `burst` which divides by pixelRatio internally).
-- Config type: `AttractorConfig` in `types.ts` (`x`, `y`, `strength?`, `radius?`).
+- Config type: `AttractorConfig` in `types.ts` (`x`, `y`, `strength?`, `radius?`, plus visual fields).
 - Exported from both `index.ts` and `standalone.ts`.
 
 Force flow: `Particular.updateEmitters()` → `Emitter.update(bounds, forces)` → `Particle.update(forces)`.
+
+### Visible Attractors
+
+Attractors can optionally render as visual markers via `AttractorConfig` visual fields:
+
+- `visible?: boolean` — when `true`, renderers draw the attractor as a particle-like element. Default `false`.
+- `icon?: string | HTMLImageElement` — image URL or element to render. String URLs are auto-converted to `HTMLImageElement`.
+- `size?: number` — visual size (like particle `factoredSize`). Default 12.
+- `color?: string` — fill color. Default `'#74c0fc'` (monochrome blue).
+- `shape?: ParticleShape` — shape to render (`'circle'`, `'star'`, etc.). Default `'circle'`.
+- `glow?: boolean`, `glowSize?`, `glowColor?`, `glowAlpha?` — glow effect, same as particle glow.
+
+`Attractor.toDrawable()` returns a lightweight `Particle`-compatible object that both Canvas and WebGL renderers can draw using existing shape/image drawing code:
+- Canvas renderer: draws visible attractors in `onUpdateAfter` before restoring context, on top of particles.
+- WebGL renderer: appends visible attractor drawables after particles in the draw pipeline, so they render on top.
+
+### Random Attractor Placement
+
+Convenience methods for quick attractor setup:
+
+- `controller.addRandomAttractors(count, config?)` — places `count` attractors at random positions within the viewport (10% margin from edges). Defaults: `strength: 1`, `radius: 200`, `visible: true`. Returns the created `Attractor[]`.
+- `controller.removeAllAttractors()` — removes all attractors from the engine.
 
 ## MouseForce
 
@@ -181,6 +223,33 @@ interface ForceSource {
 
 `Particle.update()` and `Emitter.update()` accept `ForceSource[]`, allowing attractors and mouse forces to be combined transparently. The engine merges `[...attractors, ...mouseForces]` each frame.
 
+## Color System
+
+File: `src/particular/presets.ts` (palette definitions), wired through `types.ts` → `defaults.ts` → `emitter.ts` → `particle.ts`.
+
+The `colors` field (`string[]`) controls particle color. When provided with a non-empty array, particles pick a random color from the array. When absent or empty, falls back to `randomcolor()` (legacy behavior).
+
+Config chain: `ParticleConfig.colors?` → `EmitterConfiguration.colors` → `ParticleConstructorParams.colors?` → `Particle` constructor.
+
+Default: `colors: []` (empty = randomcolor fallback).
+
+Built-in palettes assigned to presets:
+- `confetti` → muted (desaturated warm/cool)
+- `magic` → monochrome (cool blue-grey)
+- `fireworks` → muted
+- `showcase` → no colors (image particles don't use particle color)
+- `snow` → snow (white to offwhite)
+
+Spreadable color presets in `presets.Colors`:
+- `presets.Colors.snow` — white to offwhite
+- `presets.Colors.grayscale` — full black-to-white
+- `presets.Colors.monochrome` — cool blue-grey
+- `presets.Colors.muted` — desaturated warm/cool mix
+- `presets.Colors.finland` — Finnish flag blue and white
+- `presets.Colors.usa` — American flag red, white, blue
+
+Usage: `{ ...presets.Burst.confetti, ...presets.Colors.finland }` to override colors on any preset.
+
 ## Preset Philosophy (Current)
 
 File: `src/particular/presets.ts`
@@ -194,6 +263,7 @@ Current presets:
 - `presets.Burst.magic`: soft white magical stars (signature look)
 - `presets.Burst.fireworks`: energetic additive circles with warm glow
 - `presets.Images.showcase`: tuned for icon/image particles
+- `presets.Ambient.snow`: gentle snowfall — soft white circles drifting downward, low rate, long life, near-zero gravity
 
 ## API Surface to Keep Stable
 
@@ -201,11 +271,20 @@ From `src/index.ts`:
 
 - Core classes (`Particular`, `Emitter`, `Particle`)
 - Renderers (`CanvasRenderer`, `WebGLRenderer`)
-- React/utility APIs (`ParticularWrapper`, `useParticles`, `createParticles`)
+- React/utility APIs (`ParticularWrapper`, `useParticles`, `useScreensaver`, `createParticles`, `startScreensaver`)
 - `presets`
 - Public types
 
 Avoid breaking these exports without explicit migration/update work.
+
+## Screensaver API
+
+`startScreensaver()` (vanilla) and `useScreensaver()` (React) provide a one-call setup for ambient full-viewport particle effects (e.g. snowfall).
+
+- `startScreensaver({ canvas, preset?, config?, renderer?, autoResize? })` — creates a `createParticles` instance with a single emitter at top-center, `spawnWidth` set to viewport width, continuous mode. Returns `{ engine, controller, destroy }`.
+- `useScreensaver({ preset?, config?, renderer?, autoResize?, backgroundLayer? })` — React hook wrapping `startScreensaver`. Returns `{ canvasRef, canvasStyle, destroy }`.
+- On resize, the emitter's `spawnWidth` and `point.x` are updated to match the new viewport.
+- Default preset: `snow`.
 
 ## Known Guidance for Future Changes
 
@@ -231,6 +310,7 @@ Story files:
 - `src/Particular.stories.tsx` — Burst presets, shapes, effects, performance.
 - `src/Attractors.stories.tsx` — Attractor physics (mouse-following attraction/repulsion).
 - `src/MouseForce.stories.tsx` — Mouse-velocity directional force (sweep/brush effect).
+- `src/Screensaver.stories.tsx` — Screensaver mode (Snow, HeavySnow, GentleAmbient).
 
 Conventions:
 

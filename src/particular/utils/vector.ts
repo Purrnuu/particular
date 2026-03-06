@@ -11,18 +11,19 @@ export default class Vector {
     return Math.sqrt(this.x * this.x + this.y * this.y);
   }
 
-  add(vector: { x: number; y: number }): void {
-    this.x += vector.x;
-    this.y += vector.y;
+  add(vector: { x: number; y: number }, scale = 1): void {
+    this.x += vector.x * scale;
+    this.y += vector.y * scale;
   }
 
-  addFriction(friction: number): void {
-    this.x -= friction * this.x;
-    this.y -= friction * this.y;
+  addFriction(friction: number, dt = 1): void {
+    const factor = Math.pow(1 - friction, dt);
+    this.x *= factor;
+    this.y *= factor;
   }
 
-  addGravity(gravity: number): void {
-    this.y += gravity;
+  addGravity(gravity: number, dt = 1): void {
+    this.y += gravity * dt;
   }
 
   subtract(vector: { x: number; y: number }): void {

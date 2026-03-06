@@ -17,8 +17,8 @@ export {
   getParticlesBackgroundLayerStyle,
   particlesDefaultZIndex,
 } from './particular/canvasStyles';
-export { createParticles } from './particular/convenience';
-export { useParticles } from './particular/useParticles';
+export { createParticles, startScreensaver } from './particular/convenience';
+export { useParticles, useScreensaver } from './particular/useParticles';
 export { showFPSOverlay } from './particular/devFPSOverlay';
 
 // Export types
@@ -42,6 +42,13 @@ export type {
   BurstOptions,
   CreateParticlesOptions,
   ParticlesController,
+  ScreensaverOptions,
+  ScreensaverController,
 } from './particular/convenience';
-export type { UseParticlesOptions, UseParticlesResult } from './particular/useParticles';
+export type {
+  UseParticlesOptions,
+  UseParticlesResult,
+  UseScreensaverOptions,
+  UseScreensaverResult,
+} from './particular/useParticles';
 export type { FPSOverlayOptions, FPSOverlayController } from './particular/devFPSOverlay';

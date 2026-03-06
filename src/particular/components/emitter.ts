@@ -13,16 +13,21 @@ export default class Emitter {
   isEmitting = false;
   particular: Particular | null = null;
   lifeCycle = 0;
+  private emitAccumulator = 0;
 
   constructor(configuration: EmitterConfiguration) {
     this.configuration = configuration;
   }
 
-  emit(): void {
+  emit(dt = 1): void {
     if (!this.isEmitting) return;
     if (!this.particular) return;
-    
-    for (let j = 0; j < this.configuration.rate; j++) {
+
+    this.emitAccumulator += this.configuration.rate * dt;
+    const count = Math.floor(this.emitAccumulator);
+    this.emitAccumulator -= count;
+
+    for (let j = 0; j < count; j++) {
       const particle = this.createParticle();
       const icon = this.configuration.icons.length > 0
         ? (sample(this.configuration.icons) ?? this.configuration.icons[0]!)
@@ -36,7 +41,7 @@ export default class Emitter {
     this.particular = particular;
   }
 
-  update(boundsX: number, boundsY: number, forces?: ForceSource[]): void {
+  update(boundsX: number, boundsY: number, forces?: ForceSource[], dt = 1): void {
     const currentParticles: Particle[] = [];
 
     forEach(this.particles, (particle) => {
@@ -44,7 +49,7 @@ export default class Emitter {
       if (pos.x < 0 || pos.x > boundsX || pos.y < -boundsY || pos.y > boundsY) {
         const hasTrail = particle.trail && particle.trailSegments.length > 0;
         if (hasTrail) {
-          particle.advanceTrail();
+          particle.advanceTrail(dt);
           if (particle.trailSegments.length > 0) {
             currentParticles.push(particle);
           } else {
@@ -56,7 +61,7 @@ export default class Emitter {
         return;
       }
 
-      particle.update(forces);
+      particle.update(forces, dt);
       const trailActive = particle.trail && particle.trailSegments.length > 0;
       const fadedOut = particle.alpha <= 0 && particle.lifeTick >= particle.lifeTime;
 
@@ -88,6 +93,8 @@ export default class Emitter {
       gravity,
       scaleStep,
       fadeTime,
+      spawnWidth,
+      spawnHeight,
       shape,
       blendMode,
       glow,
@@ -103,10 +110,13 @@ export default class Emitter {
       shadowOffsetY,
       shadowColor,
       shadowAlpha,
+      colors,
     } = this.configuration;
     const angle = velocity.getAngle() + spread - Math.random() * spread * 2;
     const magnitude = velocity.getMagnitude();
-    const newPoint = new Vector(point.x, point.y);
+    const offsetX = spawnWidth > 0 ? (Math.random() - 0.5) * spawnWidth : 0;
+    const offsetY = spawnHeight > 0 ? (Math.random() - 0.5) * spawnHeight : 0;
+    const newPoint = new Vector(point.x + offsetX, point.y + offsetY);
     const newVelocity = Vector.fromAngle(angle, magnitude);
 
     const size = getRandomInt(sizeMin, sizeMax);
@@ -141,6 +151,7 @@ export default class Emitter {
       shadowOffsetY,
       shadowColor,
       shadowAlpha,
+      colors,
     });
   }
 

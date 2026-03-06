@@ -68,6 +68,13 @@ export interface ParticleConfig extends ShapeConfig {
   fadeTime?: number;
   gravity?: number;
   scaleStep?: number;
+  /** Width of the rectangular spawn area centered on the emitter point. Default 0 (point spawn). */
+  spawnWidth?: number;
+  /** Height of the rectangular spawn area centered on the emitter point. Default 0 (point spawn). */
+  spawnHeight?: number;
+  /** Color palette for particles. When provided, particles pick a random color from this array
+   *  instead of using randomcolor(). Empty array = use randomcolor() fallback. */
+  colors?: string[];
 }
 
 export interface EmitterConfiguration extends ParticleConfig {
@@ -84,6 +91,9 @@ export interface EmitterConfiguration extends ParticleConfig {
   gravity: number;
   scaleStep: number;
   fadeTime: number;
+  spawnWidth: number;
+  spawnHeight: number;
+  colors: string[];
 }
 
 export interface ParticleConstructorParams extends ShapeConfig {
@@ -96,6 +106,7 @@ export interface ParticleConstructorParams extends ShapeConfig {
   gravity: number;
   scaleStep: number;
   fadeTime: number;
+  colors?: string[];
 }
 
 export interface BurstSettings {
@@ -115,6 +126,16 @@ export interface AttractorConfig {
   y: number;
   strength?: number;
   radius?: number;
+  // Visual rendering
+  visible?: boolean;
+  icon?: string | HTMLImageElement;
+  size?: number;
+  color?: string;
+  shape?: ParticleShape;
+  glow?: boolean;
+  glowSize?: number;
+  glowColor?: string;
+  glowAlpha?: number;
 }
 
 export interface ForceSource {

@@ -747,7 +747,17 @@ export default class WebGLRenderer {
   onUpdateAfter = (): void => {
     if (!this.gl || !this.particular || !this.program) return;
 
-    const particles = this.expandParticlesWithTrails(this.particular.getAllParticles());
+    const baseParticles = this.particular.getAllParticles();
+
+    // Append visible attractor drawables after particles so they render on top
+    const attractorDrawables: Particle[] = [];
+    for (const attractor of this.particular.attractors) {
+      if (attractor.visible) {
+        attractorDrawables.push(attractor.toDrawable());
+      }
+    }
+
+    const particles = this.expandParticlesWithTrails(baseParticles).concat(attractorDrawables);
     const pixelRatio = this.particular.pixelRatio;
     const w = this.target.width || this.particular.width;
     const h = this.target.height || this.particular.height;

@@ -35,9 +35,10 @@ export default class MouseForce implements ForceSource {
     this.position.y = y;
   }
 
-  decay(): void {
-    this.velocity.x *= this.damping;
-    this.velocity.y *= this.damping;
+  decay(dt = 1): void {
+    const factor = Math.pow(this.damping, dt);
+    this.velocity.x *= factor;
+    this.velocity.y *= factor;
   }
 
   getForce(particlePosition: Vector): Vector {

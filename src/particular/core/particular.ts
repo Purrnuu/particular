@@ -29,6 +29,7 @@ export default class Particular implements IEventDispatcher {
   pixelRatio = 2;
   continuous = false;
   private animateRequest: number | null = null;
+  private lastTimestamp = -1;
 
   addEventListener!: EventDispatcher['addEventListener'];
   removeEventListener!: EventDispatcher['removeEventListener'];
@@ -99,28 +100,36 @@ export default class Particular implements IEventDispatcher {
     }
   }
 
-  update = (): void => {
+  update = (timestamp?: DOMHighResTimeStamp): void => {
     this.animateRequest = window.requestAnimationFrame(this.update);
     if (this.isOn) {
+      let dt = 1;
+      if (timestamp !== undefined && this.lastTimestamp >= 0) {
+        dt = Math.min((timestamp - this.lastTimestamp) * 60 / 1000, 3);
+      }
+      if (timestamp !== undefined) {
+        this.lastTimestamp = timestamp;
+      }
+
       // General update event for renderers and other tidbits
       this.dispatchEvent(Particular.UPDATE);
 
       // Update all state from emitters and particles
-      this.updateEmitters();
+      this.updateEmitters(dt);
 
       this.dispatchEvent(Particular.UPDATE_AFTER);
     }
   };
 
-  updateEmitters(): void {
+  updateEmitters(dt = 1): void {
     if (this.getCount() <= this.maxCount) {
       forEach(this.emitters, (emitter) => {
-        emitter.emit();
+        emitter.emit(dt);
       });
     }
 
     for (const mf of this.mouseForces) {
-      mf.decay();
+      mf.decay(dt);
     }
 
     const forces: ForceSource[] =
@@ -129,7 +138,7 @@ export default class Particular implements IEventDispatcher {
         : this.attractors;
 
     forEach(this.emitters, (emitter) => {
-      emitter.update(this.width, this.height, forces);
+      emitter.update(this.width, this.height, forces, dt);
     });
 
     this.emitters = filter(this.emitters, (emitter) => {

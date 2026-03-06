@@ -85,6 +85,7 @@ export default class Particle {
     shadowOffsetY = 3,
     shadowColor = '#000000',
     shadowAlpha = 0.3,
+    colors,
   }: ParticleConstructorParams) {
     this.position = point ?? new Vector(0, 0);
     this.shadowLightOrigin = new Vector(this.position.x, this.position.y);
@@ -107,7 +108,9 @@ export default class Particle {
     this.fadeTime = fadeTime;
 
     this.alpha = 1;
-    this.color = randomcolor();
+    this.color = colors && colors.length > 0
+      ? colors[Math.floor(Math.random() * colors.length)]!
+      : randomcolor();
     
     // Shape configuration
     this.shape = shape;
@@ -133,29 +136,29 @@ export default class Particle {
     this.dispatch('PARTICLE_CREATED', this);
   }
 
-  update(forces?: ForceSource[]): void {
-    this.updateTrail(true);
-    this.velocity.add(this.acceleration);
-    this.velocity.addFriction(this.friction);
-    this.velocity.addGravity(this.gravity);
+  update(forces?: ForceSource[], dt = 1): void {
+    this.updateTrail(true, dt);
+    this.velocity.add(this.acceleration, dt);
+    this.velocity.addFriction(this.friction, dt);
+    this.velocity.addGravity(this.gravity, dt);
     if (forces) {
       for (const force of forces) {
-        this.velocity.add(force.getForce(this.position));
+        this.velocity.add(force.getForce(this.position), dt);
       }
     }
-    this.position.add(this.velocity);
-    this.rotation = this.rotation + this.rotationVelocity;
-    this.factoredSize = Math.min(this.factoredSize + this.scaleStep, this.size);
+    this.position.add(this.velocity, dt);
+    this.rotation = this.rotation + this.rotationVelocity * dt;
+    this.factoredSize = Math.min(this.factoredSize + this.scaleStep * dt, this.size);
     this.alpha = Math.min(1, Math.max((this.lifeTime - this.lifeTick) / this.fadeTime, 0));
-    this.lifeTick++;
+    this.lifeTick += dt;
     this.dispatch('PARTICLE_UPDATE', this);
   }
 
-  advanceTrail(): void {
-    this.updateTrail(false);
+  advanceTrail(dt = 1): void {
+    this.updateTrail(false, dt);
   }
 
-  private updateTrail(addCurrentPoint: boolean): void {
+  private updateTrail(addCurrentPoint: boolean, dt = 1): void {
     if (!this.trail || this.trailLength <= 0) {
       if (this.trailSegments.length) this.trailSegments = [];
       return;
@@ -163,7 +166,7 @@ export default class Particle {
 
     const maxAge = Math.max(1, Math.floor(this.trailLength));
     this.trailSegments = this.trailSegments
-      .map((segment) => ({ ...segment, age: segment.age + 1 }))
+      .map((segment) => ({ ...segment, age: segment.age + dt }))
       .filter((segment) => segment.age < maxAge);
 
     if (!addCurrentPoint) return;

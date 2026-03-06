@@ -53,6 +53,18 @@ export default class CanvasRenderer {
   };
 
   onUpdateAfter = (): void => {
+    // Draw visible attractors on top of particles
+    if (this.particular) {
+      for (const attractor of this.particular.attractors) {
+        if (!attractor.visible) continue;
+        const drawable = attractor.toDrawable();
+        if (drawable.image && drawable.image instanceof Image) {
+          this.drawImage(drawable);
+        } else {
+          this.drawBasicElement(drawable);
+        }
+      }
+    }
     this.context.restore();
   };
 

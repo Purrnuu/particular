@@ -3,12 +3,14 @@ import type { CSSProperties, MouseEvent as ReactMouseEvent, MutableRefObject } f
 
 import {
   createParticles,
+  startScreensaver,
   type BurstOptions,
   type CreateParticlesOptions,
   type ParticlesController,
+  type ScreensaverController,
 } from './convenience';
 import { getParticlesBackgroundLayerStyle } from './canvasStyles';
-import type { FullParticularConfig } from './types';
+import type { FullParticularConfig, RendererType } from './types';
 import type { PresetName } from './presets';
 
 export interface UseParticlesOptions {
@@ -122,5 +124,73 @@ export function useParticles({
     controller: controllerRef.current,
     burst,
     burstFromEvent,
+  };
+}
+
+/* ─── useScreensaver ─── */
+
+export interface UseScreensaverOptions {
+  preset?: PresetName;
+  config?: Partial<FullParticularConfig>;
+  renderer?: RendererType;
+  autoResize?: boolean;
+  /** When true (default), result includes canvasStyle for a full-viewport click-through canvas. */
+  backgroundLayer?: boolean;
+}
+
+export interface UseScreensaverResult {
+  canvasRef: MutableRefObject<HTMLCanvasElement | null>;
+  /** Full-viewport click-through style when backgroundLayer is true; use as <canvas style={canvasStyle} /> */
+  canvasStyle: CSSProperties | undefined;
+  destroy: () => void;
+}
+
+/**
+ * React hook for a one-call screensaver setup.
+ * Wraps `startScreensaver()` in a `useEffect`.
+ */
+export function useScreensaver({
+  preset = 'snow',
+  config,
+  renderer = 'canvas',
+  autoResize = true,
+  backgroundLayer = true,
+}: UseScreensaverOptions = {}): UseScreensaverResult {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const screensaverRef = useRef<ScreensaverController | null>(null);
+
+  const canvasStyle = backgroundLayer
+    ? getParticlesBackgroundLayerStyle(config?.zIndex)
+    : undefined;
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const screensaver = startScreensaver({
+      canvas,
+      preset,
+      config,
+      renderer,
+      autoResize,
+    });
+
+    screensaverRef.current = screensaver;
+
+    return () => {
+      screensaver.destroy();
+      screensaverRef.current = null;
+    };
+  }, [preset, config, renderer, autoResize]);
+
+  const destroy = useCallback(() => {
+    screensaverRef.current?.destroy();
+    screensaverRef.current = null;
+  }, []);
+
+  return {
+    canvasRef,
+    canvasStyle,
+    destroy,
   };
 }
