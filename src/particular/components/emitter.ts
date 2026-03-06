@@ -4,9 +4,8 @@ import Vector from '../utils/vector';
 import Particle from './particle';
 import { getRandomInt } from '../utils/math';
 import { destroy } from '../utils/genericUtils';
-import type { EmitterConfiguration } from '../types';
+import type { EmitterConfiguration, ForceSource } from '../types';
 import type Particular from '../core/particular';
-import type Attractor from './attractor';
 
 export default class Emitter {
   configuration: EmitterConfiguration;
@@ -37,7 +36,7 @@ export default class Emitter {
     this.particular = particular;
   }
 
-  update(boundsX: number, boundsY: number, attractors?: Attractor[]): void {
+  update(boundsX: number, boundsY: number, forces?: ForceSource[]): void {
     const currentParticles: Particle[] = [];
 
     forEach(this.particles, (particle) => {
@@ -57,7 +56,7 @@ export default class Emitter {
         return;
       }
 
-      particle.update(attractors);
+      particle.update(forces);
       const trailActive = particle.trail && particle.trailSegments.length > 0;
       const fadedOut = particle.alpha <= 0 && particle.lifeTick >= particle.lifeTime;
 
@@ -85,6 +84,7 @@ export default class Emitter {
       sizeMin,
       sizeMax,
       velocityMultiplier,
+      particleLife,
       gravity,
       scaleStep,
       fadeTime,
@@ -122,6 +122,7 @@ export default class Emitter {
       acceleration,
       friction,
       size,
+      particleLife,
       gravity,
       scaleStep,
       fadeTime,

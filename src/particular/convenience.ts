@@ -1,5 +1,6 @@
 import Emitter from './components/emitter';
 import Attractor from './components/attractor';
+import MouseForce from './components/mouseForce';
 import { processImages } from './components/icons';
 import { configureParticular, configureParticle } from './core/defaults';
 import Particular from './core/particular';
@@ -7,7 +8,7 @@ import { getPreset, type PresetName } from './presets';
 import CanvasRenderer from './renderers/canvasRenderer';
 import WebGLRenderer from './renderers/webglRenderer';
 import Vector from './utils/vector';
-import type { FullParticularConfig, RendererType, AttractorConfig } from './types';
+import type { FullParticularConfig, RendererType, AttractorConfig, MouseForceConfig } from './types';
 
 export interface BurstOptions extends Partial<FullParticularConfig> {
   x: number;
@@ -29,6 +30,8 @@ export interface ParticlesController {
   burst: (options: BurstOptions) => Emitter;
   addAttractor: (config: AttractorConfig) => Attractor;
   removeAttractor: (attractor: Attractor) => void;
+  addMouseForce: (config?: MouseForceConfig) => MouseForce;
+  removeMouseForce: (mouseForce: MouseForce) => void;
   attachClickBurst: (
     target?: EventTarget,
     overrides?: Partial<FullParticularConfig>,
@@ -126,6 +129,24 @@ export function createParticles({
     engine.removeAttractor(attractor);
   };
 
+  const addMouseForce = (config: MouseForceConfig = {}): MouseForce => {
+    const mouseForce = new MouseForce(
+      config.x,
+      config.y,
+      config.strength,
+      config.radius,
+      config.damping,
+      config.maxSpeed,
+      config.falloff,
+    );
+    engine.addMouseForce(mouseForce);
+    return mouseForce;
+  };
+
+  const removeMouseForce = (mouseForce: MouseForce): void => {
+    engine.removeMouseForce(mouseForce);
+  };
+
   const destroy = () => {
     for (const cleanup of cleanups) cleanup();
     engine.destroy();
@@ -136,6 +157,8 @@ export function createParticles({
     burst,
     addAttractor,
     removeAttractor,
+    addMouseForce,
+    removeMouseForce,
     attachClickBurst,
     destroy,
   };

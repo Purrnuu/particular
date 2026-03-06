@@ -130,6 +130,9 @@ Important behavior:
 - `Particle.shadowLightOrigin` stores spawn/burst origin for directional shadowing.
 - `Emitter.createParticle()` forwards all glow/shadow fields from emitter config.
 - Particle alpha decays over time and is clamped to valid range.
+- **`life` vs `particleLife`**: These are two distinct config fields:
+  - `life` (default 30): emitter emission budget — total number of particles the emitter creates before it stops emitting (burst mode only; ignored in continuous mode).
+  - `particleLife` (default 100): individual particle lifetime in ticks (~frames at 60fps). Each particle lives for a randomized duration in the range `[particleLife × 0.75, particleLife]`. Fading begins at `lifeTime - fadeTime` ticks. To make particles live longer, increase `particleLife`.
 
 ## Attractors
 
@@ -146,7 +149,37 @@ Attractors are engine-level point forces that affect all particles regardless of
 - Config type: `AttractorConfig` in `types.ts` (`x`, `y`, `strength?`, `radius?`).
 - Exported from both `index.ts` and `standalone.ts`.
 
-Force flow: `Particular.updateEmitters()` → `Emitter.update(bounds, attractors)` → `Particle.update(attractors)`.
+Force flow: `Particular.updateEmitters()` → `Emitter.update(bounds, forces)` → `Particle.update(forces)`.
+
+## MouseForce
+
+File: `src/particular/components/mouseForce.ts`
+
+MouseForce applies directional force based on mouse velocity, creating a brushing/sweeping effect on nearby particles. Unlike attractors (which pull/push radially toward a point), MouseForce pushes particles in the direction of mouse movement.
+
+- `MouseForce(x, y, strength?, radius?, damping?, maxSpeed?, falloff?)` — defaults: strength 1, radius 200, damping 0.85, maxSpeed 10, falloff 1.
+- `updatePosition(x, y)` — call on mousemove; computes velocity from position delta.
+- `decay()` — called once per frame by engine; multiplies velocity by damping so force fades after mouse stops.
+- `getForce(particlePosition)` — returns directional force Vector: `strength × (1 - dist/radius)^falloff × min(speed, maxSpeed)/maxSpeed`, in the direction of mouse velocity. Zero outside radius.
+- `falloff` controls the force locality curve:
+  - `< 1` (e.g. 0.3): broad, wind-like — force stays strong far from mouse, big radius + low falloff = global wind.
+  - `= 1`: linear falloff (default) — balanced sweep.
+  - `> 1` (e.g. 3): sharp, localized turbulence — force concentrated near mouse cursor.
+- Engine manages via `addMouseForce()` / `removeMouseForce()`, same pattern as attractors.
+- Convenience API: `controller.addMouseForce(config?)` / `controller.removeMouseForce(mouseForce)`.
+- Config type: `MouseForceConfig` in `types.ts` (`x?`, `y?`, `strength?`, `radius?`, `damping?`, `maxSpeed?`, `falloff?`).
+
+## ForceSource Interface
+
+Both `Attractor` and `MouseForce` implement the `ForceSource` interface from `types.ts`:
+
+```typescript
+interface ForceSource {
+  getForce(particlePosition: Vector): Vector;
+}
+```
+
+`Particle.update()` and `Emitter.update()` accept `ForceSource[]`, allowing attractors and mouse forces to be combined transparently. The engine merges `[...attractors, ...mouseForces]` each frame.
 
 ## Preset Philosophy (Current)
 
@@ -197,6 +230,7 @@ Story files:
 
 - `src/Particular.stories.tsx` — Burst presets, shapes, effects, performance.
 - `src/Attractors.stories.tsx` — Attractor physics (mouse-following attraction/repulsion).
+- `src/MouseForce.stories.tsx` — Mouse-velocity directional force (sweep/brush effect).
 
 Conventions:
 

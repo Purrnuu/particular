@@ -5,7 +5,8 @@ import { defaultParticular } from './defaults';
 import { destroy } from '../utils/genericUtils';
 import type Emitter from '../components/emitter';
 import type Attractor from '../components/attractor';
-import type { ParticularConfig } from '../types';
+import type MouseForce from '../components/mouseForce';
+import type { ParticularConfig, ForceSource } from '../types';
 
 interface Renderer {
   init(particular: Particular, pixelRatio: number): void;
@@ -20,6 +21,7 @@ export default class Particular implements IEventDispatcher {
   isOn = false;
   emitters: Emitter[] = [];
   attractors: Attractor[] = [];
+  mouseForces: MouseForce[] = [];
   renderers: Renderer[] = [];
   maxCount: number = defaultParticular.maxCount;
   width = 0;
@@ -86,6 +88,17 @@ export default class Particular implements IEventDispatcher {
     }
   }
 
+  addMouseForce(mouseForce: MouseForce): void {
+    this.mouseForces.push(mouseForce);
+  }
+
+  removeMouseForce(mouseForce: MouseForce): void {
+    const index = this.mouseForces.indexOf(mouseForce);
+    if (index !== -1) {
+      this.mouseForces.splice(index, 1);
+    }
+  }
+
   update = (): void => {
     this.animateRequest = window.requestAnimationFrame(this.update);
     if (this.isOn) {
@@ -106,8 +119,17 @@ export default class Particular implements IEventDispatcher {
       });
     }
 
+    for (const mf of this.mouseForces) {
+      mf.decay();
+    }
+
+    const forces: ForceSource[] =
+      this.mouseForces.length > 0
+        ? [...this.attractors, ...this.mouseForces]
+        : this.attractors;
+
     forEach(this.emitters, (emitter) => {
-      emitter.update(this.width, this.height, this.attractors);
+      emitter.update(this.width, this.height, forces);
     });
 
     this.emitters = filter(this.emitters, (emitter) => {
@@ -146,6 +168,7 @@ export default class Particular implements IEventDispatcher {
     destroy(this.renderers);
     destroy(this.emitters);
     this.attractors = [];
+    this.mouseForces = [];
   }
 }
 

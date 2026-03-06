@@ -55,7 +55,11 @@ export interface ParticularConfig {
 
 export interface ParticleConfig extends ShapeConfig {
   rate?: number;
+  /** Emitter emission budget — total number of particles the emitter will create before stopping (burst mode only). */
   life?: number;
+  /** Individual particle lifetime in ticks (~frames). Controls how long each particle lives before being removed.
+   *  Fading begins at `particleLife - fadeTime` ticks. Default 100. */
+  particleLife?: number;
   velocity?: Vector;
   spread?: number;
   sizeMin?: number;
@@ -72,6 +76,7 @@ export interface EmitterConfiguration extends ParticleConfig {
   icons: (string | HTMLImageElement)[];
   rate: number;
   life: number;
+  particleLife: number;
   spread: number;
   sizeMin: number;
   sizeMax: number;
@@ -87,6 +92,7 @@ export interface ParticleConstructorParams extends ShapeConfig {
   acceleration?: Vector;
   friction?: number;
   size?: number;
+  particleLife: number;
   gravity: number;
   scaleStep: number;
   fadeTime: number;
@@ -109,6 +115,24 @@ export interface AttractorConfig {
   y: number;
   strength?: number;
   radius?: number;
+}
+
+export interface ForceSource {
+  getForce(particlePosition: Vector): Vector;
+}
+
+export interface MouseForceConfig {
+  x?: number;
+  y?: number;
+  strength?: number;
+  radius?: number;
+  damping?: number;
+  maxSpeed?: number;
+  /** Falloff exponent controlling force locality. Default 1 (linear).
+   *  < 1 = broad/wind-like (force stays strong far from mouse).
+   *  = 1 = linear falloff (default).
+   *  > 1 = sharp/localized (force concentrated near mouse). */
+  falloff?: number;
 }
 
 export type RendererType = 'canvas' | 'webgl';

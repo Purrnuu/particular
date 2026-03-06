@@ -3,9 +3,8 @@ import randomcolor from 'randomcolor';
 import Vector from '../utils/vector';
 import { getRandomInt } from '../utils/math';
 import EventDispatcher from '../utils/eventDispatcher';
-import type { ParticleConstructorParams, ParticleShape, BlendMode } from '../types';
+import type { ParticleConstructorParams, ParticleShape, BlendMode, ForceSource } from '../types';
 import type Particular from '../core/particular';
-import type Attractor from './attractor';
 
 export interface TrailSegment {
   x: number;
@@ -67,6 +66,7 @@ export default class Particle {
     acceleration,
     friction,
     size,
+    particleLife,
     gravity,
     scaleStep,
     fadeTime,
@@ -98,7 +98,7 @@ export default class Particle {
 
     this.factoredSize = 1;
 
-    this.lifeTime = getRandomInt(75, 100);
+    this.lifeTime = getRandomInt(Math.round(particleLife * 0.75), particleLife);
     this.lifeTick = 0;
     this.size = size ?? getRandomInt(5, 15);
 
@@ -133,14 +133,14 @@ export default class Particle {
     this.dispatch('PARTICLE_CREATED', this);
   }
 
-  update(attractors?: Attractor[]): void {
+  update(forces?: ForceSource[]): void {
     this.updateTrail(true);
     this.velocity.add(this.acceleration);
     this.velocity.addFriction(this.friction);
     this.velocity.addGravity(this.gravity);
-    if (attractors) {
-      for (const attractor of attractors) {
-        this.velocity.add(attractor.getForce(this.position));
+    if (forces) {
+      for (const force of forces) {
+        this.velocity.add(force.getForce(this.position));
       }
     }
     this.position.add(this.velocity);

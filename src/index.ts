@@ -5,6 +5,7 @@ export { default as Vector } from './particular/utils/vector';
 export { default as Emitter } from './particular/components/emitter';
 export { default as Particle } from './particular/components/particle';
 export { default as Attractor } from './particular/components/attractor';
+export { default as MouseForce } from './particular/components/mouseForce';
 export { default as CanvasRenderer } from './particular/renderers/canvasRenderer';
 export {
   default as WebGLRenderer,
@@ -32,6 +33,8 @@ export type {
   BlendMode,
   ShapeConfig,
   AttractorConfig,
+  MouseForceConfig,
+  ForceSource,
   RendererType,
 } from './particular/types';
 export type { PresetName } from './particular/presets';

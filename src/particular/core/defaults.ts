@@ -18,6 +18,7 @@ export const defaultParticular: Required<ParticularConfig> = {
 export const defaultParticle: Required<ParticleConfig> = {
   rate: 8,
   life: 30,
+  particleLife: 100,
   velocity: Vector.fromAngle(-90, 5),
   spread: Math.PI / 1.3,
   sizeMin: 5,
