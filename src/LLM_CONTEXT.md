@@ -131,6 +131,23 @@ Important behavior:
 - `Emitter.createParticle()` forwards all glow/shadow fields from emitter config.
 - Particle alpha decays over time and is clamped to valid range.
 
+## Attractors
+
+File: `src/particular/components/attractor.ts`
+
+Attractors are engine-level point forces that affect all particles regardless of emitter. They apply force during each particle's update step (after gravity, before position integration).
+
+- `Attractor(x, y, strength?, radius?)` — position in engine coordinates, strength default 1, radius default 200.
+- `getForce(particlePosition)` — returns a force Vector with linear falloff (`1 - dist/radius`), zero outside radius.
+- Negative strength = repulsion.
+- Engine manages attractors via `addAttractor()` / `removeAttractor()`, same pattern as emitters.
+- Convenience API: `controller.addAttractor(config)` / `controller.removeAttractor(attractor)`.
+- Coordinates: attractors work in engine space (screen coords / pixelRatio). The convenience `addAttractor` takes engine coordinates directly (unlike `burst` which divides by pixelRatio internally).
+- Config type: `AttractorConfig` in `types.ts` (`x`, `y`, `strength?`, `radius?`).
+- Exported from both `index.ts` and `standalone.ts`.
+
+Force flow: `Particular.updateEmitters()` → `Emitter.update(bounds, attractors)` → `Particle.update(attractors)`.
+
 ## Preset Philosophy (Current)
 
 File: `src/particular/presets.ts`
@@ -172,11 +189,18 @@ Avoid breaking these exports without explicit migration/update work.
   - renderers
   - Storybook controls
   - presets (if relevant)
+- When building a fundamentally new feature (e.g. attractors, new physics, new visual effects), also build a dedicated Storybook story to showcase and verify it interactively. New features should be demonstrable in Storybook before they're considered complete.
 
 ## Storybook
 
-Story file: `src/Particular.stories.tsx`
+Story files:
+
+- `src/Particular.stories.tsx` — Burst presets, shapes, effects, performance.
+- `src/Attractors.stories.tsx` — Attractor physics (mouse-following attraction/repulsion).
+
+Conventions:
 
 - Stories are intentionally compact.
 - Controls expose key renderer/effect settings.
 - Use stories to verify parity between `canvas` and `webgl`.
+- New fundamental features get their own story file to showcase behavior interactively.

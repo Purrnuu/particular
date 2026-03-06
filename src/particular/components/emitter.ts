@@ -6,6 +6,7 @@ import { getRandomInt } from '../utils/math';
 import { destroy } from '../utils/genericUtils';
 import type { EmitterConfiguration } from '../types';
 import type Particular from '../core/particular';
+import type Attractor from './attractor';
 
 export default class Emitter {
   configuration: EmitterConfiguration;
@@ -36,7 +37,7 @@ export default class Emitter {
     this.particular = particular;
   }
 
-  update(boundsX: number, boundsY: number): void {
+  update(boundsX: number, boundsY: number, attractors?: Attractor[]): void {
     const currentParticles: Particle[] = [];
 
     forEach(this.particles, (particle) => {
@@ -56,7 +57,7 @@ export default class Emitter {
         return;
       }
 
-      particle.update();
+      particle.update(attractors);
       const trailActive = particle.trail && particle.trailSegments.length > 0;
       const fadedOut = particle.alpha <= 0 && particle.lifeTick >= particle.lifeTime;
 

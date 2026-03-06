@@ -104,4 +104,11 @@ export interface FullParticularConfig extends ParticularConfig, ParticleConfig {
   renderer?: RendererType;
 }
 
+export interface AttractorConfig {
+  x: number;
+  y: number;
+  strength?: number;
+  radius?: number;
+}
+
 export type RendererType = 'canvas' | 'webgl';

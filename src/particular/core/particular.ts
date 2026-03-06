@@ -4,6 +4,7 @@ import EventDispatcher, { type IEventDispatcher } from '../utils/eventDispatcher
 import { defaultParticular } from './defaults';
 import { destroy } from '../utils/genericUtils';
 import type Emitter from '../components/emitter';
+import type Attractor from '../components/attractor';
 import type { ParticularConfig } from '../types';
 
 interface Renderer {
@@ -18,6 +19,7 @@ export default class Particular implements IEventDispatcher {
 
   isOn = false;
   emitters: Emitter[] = [];
+  attractors: Attractor[] = [];
   renderers: Renderer[] = [];
   maxCount: number = defaultParticular.maxCount;
   width = 0;
@@ -73,6 +75,17 @@ export default class Particular implements IEventDispatcher {
     this.start();
   }
 
+  addAttractor(attractor: Attractor): void {
+    this.attractors.push(attractor);
+  }
+
+  removeAttractor(attractor: Attractor): void {
+    const index = this.attractors.indexOf(attractor);
+    if (index !== -1) {
+      this.attractors.splice(index, 1);
+    }
+  }
+
   update = (): void => {
     this.animateRequest = window.requestAnimationFrame(this.update);
     if (this.isOn) {
@@ -94,7 +107,7 @@ export default class Particular implements IEventDispatcher {
     }
 
     forEach(this.emitters, (emitter) => {
-      emitter.update(this.width, this.height);
+      emitter.update(this.width, this.height, this.attractors);
     });
 
     this.emitters = filter(this.emitters, (emitter) => {
@@ -132,6 +145,7 @@ export default class Particular implements IEventDispatcher {
     }
     destroy(this.renderers);
     destroy(this.emitters);
+    this.attractors = [];
   }
 }
 

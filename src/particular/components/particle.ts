@@ -5,6 +5,7 @@ import { getRandomInt } from '../utils/math';
 import EventDispatcher from '../utils/eventDispatcher';
 import type { ParticleConstructorParams, ParticleShape, BlendMode } from '../types';
 import type Particular from '../core/particular';
+import type Attractor from './attractor';
 
 export interface TrailSegment {
   x: number;
@@ -132,11 +133,16 @@ export default class Particle {
     this.dispatch('PARTICLE_CREATED', this);
   }
 
-  update(): void {
+  update(attractors?: Attractor[]): void {
     this.updateTrail(true);
     this.velocity.add(this.acceleration);
     this.velocity.addFriction(this.friction);
     this.velocity.addGravity(this.gravity);
+    if (attractors) {
+      for (const attractor of attractors) {
+        this.velocity.add(attractor.getForce(this.position));
+      }
+    }
     this.position.add(this.velocity);
     this.rotation = this.rotation + this.rotationVelocity;
     this.factoredSize = Math.min(this.factoredSize + this.scaleStep, this.size);

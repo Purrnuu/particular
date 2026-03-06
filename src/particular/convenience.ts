@@ -1,4 +1,5 @@
 import Emitter from './components/emitter';
+import Attractor from './components/attractor';
 import { processImages } from './components/icons';
 import { configureParticular, configureParticle } from './core/defaults';
 import Particular from './core/particular';
@@ -6,7 +7,7 @@ import { getPreset, type PresetName } from './presets';
 import CanvasRenderer from './renderers/canvasRenderer';
 import WebGLRenderer from './renderers/webglRenderer';
 import Vector from './utils/vector';
-import type { FullParticularConfig, RendererType } from './types';
+import type { FullParticularConfig, RendererType, AttractorConfig } from './types';
 
 export interface BurstOptions extends Partial<FullParticularConfig> {
   x: number;
@@ -26,6 +27,8 @@ export interface CreateParticlesOptions {
 export interface ParticlesController {
   engine: Particular;
   burst: (options: BurstOptions) => Emitter;
+  addAttractor: (config: AttractorConfig) => Attractor;
+  removeAttractor: (attractor: Attractor) => void;
   attachClickBurst: (
     target?: EventTarget,
     overrides?: Partial<FullParticularConfig>,
@@ -113,6 +116,16 @@ export function createParticles({
     cleanups.push(cleanupClick);
   }
 
+  const addAttractor = (config: AttractorConfig): Attractor => {
+    const attractor = new Attractor(config.x, config.y, config.strength, config.radius);
+    engine.addAttractor(attractor);
+    return attractor;
+  };
+
+  const removeAttractor = (attractor: Attractor): void => {
+    engine.removeAttractor(attractor);
+  };
+
   const destroy = () => {
     for (const cleanup of cleanups) cleanup();
     engine.destroy();
@@ -121,6 +134,8 @@ export function createParticles({
   return {
     engine,
     burst,
+    addAttractor,
+    removeAttractor,
     attachClickBurst,
     destroy,
   };

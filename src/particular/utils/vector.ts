@@ -25,6 +25,24 @@ export default class Vector {
     this.y += gravity;
   }
 
+  subtract(vector: { x: number; y: number }): void {
+    this.x -= vector.x;
+    this.y -= vector.y;
+  }
+
+  normalize(): void {
+    const mag = this.getMagnitude();
+    if (mag > 0) {
+      this.x /= mag;
+      this.y /= mag;
+    }
+  }
+
+  scale(scalar: number): void {
+    this.x *= scalar;
+    this.y *= scalar;
+  }
+
   getAngle(): number {
     return Math.atan2(this.y, this.x);
   }
