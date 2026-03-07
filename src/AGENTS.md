@@ -143,7 +143,7 @@ Engine-level components that need DOM event wiring (e.g. mouse tracking, touch i
 
 Chain: `ParticleConfig.colors?` → `EmitterConfiguration.colors` → `Particle` constructor.
 
-Built-in palettes: snow (white-offwhite), grayscale, coolBlue (cool blue range), muted (desaturated warm/cool), blue (bold saturated blue), orange (bold saturated orange), green (bold saturated green), finland, usa.
+Built-in palettes: snow (white-offwhite), grayscale, coolBlue (cool blue range), muted (desaturated warm/cool), blue (bold saturated blue), orange (bold saturated orange), green (bold saturated green), meteor (white-hot to deep red), finland, usa.
 
 The `colorPalettes` export from `presets.ts` provides a `Record<string, string[]>` lookup of all named palettes, used by Storybook's `colorPalette` select control.
 
@@ -158,6 +158,7 @@ Curated and intentionally limited. Polish over quantity.
 - `presets.Burst.fireworks` — energetic bloom (circle, additive, glow)
 - `presets.Images.showcase` — tuned for icon/image particles
 - `presets.Ambient.snow` — gentle snowfall (continuous, low rate, long life)
+- `presets.Ambient.meteors` — bright diagonal streaks with glowing trails, accelerating as they fall
 
 ## Trail System
 

@@ -541,6 +541,38 @@ declare const presetRegistry: {
         autoStart: true;
         colors: string[];
     };
+    readonly meteors: {
+        shape: "circle";
+        blendMode: "additive";
+        glow: true;
+        glowSize: number;
+        glowColor: string;
+        glowAlpha: number;
+        shadow: false;
+        trail: true;
+        trailLength: number;
+        trailFade: number;
+        trailShrink: number;
+        rate: number;
+        life: number;
+        particleLife: number;
+        velocity: Vector;
+        spread: number;
+        sizeMin: number;
+        sizeMax: number;
+        velocityMultiplier: number;
+        fadeTime: number;
+        gravity: number;
+        acceleration: number;
+        accelerationSize: number;
+        friction: number;
+        frictionSize: number;
+        scaleStep: number;
+        maxCount: number;
+        continuous: true;
+        autoStart: true;
+        colors: string[];
+    };
 };
 declare const presets: {
     readonly Burst: {
@@ -653,6 +685,39 @@ declare const presets: {
             autoStart: true;
             colors: string[];
         };
+        /** Meteors: bright diagonal streaks with glowing trails, accelerating as they fall */
+        readonly meteors: {
+            shape: "circle";
+            blendMode: "additive";
+            glow: true;
+            glowSize: number;
+            glowColor: string;
+            glowAlpha: number;
+            shadow: false;
+            trail: true;
+            trailLength: number;
+            trailFade: number;
+            trailShrink: number;
+            rate: number;
+            life: number;
+            particleLife: number;
+            velocity: Vector;
+            spread: number;
+            sizeMin: number;
+            sizeMax: number;
+            velocityMultiplier: number;
+            fadeTime: number;
+            gravity: number;
+            acceleration: number;
+            accelerationSize: number;
+            friction: number;
+            frictionSize: number;
+            scaleStep: number;
+            maxCount: number;
+            continuous: true;
+            autoStart: true;
+            colors: string[];
+        };
     };
     readonly Colors: {
         /** White to offwhite range */
@@ -689,6 +754,10 @@ declare const presets: {
         };
         /** American flag red, white, blue */
         readonly usa: {
+            readonly colors: string[];
+        };
+        /** White-hot to deep red meteor palette */
+        readonly meteor: {
             readonly colors: string[];
         };
     };
@@ -772,6 +841,38 @@ declare const presets: {
         glowColor: string;
         glowAlpha: number;
         shadow: false;
+        rate: number;
+        life: number;
+        particleLife: number;
+        velocity: Vector;
+        spread: number;
+        sizeMin: number;
+        sizeMax: number;
+        velocityMultiplier: number;
+        fadeTime: number;
+        gravity: number;
+        acceleration: number;
+        accelerationSize: number;
+        friction: number;
+        frictionSize: number;
+        scaleStep: number;
+        maxCount: number;
+        continuous: true;
+        autoStart: true;
+        colors: string[];
+    };
+    readonly meteors: {
+        shape: "circle";
+        blendMode: "additive";
+        glow: true;
+        glowSize: number;
+        glowColor: string;
+        glowAlpha: number;
+        shadow: false;
+        trail: true;
+        trailLength: number;
+        trailFade: number;
+        trailShrink: number;
         rate: number;
         life: number;
         particleLife: number;

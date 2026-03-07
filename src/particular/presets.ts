@@ -10,6 +10,7 @@ const bluePalette: string[] = ['#003d99', '#0057d9', '#0077ff', '#1a8cff', '#3da
 const orangePalette: string[] = ['#b33600', '#cc4a00', '#e86100', '#f57c00', '#ff9500', '#ffad33'];
 const greenPalette: string[] = ['#006b3f', '#008c51', '#00a85e', '#00c46b', '#1edd80', '#4deda0'];
 const mutedPalette: string[] = ['#d4a373', '#ccd5ae', '#e9edc9', '#a8dadc', '#b5838d', '#e5989b', '#8d99ae'];
+const meteorPalette: string[] = ['#ffffff', '#fff4e0', '#ffd699', '#ff9500', '#ff6b00', '#e84d00'];
 const finlandPalette: string[] = ['#003580', '#002f6c', '#ffffff', '#f8f9fa'];
 const usaPalette: string[] = ['#B22234', '#ffffff', '#3C3B6E'];
 
@@ -134,6 +135,40 @@ const Ambient = {
     autoStart: true,
     colors: snowPalette,
   } satisfies FullParticularConfig,
+
+  /** Meteors: bright diagonal streaks with glowing trails, accelerating as they fall */
+  meteors: {
+    shape: 'circle' as const,
+    blendMode: 'additive' as const,
+    glow: true,
+    glowSize: 12,
+    glowColor: '#ff8c00',
+    glowAlpha: 0.4,
+    shadow: false,
+    trail: true,
+    trailLength: 15,
+    trailFade: 0.5,
+    trailShrink: 0.5,
+    rate: 0.3,
+    life: 999999,
+    particleLife: 250,
+    velocity: Vector.fromAngle(Math.PI * 0.5, 8.5),
+    spread: Math.PI * 0.5,
+    sizeMin: 1,
+    sizeMax: 8,
+    velocityMultiplier: 0.5,
+    fadeTime: 40,
+    gravity: 0.05,
+    acceleration: 0.02,
+    accelerationSize: 0.005,
+    friction: 0,
+    frictionSize: 0,
+    scaleStep: 1,
+    maxCount: 150,
+    continuous: true,
+    autoStart: true,
+    colors: meteorPalette,
+  } satisfies FullParticularConfig,
 } as const;
 
 // ── Spreadable Color Presets ────────────────────────────────────────────────
@@ -157,6 +192,8 @@ const Colors = {
   finland: { colors: finlandPalette },
   /** American flag red, white, blue */
   usa: { colors: usaPalette },
+  /** White-hot to deep red meteor palette */
+  meteor: { colors: meteorPalette },
 } as const;
 
 // ── Registry & Exports ─────────────────────────────────────────────────────
@@ -167,6 +204,7 @@ const presetRegistry = {
   fireworks: Burst.fireworks,
   images: Images.showcase,
   snow: Ambient.snow,
+  meteors: Ambient.meteors,
 } as const;
 
 export const presets = {
@@ -180,6 +218,7 @@ export const presets = {
   fireworks: Burst.fireworks,
   images: Images.showcase,
   snow: Ambient.snow,
+  meteors: Ambient.meteors,
 } as const;
 
 export type PresetName = keyof typeof presetRegistry;
@@ -199,4 +238,5 @@ export const colorPalettes: Record<string, string[]> = {
   blue: bluePalette,
   orange: orangePalette,
   green: greenPalette,
+  meteor: meteorPalette,
 };

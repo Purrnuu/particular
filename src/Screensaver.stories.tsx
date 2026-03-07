@@ -184,3 +184,33 @@ export const GentleAmbient: Story = {
     glowAlpha: 0.15,
   },
 };
+
+const meteor = { ...defaultParticle, ...presets.Ambient.meteors };
+
+export const Meteors: Story = {
+  args: {
+    colorPalette: resolveColorPalette(meteor.colors),
+    shape: meteor.shape,
+    blendMode: meteor.blendMode,
+    glow: meteor.glow,
+    glowSize: meteor.glowSize,
+    glowColor: meteor.glowColor,
+    glowAlpha: meteor.glowAlpha,
+    trail: meteor.trail,
+    trailLength: meteor.trailLength,
+    trailFade: meteor.trailFade,
+    trailShrink: meteor.trailShrink,
+    shadow: meteor.shadow,
+    rate: meteor.rate,
+    sizeMin: meteor.sizeMin,
+    sizeMax: meteor.sizeMax,
+    gravity: meteor.gravity,
+    acceleration: meteor.acceleration,
+    accelerationSize: meteor.accelerationSize,
+    friction: meteor.friction,
+    frictionSize: meteor.frictionSize,
+    particleLife: meteor.particleLife,
+    fadeTime: meteor.fadeTime,
+    maxCount: meteor.maxCount,
+  },
+};

@@ -1814,6 +1814,7 @@ var bluePalette = ["#003d99", "#0057d9", "#0077ff", "#1a8cff", "#3da1ff", "#66b8
 var orangePalette = ["#b33600", "#cc4a00", "#e86100", "#f57c00", "#ff9500", "#ffad33"];
 var greenPalette = ["#006b3f", "#008c51", "#00a85e", "#00c46b", "#1edd80", "#4deda0"];
 var mutedPalette = ["#d4a373", "#ccd5ae", "#e9edc9", "#a8dadc", "#b5838d", "#e5989b", "#8d99ae"];
+var meteorPalette = ["#ffffff", "#fff4e0", "#ffd699", "#ff9500", "#ff6b00", "#e84d00"];
 var finlandPalette = ["#003580", "#002f6c", "#ffffff", "#f8f9fa"];
 var usaPalette = ["#B22234", "#ffffff", "#3C3B6E"];
 var Burst = {
@@ -1925,6 +1926,39 @@ var Ambient = {
     continuous: true,
     autoStart: true,
     colors: snowPalette
+  },
+  /** Meteors: bright diagonal streaks with glowing trails, accelerating as they fall */
+  meteors: {
+    shape: "circle",
+    blendMode: "additive",
+    glow: true,
+    glowSize: 12,
+    glowColor: "#ff8c00",
+    glowAlpha: 0.4,
+    shadow: false,
+    trail: true,
+    trailLength: 15,
+    trailFade: 0.8,
+    trailShrink: 0.3,
+    rate: 0.3,
+    life: 999999,
+    particleLife: 250,
+    velocity: Vector.fromAngle(Math.PI * 0.35, 1.5),
+    spread: Math.PI * 0.08,
+    sizeMin: 3,
+    sizeMax: 8,
+    velocityMultiplier: 0.5,
+    fadeTime: 40,
+    gravity: 0.08,
+    acceleration: 0.02,
+    accelerationSize: 5e-3,
+    friction: 0,
+    frictionSize: 0,
+    scaleStep: 1,
+    maxCount: 150,
+    continuous: true,
+    autoStart: true,
+    colors: meteorPalette
   }
 };
 var Colors = {
@@ -1945,14 +1979,17 @@ var Colors = {
   /** Finnish flag blue and white */
   finland: { colors: finlandPalette },
   /** American flag red, white, blue */
-  usa: { colors: usaPalette }
+  usa: { colors: usaPalette },
+  /** White-hot to deep red meteor palette */
+  meteor: { colors: meteorPalette }
 };
 var presetRegistry = {
   confetti: Burst.confetti,
   magic: Burst.magic,
   fireworks: Burst.fireworks,
   images: Images.showcase,
-  snow: Ambient.snow
+  snow: Ambient.snow,
+  meteors: Ambient.meteors
 };
 var presets = {
   Burst,
@@ -1964,7 +2001,8 @@ var presets = {
   magic: Burst.magic,
   fireworks: Burst.fireworks,
   images: Images.showcase,
-  snow: Ambient.snow
+  snow: Ambient.snow,
+  meteors: Ambient.meteors
 };
 function getPreset(name) {
   return presetRegistry[name];
