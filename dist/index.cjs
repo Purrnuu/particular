@@ -171,11 +171,11 @@ var defaultAttractor = {
   radius: 150,
   visible: false,
   size: 12,
-  color: "#74c0fc",
+  color: "#adb5bd",
   shape: "circle",
   glow: false,
   glowSize: 10,
-  glowColor: "#74c0fc",
+  glowColor: "#adb5bd",
   glowAlpha: 0.35
 };
 var defaultMouseForce = {
@@ -1776,7 +1776,10 @@ var CanvasWrapper = class extends React__default.default.Component {
 // src/particular/presets.ts
 var snowPalette = ["#ffffff", "#f8f9fa", "#f1f3f5", "#e9ecef", "#dee2e6"];
 var grayscalePalette = ["#f8f9fa", "#dee2e6", "#adb5bd", "#868e96", "#495057", "#212529"];
-var monochromePalette = ["#d0ebff", "#a5d8ff", "#74c0fc", "#4dabf7", "#339af0", "#228be6"];
+var coolBluePalette = ["#d0ebff", "#a5d8ff", "#74c0fc", "#4dabf7", "#339af0", "#228be6"];
+var bluePalette = ["#003d99", "#0057d9", "#0077ff", "#1a8cff", "#3da1ff", "#66b8ff"];
+var orangePalette = ["#b33600", "#cc4a00", "#e86100", "#f57c00", "#ff9500", "#ffad33"];
+var greenPalette = ["#006b3f", "#008c51", "#00a85e", "#00c46b", "#1edd80", "#4deda0"];
 var mutedPalette = ["#d4a373", "#ccd5ae", "#e9edc9", "#a8dadc", "#b5838d", "#e5989b", "#8d99ae"];
 var finlandPalette = ["#003580", "#002f6c", "#ffffff", "#f8f9fa"];
 var usaPalette = ["#B22234", "#ffffff", "#3C3B6E"];
@@ -1816,7 +1819,7 @@ var Burst = {
     maxCount: 360,
     trail: true,
     trailLength: 12,
-    colors: monochromePalette
+    colors: coolBluePalette
   },
   /** Cinematic fireworks: energetic additive circles with bright bloom */
   fireworks: {
@@ -1892,10 +1895,16 @@ var Colors = {
   snow: { colors: snowPalette },
   /** Full black-to-white range */
   grayscale: { colors: grayscalePalette },
-  /** Single-hue cool blue-grey range */
-  monochrome: { colors: monochromePalette },
+  /** Single-hue cool blue range */
+  coolBlue: { colors: coolBluePalette },
   /** Desaturated warm/cool mix */
   muted: { colors: mutedPalette },
+  /** Bold saturated blue */
+  blue: { colors: bluePalette },
+  /** Bold saturated orange */
+  orange: { colors: orangePalette },
+  /** Bold saturated green */
+  green: { colors: greenPalette },
   /** Finnish flag blue and white */
   finland: { colors: finlandPalette },
   /** American flag red, white, blue */

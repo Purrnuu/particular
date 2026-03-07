@@ -23,7 +23,7 @@
  *   imageTint        — WebGL-only, image particles only
  *   scaleStep        — niche, almost always 1
  *   spawnWidth/Height — managed internally by screensaver API
- *   colors           — needs array control (not a simple number/select)
+ *   colors           — exposed indirectly via colorPalette select (maps to named palette arrays)
  *   pixelRatio, zIndex — engine internals
  *
  * When adding new ParticleConfig/ShapeConfig fields that affect visuals across all
@@ -33,10 +33,12 @@
 import type { InputType } from '@storybook/core/types';
 
 import { defaultParticular, defaultParticle } from './particular/core/defaults';
+import { colorPalettes } from './particular/presets';
 import type { FullParticularConfig } from './particular/types';
 
 /** Particle config fields shared across all story files. */
 export interface ParticleStoryArgs {
+  colorPalette: string;
   shape: 'circle' | 'rectangle' | 'square' | 'roundedRectangle' | 'triangle' | 'star' | 'ring' | 'sparkle';
   blendMode: 'normal' | 'additive' | 'multiply' | 'screen';
   glow: boolean;
@@ -66,6 +68,12 @@ export interface ParticleStoryArgs {
 /** Storybook argTypes for all shared particle appearance controls, grouped by category. */
 export const particleArgTypes: Record<string, InputType> = {
   // — Rendering —
+  colorPalette: {
+    control: 'select',
+    options: ['random', 'snow', 'grayscale', 'coolBlue', 'muted', 'blue', 'orange', 'green', 'finland', 'usa'],
+    description: 'Color palette (random = randomcolor fallback)',
+    table: { category: 'Rendering' },
+  },
   shape: {
     control: 'select',
     options: ['circle', 'rectangle', 'square', 'roundedRectangle', 'triangle', 'star', 'ring', 'sparkle'],
@@ -109,6 +117,7 @@ export const particleArgTypes: Record<string, InputType> = {
 
 /** Default values for all shared particle story args, derived from defaultParticle. */
 export const defaultParticleStoryArgs: ParticleStoryArgs = {
+  colorPalette: 'random',
   shape: defaultParticle.shape,
   blendMode: defaultParticle.blendMode,
   glow: defaultParticle.glow,
@@ -138,6 +147,7 @@ export const defaultParticleStoryArgs: ParticleStoryArgs = {
 /** Extract the particle config fields from story args into a Partial<FullParticularConfig>. */
 export function particleStoryArgsToConfig(args: ParticleStoryArgs): Partial<FullParticularConfig> {
   return {
+    colors: args.colorPalette === 'random' ? [] : (colorPalettes[args.colorPalette] ?? []),
     shape: args.shape,
     blendMode: args.blendMode,
     glow: args.glow,

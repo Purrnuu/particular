@@ -90,7 +90,7 @@ Engine-level point forces affecting all particles. Apply force after gravity, be
 
 ### Visible Attractors
 
-Visual fields on `AttractorConfig`: `visible`, `icon`, `size` (default 12), `color` (default `'#74c0fc'`), `shape`, `glow*`.
+Visual fields on `AttractorConfig`: `visible`, `icon`, `size` (default 12), `color` (default `'#adb5bd'`), `shape`, `glow*`.
 
 `Attractor.toDrawable()` returns a `Particle`-compatible object. Canvas renderer draws in `onUpdateAfter` on top of particles. WebGL renderer appends after particles in draw pipeline.
 
@@ -143,7 +143,9 @@ Engine-level components that need DOM event wiring (e.g. mouse tracking, touch i
 
 Chain: `ParticleConfig.colors?` → `EmitterConfiguration.colors` → `Particle` constructor.
 
-Built-in palettes: snow (white-offwhite), grayscale, monochrome (cool blue-grey), muted (desaturated warm/cool), finland, usa.
+Built-in palettes: snow (white-offwhite), grayscale, coolBlue (cool blue range), muted (desaturated warm/cool), blue (bold saturated blue), orange (bold saturated orange), green (bold saturated green), finland, usa.
+
+The `colorPalettes` export from `presets.ts` provides a `Record<string, string[]>` lookup of all named palettes, used by Storybook's `colorPalette` select control.
 
 Usage: `{ ...presets.Burst.confetti, ...presets.Colors.finland }` to override colors on any preset.
 
@@ -152,7 +154,7 @@ Usage: `{ ...presets.Burst.confetti, ...presets.Colors.finland }` to override co
 Curated and intentionally limited. Polish over quantity.
 
 - `presets.Burst.confetti` — balanced celebration (square, muted colors)
-- `presets.Burst.magic` — signature look (circle, monochrome, trails)
+- `presets.Burst.magic` — signature look (circle, coolBlue, trails)
 - `presets.Burst.fireworks` — energetic bloom (circle, additive, glow)
 - `presets.Images.showcase` — tuned for icon/image particles
 - `presets.Ambient.snow` — gentle snowfall (continuous, low rate, long life)

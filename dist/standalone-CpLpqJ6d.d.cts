@@ -649,12 +649,24 @@ declare const presets: {
         readonly grayscale: {
             readonly colors: string[];
         };
-        /** Single-hue cool blue-grey range */
-        readonly monochrome: {
+        /** Single-hue cool blue range */
+        readonly coolBlue: {
             readonly colors: string[];
         };
         /** Desaturated warm/cool mix */
         readonly muted: {
+            readonly colors: string[];
+        };
+        /** Bold saturated blue */
+        readonly blue: {
+            readonly colors: string[];
+        };
+        /** Bold saturated orange */
+        readonly orange: {
+            readonly colors: string[];
+        };
+        /** Bold saturated green */
+        readonly green: {
             readonly colors: string[];
         };
         /** Finnish flag blue and white */

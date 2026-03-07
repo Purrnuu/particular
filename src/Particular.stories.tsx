@@ -7,6 +7,7 @@ import sad3 from './icons/smiley_sad_2.png';
 
 import { ParticularWrapper, presets } from './index';
 import { defaultParticular, defaultParticle } from './particular/core/defaults';
+import { colorPalettes } from './particular/presets';
 import type { BurstSettings, FullParticularConfig } from './particular/types';
 import Vector from './particular/utils/vector';
 import { particleArgTypes } from './storyArgs';
@@ -64,6 +65,14 @@ export type StoryArgs = ParticleStoryArgs & {
   webglMaxInstances: number;
 };
 
+function resolveColorPalette(colors: string[] | undefined): string {
+  if (!colors || colors.length === 0) return 'random';
+  for (const [name, palette] of Object.entries(colorPalettes)) {
+    if (palette.length === colors.length && palette.every((c, i) => c === colors[i])) return name;
+  }
+  return 'random';
+}
+
 function toStoryArgs(config: Partial<FullParticularConfig>): StoryArgs {
   const merged = {
     ...defaultParticular,
@@ -72,6 +81,7 @@ function toStoryArgs(config: Partial<FullParticularConfig>): StoryArgs {
   };
   const velocity = merged.velocity ?? defaultParticle.velocity;
   return {
+    colorPalette: resolveColorPalette(merged.colors),
     renderer: merged.renderer ?? 'webgl',
     shape: merged.shape,
     blendMode: merged.blendMode,
@@ -119,8 +129,13 @@ function buildConfig(base: Partial<FullParticularConfig>, args: Partial<StoryArg
   const angle = args.velocityAngle ?? (baseVelocity.getAngle() * 180) / Math.PI;
   const magnitude = args.velocityMagnitude ?? baseVelocity.getMagnitude();
 
+  const colors = args.colorPalette != null
+    ? (args.colorPalette === 'random' ? [] : (colorPalettes[args.colorPalette] ?? []))
+    : mergedBase.colors;
+
   return {
     ...mergedBase,
+    colors,
     renderer: args.renderer ?? (mergedBase.renderer ?? 'webgl'),
     shape: args.shape ?? mergedBase.shape,
     blendMode: args.blendMode ?? mergedBase.blendMode,

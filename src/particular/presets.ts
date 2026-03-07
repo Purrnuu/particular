@@ -5,7 +5,10 @@ import type { FullParticularConfig } from './types';
 
 const snowPalette: string[] = ['#ffffff', '#f8f9fa', '#f1f3f5', '#e9ecef', '#dee2e6'];
 const grayscalePalette: string[] = ['#f8f9fa', '#dee2e6', '#adb5bd', '#868e96', '#495057', '#212529'];
-const monochromePalette: string[] = ['#d0ebff', '#a5d8ff', '#74c0fc', '#4dabf7', '#339af0', '#228be6'];
+const coolBluePalette: string[] = ['#d0ebff', '#a5d8ff', '#74c0fc', '#4dabf7', '#339af0', '#228be6'];
+const bluePalette: string[] = ['#003d99', '#0057d9', '#0077ff', '#1a8cff', '#3da1ff', '#66b8ff'];
+const orangePalette: string[] = ['#b33600', '#cc4a00', '#e86100', '#f57c00', '#ff9500', '#ffad33'];
+const greenPalette: string[] = ['#006b3f', '#008c51', '#00a85e', '#00c46b', '#1edd80', '#4deda0'];
 const mutedPalette: string[] = ['#d4a373', '#ccd5ae', '#e9edc9', '#a8dadc', '#b5838d', '#e5989b', '#8d99ae'];
 const finlandPalette: string[] = ['#003580', '#002f6c', '#ffffff', '#f8f9fa'];
 const usaPalette: string[] = ['#B22234', '#ffffff', '#3C3B6E'];
@@ -54,7 +57,7 @@ const Burst = {
     maxCount: 360,
     trail: true,
     trailLength: 12,
-    colors: monochromePalette,
+    colors: coolBluePalette,
   } satisfies FullParticularConfig,
 
   /** Cinematic fireworks: energetic additive circles with bright bloom */
@@ -136,10 +139,16 @@ const Colors = {
   snow: { colors: snowPalette },
   /** Full black-to-white range */
   grayscale: { colors: grayscalePalette },
-  /** Single-hue cool blue-grey range */
-  monochrome: { colors: monochromePalette },
+  /** Single-hue cool blue range */
+  coolBlue: { colors: coolBluePalette },
   /** Desaturated warm/cool mix */
   muted: { colors: mutedPalette },
+  /** Bold saturated blue */
+  blue: { colors: bluePalette },
+  /** Bold saturated orange */
+  orange: { colors: orangePalette },
+  /** Bold saturated green */
+  green: { colors: greenPalette },
   /** Finnish flag blue and white */
   finland: { colors: finlandPalette },
   /** American flag red, white, blue */
@@ -174,3 +183,16 @@ export type PresetName = keyof typeof presetRegistry;
 export function getPreset(name: PresetName): FullParticularConfig {
   return presetRegistry[name];
 }
+
+/** Mutable lookup of all named color palettes, for Storybook controls. */
+export const colorPalettes: Record<string, string[]> = {
+  snow: snowPalette,
+  grayscale: grayscalePalette,
+  coolBlue: coolBluePalette,
+  muted: mutedPalette,
+  finland: finlandPalette,
+  usa: usaPalette,
+  blue: bluePalette,
+  orange: orangePalette,
+  green: greenPalette,
+};

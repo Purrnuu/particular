@@ -58,11 +58,11 @@ export const defaultAttractor: Required<Omit<AttractorConfig, 'x' | 'y' | 'icon'
   radius: 150,
   visible: false,
   size: 12,
-  color: '#74c0fc',
+  color: '#adb5bd',
   shape: 'circle',
   glow: false,
   glowSize: 10,
-  glowColor: '#74c0fc',
+  glowColor: '#adb5bd',
   glowAlpha: 0.35,
 };
 
