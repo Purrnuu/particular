@@ -6,11 +6,17 @@ Browser particle engine (Canvas 2D + WebGL2) with React and vanilla APIs. ~3400 
 
 ```
 npm run build        # lib (tsup) + storybook
+npm run build:lib    # lib only (rebuilds dist/)
 npm test             # vitest
 npm run storybook    # dev server on :6006
 npm run type-check   # tsc --noEmit
 npm run lint         # eslint
 ```
+
+## Build Outputs
+
+- `dist/` — built library (ESM, CJS, IIFE, type declarations, source maps). **Tracked in git** so GitHub-based installs work. Must be rebuilt and committed after source changes (`npm run build:lib`).
+- `docs/` — static Storybook build for GitHub Pages. Also tracked in git. Rebuilt via `npm run build:storybook`.
 
 ## File Map
 
