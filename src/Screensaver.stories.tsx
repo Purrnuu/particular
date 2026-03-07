@@ -4,28 +4,17 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { startScreensaver } from './index';
 import type { ScreensaverController } from './index';
 import { particlesBackgroundLayerStyle } from './particular/canvasStyles';
+import { particleArgTypes, defaultParticleStoryArgs, particleStoryArgsToConfig } from './storyArgs';
+import type { ParticleStoryArgs } from './storyArgs';
 
-interface ScreensaverStoryArgs {
+interface ScreensaverStoryArgs extends ParticleStoryArgs {
   renderer: 'canvas' | 'webgl';
   rate: number;
-  particleLife: number;
-  sizeMin: number;
-  sizeMax: number;
-  gravity: number;
-  maxCount: number;
-  glowAlpha: number;
 }
 
-const ScreensaverDemo: React.FC<ScreensaverStoryArgs> = ({
-  renderer,
-  rate,
-  particleLife,
-  sizeMin,
-  sizeMax,
-  gravity,
-  maxCount,
-  glowAlpha,
-}) => {
+const ScreensaverDemo: React.FC<ScreensaverStoryArgs> = (props) => {
+  const { renderer, rate } = props;
+  const particleConfig = particleStoryArgsToConfig(props);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -37,12 +26,7 @@ const ScreensaverDemo: React.FC<ScreensaverStoryArgs> = ({
       preset: 'snow',
       config: {
         rate,
-        particleLife,
-        sizeMin,
-        sizeMax,
-        gravity,
-        maxCount,
-        glowAlpha,
+        ...particleConfig,
       },
       renderer,
       autoResize: true,
@@ -51,7 +35,8 @@ const ScreensaverDemo: React.FC<ScreensaverStoryArgs> = ({
     return () => {
       screensaver.destroy();
     };
-  }, [renderer, rate, particleLife, sizeMin, sizeMax, gravity, maxCount, glowAlpha]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [renderer, rate, JSON.stringify(particleConfig)]);
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a1a' }}>
@@ -81,37 +66,19 @@ const meta: Meta<ScreensaverStoryArgs> = {
       control: 'radio',
       options: ['canvas', 'webgl'],
       description: 'Rendering backend',
+      table: { category: 'Rendering' },
     },
+    // Shared particle appearance controls
+    ...particleArgTypes,
+    // — Screensaver —
     rate: {
       control: { type: 'number', min: 0.1, max: 20, step: 0.1 },
       description: 'Particles emitted per frame (fractional OK)',
-    },
-    particleLife: {
-      control: { type: 'number', min: 50, max: 1000, step: 10 },
-      description: 'Individual particle lifetime in ticks',
-    },
-    sizeMin: {
-      control: { type: 'number', min: 1, max: 20, step: 1 },
-      description: 'Minimum particle size',
-    },
-    sizeMax: {
-      control: { type: 'number', min: 1, max: 30, step: 1 },
-      description: 'Maximum particle size',
-    },
-    gravity: {
-      control: { type: 'number', min: 0, max: 0.5, step: 0.01 },
-      description: 'Gravity pull strength',
-    },
-    maxCount: {
-      control: { type: 'number', min: 50, max: 1000, step: 10 },
-      description: 'Maximum simultaneous particles',
-    },
-    glowAlpha: {
-      control: { type: 'number', min: 0, max: 1, step: 0.05 },
-      description: 'Glow opacity',
+      table: { category: 'Screensaver' },
     },
   },
   args: {
+    ...defaultParticleStoryArgs,
     renderer: 'webgl',
     rate: 0.4,
     particleLife: 400,

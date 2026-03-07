@@ -173,8 +173,8 @@ export default class CanvasRenderer {
   }
 
   private makeTrailGhost(particle: Particle, segment: Particle['trailSegments'][number], life: number): Particle {
-    const sizeScale = 0.55 + life * 0.45;
-    const alphaScale = life * 0.75;
+    const sizeScale = particle.trailShrink + life * (1 - particle.trailShrink);
+    const alphaScale = life * particle.trailFade;
 
     return {
       ...particle,

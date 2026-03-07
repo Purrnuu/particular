@@ -38,6 +38,8 @@ export const defaultParticle: Required<ParticleConfig> = {
   glowAlpha: 0.25,
   trail: false,
   trailLength: 3,
+  trailFade: 0.75,
+  trailShrink: 0.55,
   imageTint: false,
   shadow: true,
   shadowBlur: 9,

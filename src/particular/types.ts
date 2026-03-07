@@ -27,6 +27,8 @@ export interface ShapeConfig {
   glowAlpha?: number;
   trail?: boolean;
   trailLength?: number;
+  trailFade?: number;
+  trailShrink?: number;
   /** When true, tint image particles with particle color (WebGL). Default false = render images as-is. */
   imageTint?: boolean;
   /** Enable drop shadow. */

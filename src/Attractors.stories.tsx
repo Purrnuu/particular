@@ -5,8 +5,10 @@ import { createParticles } from './index';
 import type { ParticlesController, ParticleShape } from './index';
 import Attractor from './particular/components/attractor';
 import { particlesBackgroundLayerStyle } from './particular/canvasStyles';
+import { particleArgTypes, defaultParticleStoryArgs, particleStoryArgsToConfig } from './storyArgs';
+import type { ParticleStoryArgs } from './storyArgs';
 
-interface AttractorStoryArgs {
+interface AttractorStoryArgs extends ParticleStoryArgs {
   strength: number;
   radius: number;
   renderer: 'canvas' | 'webgl';
@@ -20,7 +22,9 @@ interface AttractorStoryArgs {
   count: number;
 }
 
-const AttractorDemo: React.FC<AttractorStoryArgs> = ({ strength, radius, renderer }) => {
+const AttractorDemo: React.FC<AttractorStoryArgs> = (props) => {
+  const { strength, radius, renderer } = props;
+  const particleConfig = particleStoryArgsToConfig(props);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const attractorRef = useRef<Attractor | null>(null);
   const controllerRef = useRef<ParticlesController | null>(null);
@@ -32,7 +36,7 @@ const AttractorDemo: React.FC<AttractorStoryArgs> = ({ strength, radius, rendere
     const controller = createParticles({
       canvas,
       preset: 'magic',
-      config: { continuous: true, maxCount: 100 },
+      config: { continuous: true, ...particleConfig },
       renderer,
       autoResize: true,
     });
@@ -61,7 +65,8 @@ const AttractorDemo: React.FC<AttractorStoryArgs> = ({ strength, radius, rendere
       controllerRef.current = null;
       attractorRef.current = null;
     };
-  }, [renderer]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [renderer, JSON.stringify(particleConfig)]);
 
   // Update attractor properties when controls change
   useEffect(() => {
@@ -110,50 +115,66 @@ const meta: Meta<AttractorStoryArgs> = {
       control: 'radio',
       options: ['canvas', 'webgl'],
       description: 'Rendering backend',
+      table: { category: 'Rendering' },
     },
+    // Shared particle appearance controls
+    ...particleArgTypes,
+    // — Attractor —
     strength: {
       control: { type: 'number', min: -5, max: 5, step: 0.1 },
       description: 'Attractor strength (negative = repulsion)',
+      table: { category: 'Attractor' },
     },
     radius: {
       control: { type: 'number', min: 50, max: 800, step: 10 },
       description: 'Attractor radius of influence',
+      table: { category: 'Attractor' },
     },
     attractorSize: {
       control: { type: 'number', min: 4, max: 40 },
       description: 'Attractor visual size',
+      table: { category: 'Attractor' },
     },
     attractorColor: {
       control: 'color',
       description: 'Attractor visual color',
+      table: { category: 'Attractor' },
     },
     attractorShape: {
       control: 'select',
       options: ['circle', 'star', 'ring', 'sparkle', 'square', 'triangle'],
       description: 'Attractor visual shape',
+      table: { category: 'Attractor' },
     },
     attractorGlow: {
       control: 'boolean',
       description: 'Enable attractor glow',
+      table: { category: 'Attractor' },
     },
     attractorGlowSize: {
       control: { type: 'number', min: 4, max: 30 },
       description: 'Attractor glow size',
+      table: { category: 'Attractor' },
     },
     attractorGlowColor: {
       control: 'color',
       description: 'Attractor glow color',
+      table: { category: 'Attractor' },
     },
     attractorGlowAlpha: {
       control: { type: 'number', min: 0, max: 1, step: 0.05 },
       description: 'Attractor glow opacity',
+      table: { category: 'Attractor' },
     },
     count: {
       control: { type: 'number', min: 1, max: 10 },
       description: 'Number of random attractors',
+      table: { category: 'Attractor' },
     },
   },
   args: {
+    ...defaultParticleStoryArgs,
+    maxCount: 150,
     renderer: 'webgl',
     strength: 1,
     radius: 200,
@@ -171,10 +192,13 @@ const meta: Meta<AttractorStoryArgs> = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const MouseFollow: Story = {};
+export const MouseFollow: Story = {
+  args: { maxCount: 100 },
+};
 
 export const Repulsion: Story = {
   args: {
+    maxCount: 100,
     strength: -2,
     radius: 300,
   },
@@ -182,18 +206,20 @@ export const Repulsion: Story = {
 
 /* ─── Visible Attractors ─── */
 
-const VisibleAttractorDemo: React.FC<AttractorStoryArgs> = ({
-  strength,
-  radius,
-  renderer,
-  attractorSize,
-  attractorColor,
-  attractorShape,
-  attractorGlow,
-  attractorGlowSize,
-  attractorGlowColor,
-  attractorGlowAlpha,
-}) => {
+const VisibleAttractorDemo: React.FC<AttractorStoryArgs> = (props) => {
+  const {
+    strength,
+    radius,
+    renderer,
+    attractorSize,
+    attractorColor,
+    attractorShape,
+    attractorGlow,
+    attractorGlowSize,
+    attractorGlowColor,
+    attractorGlowAlpha,
+  } = props;
+  const particleConfig = particleStoryArgsToConfig(props);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const attractorRef = useRef<Attractor | null>(null);
   const controllerRef = useRef<ParticlesController | null>(null);
@@ -205,7 +231,7 @@ const VisibleAttractorDemo: React.FC<AttractorStoryArgs> = ({
     const controller = createParticles({
       canvas,
       preset: 'magic',
-      config: { continuous: true, maxCount: 150 },
+      config: { continuous: true, ...particleConfig },
       renderer,
       autoResize: true,
     });
@@ -240,7 +266,8 @@ const VisibleAttractorDemo: React.FC<AttractorStoryArgs> = ({
       controllerRef.current = null;
       attractorRef.current = null;
     };
-  }, [renderer]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [renderer, JSON.stringify(particleConfig)]);
 
   useEffect(() => {
     const a = attractorRef.current;
@@ -304,16 +331,18 @@ export const VisibleRepulsion: Story = {
 
 /* ─── Random Attractors ─── */
 
-const RandomAttractorsDemo: React.FC<AttractorStoryArgs> = ({
-  count,
-  strength,
-  radius,
-  renderer,
-  attractorSize,
-  attractorColor,
-  attractorShape,
-  attractorGlow,
-}) => {
+const RandomAttractorsDemo: React.FC<AttractorStoryArgs> = (props) => {
+  const {
+    count,
+    strength,
+    radius,
+    renderer,
+    attractorSize,
+    attractorColor,
+    attractorShape,
+    attractorGlow,
+  } = props;
+  const particleConfig = particleStoryArgsToConfig(props);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const controllerRef = useRef<ParticlesController | null>(null);
 
@@ -324,7 +353,7 @@ const RandomAttractorsDemo: React.FC<AttractorStoryArgs> = ({
     const controller = createParticles({
       canvas,
       preset: 'magic',
-      config: { continuous: true, maxCount: 200 },
+      config: { continuous: true, ...particleConfig },
       renderer,
       autoResize: true,
     });
@@ -353,7 +382,8 @@ const RandomAttractorsDemo: React.FC<AttractorStoryArgs> = ({
       controller.destroy();
       controllerRef.current = null;
     };
-  }, [renderer, count, strength, radius, attractorSize, attractorColor, attractorShape, attractorGlow]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [renderer, count, strength, radius, attractorSize, attractorColor, attractorShape, attractorGlow, JSON.stringify(particleConfig)]);
 
   return (
     <div
@@ -379,6 +409,7 @@ const RandomAttractorsDemo: React.FC<AttractorStoryArgs> = ({
 
 export const RandomAttractors: Story = {
   args: {
+    maxCount: 200,
     count: 4,
     strength: 1.5,
     radius: 250,

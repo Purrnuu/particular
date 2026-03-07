@@ -2,4 +2,4 @@
 
 Opinionated particle engine: pretty, performant, easy setup. Keep changes tight and understandable.
 
-**Before editing**: Read `docs/LLM_CONTEXT.md` for architecture, conventions, performance rules, and where to change things. Prefer presets and one-liner APIs; avoid extra options and over-abstraction.
+**Before editing**: Read `CLAUDE.md` for file map, commands, modification checklists, and conventions. For engine internals, see `src/AGENTS.md`. Prefer presets and one-liner APIs; avoid extra options and over-abstraction.

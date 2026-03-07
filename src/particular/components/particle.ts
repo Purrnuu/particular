@@ -44,6 +44,8 @@ export default class Particle {
   glowAlpha: number;
   trail: boolean;
   trailLength: number;
+  trailFade: number;
+  trailShrink: number;
   imageTint: boolean;
   shadow: boolean;
   shadowBlur: number;
@@ -78,6 +80,8 @@ export default class Particle {
     glowAlpha = 0.35,
     trail = false,
     trailLength = 3,
+    trailFade = 0.75,
+    trailShrink = 0.55,
     imageTint = false,
     shadow = false,
     shadowBlur = 8,
@@ -121,6 +125,8 @@ export default class Particle {
     this.glowAlpha = glowAlpha;
     this.trail = trail;
     this.trailLength = trailLength;
+    this.trailFade = trailFade;
+    this.trailShrink = trailShrink;
     this.imageTint = imageTint;
     this.shadow = shadow;
     this.shadowBlur = shadowBlur;

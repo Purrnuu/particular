@@ -444,8 +444,8 @@ export default class WebGLRenderer {
         const life = 1 - segment.age / maxAge;
         if (life <= 0) continue;
 
-        const sizeScale = 0.55 + life * 0.45;
-        const alphaScale = life * 0.75;
+        const sizeScale = particle.trailShrink + life * (1 - particle.trailShrink);
+        const alphaScale = life * particle.trailFade;
         const ghost = {
           ...particle,
           position: { x: segment.x, y: segment.y },

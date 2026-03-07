@@ -9,6 +9,8 @@ import { ParticularWrapper, presets } from './index';
 import { defaultParticular, defaultParticle } from './particular/core/defaults';
 import type { BurstSettings, FullParticularConfig } from './particular/types';
 import Vector from './particular/utils/vector';
+import { particleArgTypes, defaultParticleStoryArgs } from './storyArgs';
+import type { ParticleStoryArgs } from './storyArgs';
 
 const customIcons = [sad1, sad2, sad3];
 
@@ -49,27 +51,11 @@ const PlaygroundContinuous: React.FC<PlaygroundProps> = () => (
   </div>
 );
 
-export type StoryArgs = {
+export type StoryArgs = ParticleStoryArgs & {
   renderer: 'canvas' | 'webgl';
-  shape: 'circle' | 'rectangle' | 'square' | 'roundedRectangle' | 'triangle' | 'star' | 'ring' | 'sparkle';
-  blendMode: 'normal' | 'additive' | 'multiply' | 'screen';
-  glow: boolean;
-  glowSize: number;
-  glowColor: string;
-  glowAlpha: number;
-  shadow: boolean;
-  shadowBlur: number;
-  shadowOffsetX: number;
-  shadowOffsetY: number;
-  shadowColor: string;
-  shadowAlpha: number;
   rate: number;
   life: number;
-  sizeMin: number;
-  sizeMax: number;
   velocityMultiplier: number;
-  gravity: number;
-  maxCount: number;
   continuous: boolean;
   autoStart: boolean;
   velocityAngle: number;
@@ -93,6 +79,10 @@ function toStoryArgs(config: Partial<FullParticularConfig>): StoryArgs {
     glowSize: merged.glowSize,
     glowColor: merged.glowColor,
     glowAlpha: merged.glowAlpha,
+    trail: merged.trail,
+    trailLength: merged.trailLength,
+    trailFade: merged.trailFade,
+    trailShrink: merged.trailShrink,
     shadow: merged.shadow,
     shadowBlur: merged.shadowBlur,
     shadowOffsetX: merged.shadowOffsetX,
@@ -105,6 +95,8 @@ function toStoryArgs(config: Partial<FullParticularConfig>): StoryArgs {
     sizeMax: merged.sizeMax,
     velocityMultiplier: merged.velocityMultiplier,
     gravity: merged.gravity,
+    particleLife: merged.particleLife,
+    fadeTime: merged.fadeTime,
     maxCount: merged.maxCount,
     continuous: merged.continuous,
     autoStart: merged.autoStart,
@@ -134,6 +126,10 @@ function buildConfig(base: Partial<FullParticularConfig>, args: Partial<StoryArg
     glowSize: args.glowSize ?? mergedBase.glowSize,
     glowColor: args.glowColor ?? mergedBase.glowColor,
     glowAlpha: args.glowAlpha ?? mergedBase.glowAlpha,
+    trail: args.trail ?? mergedBase.trail,
+    trailLength: args.trailLength ?? mergedBase.trailLength,
+    trailFade: args.trailFade ?? mergedBase.trailFade,
+    trailShrink: args.trailShrink ?? mergedBase.trailShrink,
     shadow: args.shadow ?? mergedBase.shadow,
     shadowBlur: args.shadowBlur ?? mergedBase.shadowBlur,
     shadowOffsetX: args.shadowOffsetX ?? mergedBase.shadowOffsetX,
@@ -146,6 +142,8 @@ function buildConfig(base: Partial<FullParticularConfig>, args: Partial<StoryArg
     sizeMax: args.sizeMax ?? mergedBase.sizeMax,
     velocityMultiplier: args.velocityMultiplier ?? mergedBase.velocityMultiplier,
     gravity: args.gravity ?? mergedBase.gravity,
+    particleLife: args.particleLife ?? mergedBase.particleLife,
+    fadeTime: args.fadeTime ?? mergedBase.fadeTime,
     maxCount: args.maxCount ?? mergedBase.maxCount,
     continuous: args.continuous ?? mergedBase.continuous,
     autoStart: args.autoStart ?? mergedBase.autoStart,
@@ -159,58 +157,46 @@ const meta: Meta<StoryArgs> = {
   title: 'Particular/Burst',
   component: () => null,
   argTypes: {
+    // — Rendering —
     renderer: {
       control: 'radio',
       options: ['canvas', 'webgl'],
       description: 'Rendering backend',
+      table: { category: 'Rendering' },
     },
-    shape: {
-      control: 'select',
-      options: ['circle', 'rectangle', 'square', 'roundedRectangle', 'triangle', 'star', 'ring', 'sparkle'],
-      description: 'Particle shape',
-    },
-    blendMode: {
-      control: 'select',
-      options: ['normal', 'additive', 'multiply', 'screen'],
-      description: 'Blend mode',
-    },
-    glow: { control: 'boolean', description: 'Enable glow effect' },
-    glowSize: { control: { type: 'number', min: 8, max: 30 }, description: 'Glow size' },
-    glowColor: { control: 'color', description: 'Glow color' },
-    glowAlpha: { control: { type: 'number', min: 0, max: 1, step: 0.05 }, description: 'Glow opacity' },
-    shadow: { control: 'boolean', description: 'Enable drop shadow' },
-    shadowBlur: { control: { type: 'number', min: 0, max: 40 }, description: 'Shadow blur radius (px)' },
-    shadowOffsetX: { control: { type: 'number', min: -30, max: 30 }, description: 'Shadow X offset (px)' },
-    shadowOffsetY: { control: { type: 'number', min: -30, max: 30 }, description: 'Shadow Y offset (px)' },
-    shadowColor: { control: 'color', description: 'Shadow color' },
-    shadowAlpha: { control: { type: 'number', min: 0, max: 1, step: 0.05 }, description: 'Shadow opacity' },
-    rate: { control: { type: 'number', min: 1, max: 100 }, description: 'Particles per burst' },
-    life: { control: { type: 'number', min: 8, max: 200 }, description: 'Emitter life (ticks)' },
-    sizeMin: { control: { type: 'number', min: 1, max: 30 }, description: 'Min particle size' },
-    sizeMax: { control: { type: 'number', min: 1, max: 50 }, description: 'Max particle size' },
-    velocityMultiplier: {
-      control: { type: 'number', min: 1, max: 15 },
-      description: 'Velocity multiplier',
-    },
-    gravity: { control: { type: 'number', min: 0, max: 0.5, step: 0.01 }, description: 'Gravity' },
-    maxCount: { control: { type: 'number', min: 50, max: 5000 }, description: 'Max particles' },
-    continuous: { control: 'boolean', description: 'Continuous emission' },
-    autoStart: { control: 'boolean', description: 'Auto-start on mount' },
+    // Shared particle appearance controls
+    ...particleArgTypes,
+    // — Emission (burst-specific) —
+    rate: { control: { type: 'number', min: 1, max: 100 }, description: 'Particles per burst', table: { category: 'Emission' } },
+    life: { control: { type: 'number', min: 8, max: 200 }, description: 'Emitter life (ticks)', table: { category: 'Emission' } },
+    continuous: { control: 'boolean', description: 'Continuous emission', table: { category: 'Emission' } },
+    autoStart: { control: 'boolean', description: 'Auto-start on mount', table: { category: 'Emission' } },
+    // — Size & Physics (burst-specific) —
     velocityAngle: {
       control: { type: 'number', min: -180, max: 180 },
       description: 'Velocity angle (degrees)',
+      table: { category: 'Size & Physics' },
     },
     velocityMagnitude: {
       control: { type: 'number', min: 1, max: 15 },
       description: 'Velocity magnitude',
+      table: { category: 'Size & Physics' },
+    },
+    velocityMultiplier: {
+      control: { type: 'number', min: 1, max: 15 },
+      description: 'Velocity multiplier',
+      table: { category: 'Size & Physics' },
     },
     spread: {
       control: { type: 'number', min: 0.2, max: 2, step: 0.1 },
       description: 'Spread (× π)',
+      table: { category: 'Size & Physics' },
     },
+    // — Advanced —
     webglMaxInstances: {
       control: { type: 'number', min: 1024, max: 65536 },
       description: 'WebGL max instances per draw',
+      table: { category: 'Advanced' },
     },
   },
   args: toStoryArgs({ ...presets.Burst.magic, renderer: 'webgl' }),
