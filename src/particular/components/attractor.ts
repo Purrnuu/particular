@@ -1,5 +1,6 @@
 import Vector from '../utils/vector';
 import type { AttractorConfig, ParticleShape, BlendMode } from '../types';
+import { defaultAttractor } from '../core/defaults';
 import type Particle from './particle';
 
 export default class Attractor {
@@ -21,20 +22,21 @@ export default class Attractor {
   private _resolvedImage: HTMLImageElement | null = null;
 
   constructor(config: AttractorConfig) {
-    this.position = new Vector(config.x, config.y);
-    this.strength = config.strength ?? 1;
-    this.radius = config.radius ?? 200;
+    const merged = { ...defaultAttractor, ...config };
+    this.position = new Vector(merged.x, merged.y);
+    this.strength = merged.strength;
+    this.radius = merged.radius;
 
     // Visual properties
-    this.visible = config.visible ?? false;
+    this.visible = merged.visible;
     this.icon = config.icon ?? null;
-    this.size = config.size ?? 12;
-    this.color = config.color ?? '#74c0fc';
-    this.shape = config.shape ?? 'circle';
-    this.glow = config.glow ?? false;
-    this.glowSize = config.glowSize ?? 10;
-    this.glowColor = config.glowColor ?? '#74c0fc';
-    this.glowAlpha = config.glowAlpha ?? 0.35;
+    this.size = merged.size;
+    this.color = merged.color;
+    this.shape = merged.shape;
+    this.glow = merged.glow;
+    this.glowSize = merged.glowSize;
+    this.glowColor = merged.glowColor;
+    this.glowAlpha = merged.glowAlpha;
 
     // Resolve string icon to HTMLImageElement
     if (typeof this.icon === 'string') {

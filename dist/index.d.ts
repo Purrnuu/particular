@@ -1,5 +1,5 @@
-import { F as FullParticularConfig, P as ParticularConfig, a as ParticleConfig, R as RendererType, b as Particular, B as BurstSettings, c as PresetName, d as ParticlesController, e as BurstOptions } from './standalone-BrlQr_5y.js';
-export { A as Attractor, f as AttractorConfig, g as BlendMode, C as CanvasRenderer, h as CreateParticlesOptions, E as Emitter, i as EmitterConfiguration, j as FPSOverlayController, k as FPSOverlayOptions, l as ForceSource, M as MouseForce, m as MouseForceConfig, n as Particle, o as ParticleConstructorParams, p as ParticleShape, S as ScreensaverController, q as ScreensaverOptions, r as ShapeConfig, V as Vector, W as WebGLRenderer, s as WebGLRendererOptions, t as createParticles, u as getParticlesBackgroundLayerStyle, v as particlesBackgroundLayerStyle, D as particlesDefaultZIndex, w as presets, x as showFPSOverlay, y as startScreensaver } from './standalone-BrlQr_5y.js';
+import { F as FullParticularConfig, P as ParticularConfig, a as ParticleConfig, R as RendererType, b as Particular, B as BurstSettings, c as PresetName, d as ParticlesController, e as BurstOptions, M as MouseForceConfig } from './standalone-eldrR_xE.js';
+export { A as Attractor, f as AttractorConfig, g as BlendMode, C as CanvasRenderer, h as CreateParticlesOptions, E as Emitter, i as EmitterConfiguration, j as FPSOverlayController, k as FPSOverlayOptions, l as ForceSource, m as MouseForce, n as Particle, o as ParticleConstructorParams, p as ParticleShape, S as ScreensaverController, q as ScreensaverOptions, r as ShapeConfig, V as Vector, W as WebGLRenderer, s as WebGLRendererOptions, t as createParticles, u as getParticlesBackgroundLayerStyle, v as particlesBackgroundLayerStyle, D as particlesDefaultZIndex, w as presets, x as showFPSOverlay, y as startScreensaver } from './standalone-eldrR_xE.js';
 import React, { ComponentType, MutableRefObject, CSSProperties, MouseEvent as MouseEvent$1 } from 'react';
 
 declare function configureParticular(configuration?: FullParticularConfig): Required<ParticularConfig> & Required<ParticleConfig> & {
@@ -129,6 +129,8 @@ interface UseScreensaverOptions {
     autoResize?: boolean;
     /** When true (default), result includes canvasStyle for a full-viewport click-through canvas. */
     backgroundLayer?: boolean;
+    /** Mouse wind configuration. Pass `false` to disable entirely. */
+    mouseWind?: MouseForceConfig | false;
 }
 interface UseScreensaverResult {
     canvasRef: MutableRefObject<HTMLCanvasElement | null>;
@@ -140,6 +142,6 @@ interface UseScreensaverResult {
  * React hook for a one-call screensaver setup.
  * Wraps `startScreensaver()` in a `useEffect`.
  */
-declare function useScreensaver({ preset, config, renderer, autoResize, backgroundLayer, }?: UseScreensaverOptions): UseScreensaverResult;
+declare function useScreensaver({ preset, config, renderer, autoResize, backgroundLayer, mouseWind, }?: UseScreensaverOptions): UseScreensaverResult;
 
-export { BurstOptions, BurstSettings, FullParticularConfig, ParticleConfig, ParticlesController, Particular, ParticularConfig, particularWrapper as ParticularWrapper, PresetName, RendererType, type UseParticlesOptions, type UseParticlesResult, type UseScreensaverOptions, type UseScreensaverResult, useParticles, useScreensaver, withParticles };
+export { BurstOptions, BurstSettings, FullParticularConfig, MouseForceConfig, ParticleConfig, ParticlesController, Particular, ParticularConfig, particularWrapper as ParticularWrapper, PresetName, RendererType, type UseParticlesOptions, type UseParticlesResult, type UseScreensaverOptions, type UseScreensaverResult, useParticles, useScreensaver, withParticles };

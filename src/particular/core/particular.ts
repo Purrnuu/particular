@@ -177,7 +177,7 @@ export default class Particular implements IEventDispatcher {
     destroy(this.renderers);
     destroy(this.emitters);
     this.attractors = [];
-    this.mouseForces = [];
+    destroy(this.mouseForces);
   }
 }
 

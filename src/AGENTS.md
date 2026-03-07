@@ -8,15 +8,19 @@ For project overview, file map, commands, and modification checklists, see `CLAU
 Types in `src/particular/types.ts`:
 
 - `ShapeConfig`: visual effect fields (shape, blendMode, glow*, trail*, shadow*, imageTint)
-- `ParticleConfig extends ShapeConfig`: per-particle behavior (rate, life, particleLife, velocity, spread, size, gravity, fadeTime, colors, spawnWidth/Height)
+- `ParticleConfig extends ShapeConfig`: per-particle behavior (rate, life, particleLife, velocity, spread, size, gravity, acceleration, friction, fadeTime, colors, spawnWidth/Height)
 - `ParticularConfig`: engine-level (pixelRatio, maxCount, continuous, autoStart, webglMaxInstances)
 - `FullParticularConfig extends ParticularConfig, ParticleConfig`: merged surface + icons + renderer
 
 Config merge chain: `configureParticular({ ...preset, ...userConfig })` — user config always wins over preset.
 
+Defaults in `src/particular/core/defaults.ts`: `defaultParticular`, `defaultParticle`, `defaultMouseForce` (base physics), `defaultMouseWind` (screensaver wind overrides). `MouseForce` constructor merges config with `defaultMouseForce`.
+
 Key fields with non-obvious behavior:
 
 - `spawnWidth`, `spawnHeight` — randomize particle spawn within a rectangle centered on emitter point. Default 0 (point spawn). Used internally by screensaver to spread across viewport.
+- `acceleration` — scale multiplier on size-derived downward acceleration (`accelerationScale * size / 100`). Default 1 preserves original behavior. Set < 1 for slower fall, 0 to disable size-based acceleration entirely.
+- `friction` — scale multiplier on size-derived air resistance (`frictionScale * size / 2000`). Default 1 preserves original behavior. Set < 1 for less drag, 0 to disable.
 - `webglMaxInstances` — max particles per WebGL draw call (default 4096). Increase for fewer draw calls with many particles.
 
 ## Runtime Flow
@@ -106,9 +110,32 @@ Directional force from mouse velocity (brushing/sweeping), unlike attractors (ra
 - `getForce(pos)` — `strength * (1 - dist/radius)^falloff * min(speed, maxSpeed)/maxSpeed`, in mouse velocity direction.
 - Falloff curve: `< 1` = broad wind, `= 1` = linear (default), `> 1` = localized push.
 
+### Self-Tracking
+
+MouseForce can own its own mouse event listener via `startTracking`/`stopTracking`:
+
+- `startTracking(target, pixelRatio)` — attaches a `mousemove` listener on `target`, auto-converts coordinates via `pixelRatio`, calls `updatePosition` internally.
+- `stopTracking()` — removes the listener. Idempotent (safe to call when not tracking).
+- `destroy()` — calls `stopTracking()`. Called automatically by the engine's `destroy()` utility.
+- `isTracking` (getter) — returns `true` when a listener is active.
+
+### `track` Config Option
+
+The `MouseForceConfig.track` field wires self-tracking through the convenience layer:
+
+- `track: true` — track on `window`.
+- `track: someElement` — track on a specific `EventTarget`.
+- Omitted or `false` — manual mode (consumer calls `updatePosition` directly).
+
+`controller.addMouseForce({ track: true, strength: 1, ... })` replaces the old pattern of adding a force + wiring a `mousemove` listener + dividing by `pixelRatio` manually.
+
 ## ForceSource Interface
 
 Both `Attractor` and `MouseForce` implement `ForceSource { getForce(position: Vector): Vector }`. Engine merges `[...attractors, ...mouseForces]` each frame, passed to `Particle.update(forces)`.
+
+### Interaction Model Guideline
+
+Engine-level components that need DOM event wiring (e.g. mouse tracking, touch input) should own their event listeners internally via config options (like `MouseForceConfig.track`), not push wiring to consumers. This keeps consumer code minimal and eliminates boilerplate like manual `addEventListener`/`removeEventListener` + coordinate conversion.
 
 ## Color System
 
@@ -143,9 +170,9 @@ alphaScale = life * trailFade
 
 ## Screensaver Internals
 
-`startScreensaver()` creates a `createParticles` instance with a single emitter at top-center, `spawnWidth` = viewport width, continuous mode. Adds a gentle `MouseForce` (strength 0.12) for drift. On resize, updates emitter `spawnWidth` and `point.x`.
+`startScreensaver()` creates a `createParticles` instance with a single emitter at top-center, `spawnWidth` = viewport width, continuous mode. Adds a gentle `MouseForce` with `track: true` (strength 0.12) for drift — mouse tracking is config-driven, not manually wired. On resize, updates emitter `spawnWidth` and `point.x`.
 
-The `mouseWind` option (`MouseForceConfig | false`) controls the mouse wind effect. Omit or pass a partial config to merge over defaults (`strength: 0.12, radius: 250, damping: 0.92, maxSpeed: 8, falloff: 0.3`). Pass `false` to disable mouse wind entirely (no listener, no force).
+The `mouseWind` option (`MouseForceConfig | false`) controls the mouse wind effect. Omit or pass a partial config to merge over defaults (`strength: 0.12, radius: 250, damping: 0.92, maxSpeed: 8, falloff: 0.3`). Pass `false` to disable mouse wind entirely (no listener, no force). The `useScreensaver` hook also accepts `mouseWind` and passes it through.
 
 ## Stable Public API
 

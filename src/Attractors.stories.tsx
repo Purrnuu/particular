@@ -190,7 +190,7 @@ const meta: Meta<AttractorStoryArgs> = {
 };
 
 export default meta;
-type Story = StoryObj<typeof meta>;
+type Story = StoryObj<AttractorStoryArgs>;
 
 export const MouseFollow: Story = {
   args: { maxCount: 100 },

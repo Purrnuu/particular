@@ -139,6 +139,8 @@ var defaultParticle = {
   spawnWidth: 0,
   spawnHeight: 0,
   colors: [],
+  acceleration: 1,
+  friction: 1,
   shape: "circle",
   blendMode: "normal",
   glow: false,
@@ -156,6 +158,34 @@ var defaultParticle = {
   shadowOffsetY: 3,
   shadowColor: "#333333",
   shadowAlpha: 0.15
+};
+var defaultAttractor = {
+  strength: 1,
+  radius: 150,
+  visible: false,
+  size: 12,
+  color: "#74c0fc",
+  shape: "circle",
+  glow: false,
+  glowSize: 10,
+  glowColor: "#74c0fc",
+  glowAlpha: 0.35
+};
+var defaultMouseForce = {
+  x: 0,
+  y: 0,
+  strength: 1,
+  radius: 100,
+  damping: 0.85,
+  maxSpeed: 10,
+  falloff: 1
+};
+var defaultMouseWind = {
+  strength: 0.12,
+  radius: 150,
+  damping: 0.92,
+  maxSpeed: 8,
+  falloff: 0.3
 };
 function configureParticular(configuration) {
   return { ...defaultParticular, ...defaultParticle, ...configuration };
@@ -304,7 +334,7 @@ var _Particular = class _Particular {
     destroy(this.renderers);
     destroy(this.emitters);
     this.attractors = [];
-    this.mouseForces = [];
+    destroy(this.mouseForces);
   }
 };
 _Particular.UPDATE = "UPDATE";
@@ -541,7 +571,9 @@ var Emitter = class {
       shadowOffsetY,
       shadowColor,
       shadowAlpha,
-      colors
+      colors,
+      acceleration: accelerationScale,
+      friction: frictionScale
     } = this.configuration;
     const angle = velocity.getAngle() + spread - Math.random() * spread * 2;
     const magnitude = velocity.getMagnitude();
@@ -551,8 +583,8 @@ var Emitter = class {
     const newVelocity = Vector.fromAngle(angle, magnitude);
     const size = getRandomInt(sizeMin, sizeMax);
     newVelocity.add({ x: 0, y: -((sizeMax - size) / 15) * velocityMultiplier });
-    const friction = size / 2e3;
-    const acceleration = new Vector(0, size / 100);
+    const friction = frictionScale * size / 2e3;
+    const acceleration = new Vector(0, accelerationScale * size / 100);
     this.lifeCycle++;
     return new Particle({
       point: newPoint,
@@ -1947,18 +1979,19 @@ var withParticles = particularWrapper;
 var Attractor = class {
   constructor(config) {
     this._resolvedImage = null;
-    this.position = new Vector(config.x, config.y);
-    this.strength = config.strength ?? 1;
-    this.radius = config.radius ?? 200;
-    this.visible = config.visible ?? false;
+    const merged = { ...defaultAttractor, ...config };
+    this.position = new Vector(merged.x, merged.y);
+    this.strength = merged.strength;
+    this.radius = merged.radius;
+    this.visible = merged.visible;
     this.icon = config.icon ?? null;
-    this.size = config.size ?? 12;
-    this.color = config.color ?? "#74c0fc";
-    this.shape = config.shape ?? "circle";
-    this.glow = config.glow ?? false;
-    this.glowSize = config.glowSize ?? 10;
-    this.glowColor = config.glowColor ?? "#74c0fc";
-    this.glowAlpha = config.glowAlpha ?? 0.35;
+    this.size = merged.size;
+    this.color = merged.color;
+    this.shape = merged.shape;
+    this.glow = merged.glow;
+    this.glowSize = merged.glowSize;
+    this.glowColor = merged.glowColor;
+    this.glowAlpha = merged.glowAlpha;
     if (typeof this.icon === "string") {
       const img = new Image();
       img.src = this.icon;
@@ -2016,14 +2049,40 @@ var Attractor = class {
 
 // src/particular/components/mouseForce.ts
 var MouseForce = class {
-  constructor(x = 0, y = 0, strength = 1, radius = 200, damping = 0.85, maxSpeed = 10, falloff = 1) {
-    this.position = new Vector(x, y);
+  constructor(config = {}) {
+    this._trackListener = null;
+    this._trackTarget = null;
+    this._pixelRatio = 1;
+    const merged = { ...defaultMouseForce, ...config };
+    this.position = new Vector(merged.x, merged.y);
     this.velocity = new Vector(0, 0);
-    this.strength = strength;
-    this.radius = radius;
-    this.damping = damping;
-    this.maxSpeed = maxSpeed;
-    this.falloff = falloff;
+    this.strength = merged.strength;
+    this.radius = merged.radius;
+    this.damping = merged.damping;
+    this.maxSpeed = merged.maxSpeed;
+    this.falloff = merged.falloff;
+  }
+  get isTracking() {
+    return this._trackTarget !== null;
+  }
+  startTracking(target, pixelRatio) {
+    this.stopTracking();
+    this._pixelRatio = pixelRatio;
+    this._trackListener = (e) => {
+      this.updatePosition(e.clientX / this._pixelRatio, e.clientY / this._pixelRatio);
+    };
+    this._trackTarget = target;
+    target.addEventListener("mousemove", this._trackListener);
+  }
+  stopTracking() {
+    if (this._trackTarget && this._trackListener) {
+      this._trackTarget.removeEventListener("mousemove", this._trackListener);
+    }
+    this._trackTarget = null;
+    this._trackListener = null;
+  }
+  destroy() {
+    this.stopTracking();
   }
   updatePosition(x, y) {
     this.velocity.x = x - this.position.x;
@@ -2154,19 +2213,18 @@ function createParticles({
     engine.attractors.splice(0);
   };
   const addMouseForce = (config2 = {}) => {
-    const mouseForce = new MouseForce(
-      config2.x,
-      config2.y,
-      config2.strength,
-      config2.radius,
-      config2.damping,
-      config2.maxSpeed,
-      config2.falloff
-    );
+    const { track, ...forceConfig } = config2;
+    const mouseForce = new MouseForce(forceConfig);
     engine.addMouseForce(mouseForce);
+    if (track) {
+      const target = track === true ? window : track;
+      mouseForce.startTracking(target, engine.pixelRatio);
+      cleanups.push(() => mouseForce.stopTracking());
+    }
     return mouseForce;
   };
   const removeMouseForce = (mouseForce) => {
+    mouseForce.stopTracking();
     engine.removeMouseForce(mouseForce);
   };
   const destroy2 = () => {
@@ -2221,20 +2279,11 @@ function startScreensaver({
   emitter.emit();
   const cleanups = [];
   if (mouseWindOption !== false) {
-    const windConfig = {
-      strength: 0.12,
-      radius: 250,
-      damping: 0.92,
-      maxSpeed: 8,
-      falloff: 0.3,
+    controller.addMouseForce({
+      ...defaultMouseWind,
+      track: true,
       ...mouseWindOption
-    };
-    const mouseWind = controller.addMouseForce(windConfig);
-    const onMouseMove = (e) => {
-      mouseWind.updatePosition(e.clientX / pixelRatio, e.clientY / pixelRatio);
-    };
-    window.addEventListener("mousemove", onMouseMove);
-    cleanups.push(() => window.removeEventListener("mousemove", onMouseMove));
+    });
   }
   if (autoResize) {
     const onResize = () => {
@@ -2324,7 +2373,8 @@ function useScreensaver({
   config,
   renderer = "canvas",
   autoResize = true,
-  backgroundLayer = true
+  backgroundLayer = true,
+  mouseWind
 } = {}) {
   const canvasRef = useRef(null);
   const screensaverRef = useRef(null);
@@ -2337,14 +2387,15 @@ function useScreensaver({
       preset,
       config,
       renderer,
-      autoResize
+      autoResize,
+      mouseWind
     });
     screensaverRef.current = screensaver;
     return () => {
       screensaver.destroy();
       screensaverRef.current = null;
     };
-  }, [preset, config, renderer, autoResize]);
+  }, [preset, config, renderer, autoResize, mouseWind]);
   const destroy2 = useCallback(() => {
     screensaverRef.current?.destroy();
     screensaverRef.current = null;

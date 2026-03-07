@@ -9,7 +9,7 @@ import { ParticularWrapper, presets } from './index';
 import { defaultParticular, defaultParticle } from './particular/core/defaults';
 import type { BurstSettings, FullParticularConfig } from './particular/types';
 import Vector from './particular/utils/vector';
-import { particleArgTypes, defaultParticleStoryArgs } from './storyArgs';
+import { particleArgTypes } from './storyArgs';
 import type { ParticleStoryArgs } from './storyArgs';
 
 const customIcons = [sad1, sad2, sad3];
@@ -95,6 +95,8 @@ function toStoryArgs(config: Partial<FullParticularConfig>): StoryArgs {
     sizeMax: merged.sizeMax,
     velocityMultiplier: merged.velocityMultiplier,
     gravity: merged.gravity,
+    acceleration: merged.acceleration,
+    friction: merged.friction,
     particleLife: merged.particleLife,
     fadeTime: merged.fadeTime,
     maxCount: merged.maxCount,
@@ -142,6 +144,8 @@ function buildConfig(base: Partial<FullParticularConfig>, args: Partial<StoryArg
     sizeMax: args.sizeMax ?? mergedBase.sizeMax,
     velocityMultiplier: args.velocityMultiplier ?? mergedBase.velocityMultiplier,
     gravity: args.gravity ?? mergedBase.gravity,
+    acceleration: args.acceleration ?? mergedBase.acceleration,
+    friction: args.friction ?? mergedBase.friction,
     particleLife: args.particleLife ?? mergedBase.particleLife,
     fadeTime: args.fadeTime ?? mergedBase.fadeTime,
     maxCount: args.maxCount ?? mergedBase.maxCount,

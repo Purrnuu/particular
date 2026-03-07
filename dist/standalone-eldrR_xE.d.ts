@@ -100,6 +100,10 @@ interface ParticleConfig extends ShapeConfig {
     /** Color palette for particles. When provided, particles pick a random color from this array
      *  instead of using randomcolor(). Empty array = use randomcolor() fallback. */
     colors?: string[];
+    /** Acceleration scale — multiplier on size-derived downward acceleration. Default 1. Set < 1 for slower fall, 0 to disable. */
+    acceleration?: number;
+    /** Friction scale — multiplier on size-derived air resistance. Default 1. Set < 1 for less drag, 0 to disable. */
+    friction?: number;
 }
 interface EmitterConfiguration extends ParticleConfig {
     point: Vector;
@@ -118,6 +122,8 @@ interface EmitterConfiguration extends ParticleConfig {
     spawnWidth: number;
     spawnHeight: number;
     colors: string[];
+    acceleration: number;
+    friction: number;
 }
 interface ParticleConstructorParams extends ShapeConfig {
     point?: Vector;
@@ -171,6 +177,8 @@ interface MouseForceConfig {
      *  = 1 = linear falloff (default).
      *  > 1 = sharp/localized (force concentrated near mouse). */
     falloff?: number;
+    /** EventTarget to track mouse on. `true` = window. Omitted/`false` = manual. */
+    track?: EventTarget | boolean;
 }
 type RendererType = 'canvas' | 'webgl';
 
@@ -280,7 +288,14 @@ declare class MouseForce implements ForceSource {
     damping: number;
     maxSpeed: number;
     falloff: number;
-    constructor(x?: number, y?: number, strength?: number, radius?: number, damping?: number, maxSpeed?: number, falloff?: number);
+    private _trackListener;
+    private _trackTarget;
+    private _pixelRatio;
+    constructor(config?: MouseForceConfig);
+    get isTracking(): boolean;
+    startTracking(target: EventTarget, pixelRatio: number): void;
+    stopTracking(): void;
+    destroy(): void;
     updatePosition(x: number, y: number): void;
     decay(dt?: number): void;
     getForce(particlePosition: Vector): Vector;
@@ -832,4 +847,4 @@ interface FPSOverlayController {
 }
 declare function showFPSOverlay(options?: FPSOverlayOptions): FPSOverlayController;
 
-export { Attractor as A, type BurstSettings as B, CanvasRenderer as C, DEFAULT_Z_INDEX as D, Emitter as E, type FullParticularConfig as F, MouseForce as M, type ParticularConfig as P, type RendererType as R, type ScreensaverController as S, Vector as V, WebGLRenderer as W, type ParticleConfig as a, Particular as b, type PresetName as c, type ParticlesController as d, type BurstOptions as e, type AttractorConfig as f, type BlendMode as g, type CreateParticlesOptions as h, type EmitterConfiguration as i, type FPSOverlayController as j, type FPSOverlayOptions as k, type ForceSource as l, type MouseForceConfig as m, Particle as n, type ParticleConstructorParams as o, type ParticleShape as p, type ScreensaverOptions as q, type ShapeConfig as r, type WebGLRendererOptions as s, createParticles as t, getParticlesBackgroundLayerStyle as u, particlesBackgroundLayerStyle as v, presets as w, showFPSOverlay as x, startScreensaver as y };
+export { Attractor as A, type BurstSettings as B, CanvasRenderer as C, DEFAULT_Z_INDEX as D, Emitter as E, type FullParticularConfig as F, type MouseForceConfig as M, type ParticularConfig as P, type RendererType as R, type ScreensaverController as S, Vector as V, WebGLRenderer as W, type ParticleConfig as a, Particular as b, type PresetName as c, type ParticlesController as d, type BurstOptions as e, type AttractorConfig as f, type BlendMode as g, type CreateParticlesOptions as h, type EmitterConfiguration as i, type FPSOverlayController as j, type FPSOverlayOptions as k, type ForceSource as l, MouseForce as m, Particle as n, type ParticleConstructorParams as o, type ParticleShape as p, type ScreensaverOptions as q, type ShapeConfig as r, type WebGLRendererOptions as s, createParticles as t, getParticlesBackgroundLayerStyle as u, particlesBackgroundLayerStyle as v, presets as w, showFPSOverlay as x, startScreensaver as y };

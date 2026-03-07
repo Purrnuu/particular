@@ -2,7 +2,7 @@ import Emitter from './components/emitter';
 import Attractor from './components/attractor';
 import MouseForce from './components/mouseForce';
 import { processImages } from './components/icons';
-import { configureParticular, configureParticle, defaultParticle } from './core/defaults';
+import { configureParticular, configureParticle, defaultParticle, defaultMouseWind } from './core/defaults';
 import Particular from './core/particular';
 import { getPreset, type PresetName } from './presets';
 import CanvasRenderer from './renderers/canvasRenderer';
@@ -163,20 +163,21 @@ export function createParticles({
   };
 
   const addMouseForce = (config: MouseForceConfig = {}): MouseForce => {
-    const mouseForce = new MouseForce(
-      config.x,
-      config.y,
-      config.strength,
-      config.radius,
-      config.damping,
-      config.maxSpeed,
-      config.falloff,
-    );
+    const { track, ...forceConfig } = config;
+    const mouseForce = new MouseForce(forceConfig);
     engine.addMouseForce(mouseForce);
+
+    if (track) {
+      const target = track === true ? window : track;
+      mouseForce.startTracking(target, engine.pixelRatio);
+      cleanups.push(() => mouseForce.stopTracking());
+    }
+
     return mouseForce;
   };
 
   const removeMouseForce = (mouseForce: MouseForce): void => {
+    mouseForce.stopTracking();
     engine.removeMouseForce(mouseForce);
   };
 
@@ -263,21 +264,11 @@ export function startScreensaver({
 
   // Gentle mouse wind — snowflakes drift away from cursor movement.
   if (mouseWindOption !== false) {
-    const windConfig: MouseForceConfig = {
-      strength: 0.12,
-      radius: 250,
-      damping: 0.92,
-      maxSpeed: 8,
-      falloff: 0.3,
+    controller.addMouseForce({
+      ...defaultMouseWind,
+      track: true,
       ...mouseWindOption,
-    };
-    const mouseWind = controller.addMouseForce(windConfig);
-
-    const onMouseMove = (e: globalThis.MouseEvent) => {
-      mouseWind.updatePosition(e.clientX / pixelRatio, e.clientY / pixelRatio);
-    };
-    window.addEventListener('mousemove', onMouseMove);
-    cleanups.push(() => window.removeEventListener('mousemove', onMouseMove));
+    });
   }
 
   if (autoResize) {

@@ -2,7 +2,6 @@ import React, { useEffect, useRef } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 
 import { createParticles } from './index';
-import type { ParticlesController } from './index';
 import type MouseForce from './particular/components/mouseForce';
 import { particlesBackgroundLayerStyle } from './particular/canvasStyles';
 import { particleArgTypes, defaultParticleStoryArgs, particleStoryArgsToConfig } from './storyArgs';
@@ -22,7 +21,6 @@ const MouseForceDemo: React.FC<MouseForceStoryArgs> = (props) => {
   const particleConfig = particleStoryArgsToConfig(props);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mouseForceRef = useRef<MouseForce | null>(null);
-  const controllerRef = useRef<ParticlesController | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -48,14 +46,13 @@ const MouseForceDemo: React.FC<MouseForceStoryArgs> = (props) => {
       damping,
       maxSpeed,
       falloff,
+      track: true,
     });
 
     mouseForceRef.current = mouseForce;
-    controllerRef.current = controller;
 
     return () => {
       controller.destroy();
-      controllerRef.current = null;
       mouseForceRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -72,17 +69,8 @@ const MouseForceDemo: React.FC<MouseForceStoryArgs> = (props) => {
     }
   }, [strength, radius, damping, maxSpeed, falloff]);
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    const mf = mouseForceRef.current;
-    const controller = controllerRef.current;
-    if (!mf || !controller) return;
-
-    const pixelRatio = controller.engine.pixelRatio;
-    mf.updatePosition(e.clientX / pixelRatio, e.clientY / pixelRatio);
-  };
-
   return (
-    <div onMouseMove={handleMouseMove} style={{ minHeight: '100vh', cursor: 'crosshair' }}>
+    <div style={{ minHeight: '100vh', cursor: 'crosshair' }}>
       <canvas ref={canvasRef} style={particlesBackgroundLayerStyle} />
       <h1
         style={{

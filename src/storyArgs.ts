@@ -7,7 +7,7 @@
  * SHARED FIELDS (in ParticleStoryArgs — exposed in every story):
  *   Rendering:      shape, blendMode
  *   Emission:       particleLife, fadeTime, maxCount
- *   Size & Physics: sizeMin, sizeMax, gravity
+ *   Size & Physics: sizeMin, sizeMax, gravity, acceleration, friction
  *   Glow:           glow, glowSize, glowColor, glowAlpha
  *   Trail:          trail, trailLength, trailFade, trailShrink
  *   Shadow:         shadow, shadowBlur, shadowOffsetX, shadowOffsetY, shadowColor, shadowAlpha
@@ -30,7 +30,7 @@
  * contexts, add them here. For fields specific to one story mode, add to that story file.
  */
 
-import type { InputType } from '@storybook/csf';
+import type { InputType } from '@storybook/core/types';
 
 import { defaultParticular, defaultParticle } from './particular/core/defaults';
 import type { FullParticularConfig } from './particular/types';
@@ -56,6 +56,8 @@ export interface ParticleStoryArgs {
   sizeMin: number;
   sizeMax: number;
   gravity: number;
+  acceleration: number;
+  friction: number;
   particleLife: number;
   fadeTime: number;
   maxCount: number;
@@ -84,6 +86,8 @@ export const particleArgTypes: Record<string, InputType> = {
   sizeMin: { control: { type: 'number', min: 1, max: 30 }, description: 'Min particle size', table: { category: 'Size & Physics' } },
   sizeMax: { control: { type: 'number', min: 1, max: 50 }, description: 'Max particle size', table: { category: 'Size & Physics' } },
   gravity: { control: { type: 'number', min: 0, max: 0.5, step: 0.01 }, description: 'Gravity', table: { category: 'Size & Physics' } },
+  acceleration: { control: { type: 'number', min: 0, max: 3, step: 0.1 }, description: 'Acceleration scale (size-derived downward pull)', table: { category: 'Size & Physics' } },
+  friction: { control: { type: 'number', min: 0, max: 3, step: 0.1 }, description: 'Friction scale (size-derived air resistance)', table: { category: 'Size & Physics' } },
   // — Glow —
   glow: { control: 'boolean', description: 'Enable glow effect', table: { category: 'Glow' } },
   glowSize: { control: { type: 'number', min: 8, max: 30 }, description: 'Glow size', table: { category: 'Glow' } },
@@ -124,6 +128,8 @@ export const defaultParticleStoryArgs: ParticleStoryArgs = {
   sizeMin: defaultParticle.sizeMin,
   sizeMax: defaultParticle.sizeMax,
   gravity: defaultParticle.gravity,
+  acceleration: defaultParticle.acceleration,
+  friction: defaultParticle.friction,
   particleLife: defaultParticle.particleLife,
   fadeTime: defaultParticle.fadeTime,
   maxCount: defaultParticular.maxCount,
@@ -151,6 +157,8 @@ export function particleStoryArgsToConfig(args: ParticleStoryArgs): Partial<Full
     sizeMin: args.sizeMin,
     sizeMax: args.sizeMax,
     gravity: args.gravity,
+    acceleration: args.acceleration,
+    friction: args.friction,
     particleLife: args.particleLife,
     fadeTime: args.fadeTime,
     maxCount: args.maxCount,

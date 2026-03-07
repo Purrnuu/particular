@@ -77,6 +77,10 @@ export interface ParticleConfig extends ShapeConfig {
   /** Color palette for particles. When provided, particles pick a random color from this array
    *  instead of using randomcolor(). Empty array = use randomcolor() fallback. */
   colors?: string[];
+  /** Acceleration scale — multiplier on size-derived downward acceleration. Default 1. Set < 1 for slower fall, 0 to disable. */
+  acceleration?: number;
+  /** Friction scale — multiplier on size-derived air resistance. Default 1. Set < 1 for less drag, 0 to disable. */
+  friction?: number;
 }
 
 export interface EmitterConfiguration extends ParticleConfig {
@@ -96,6 +100,8 @@ export interface EmitterConfiguration extends ParticleConfig {
   spawnWidth: number;
   spawnHeight: number;
   colors: string[];
+  acceleration: number;
+  friction: number;
 }
 
 export interface ParticleConstructorParams extends ShapeConfig {
@@ -156,6 +162,8 @@ export interface MouseForceConfig {
    *  = 1 = linear falloff (default).
    *  > 1 = sharp/localized (force concentrated near mouse). */
   falloff?: number;
+  /** EventTarget to track mouse on. `true` = window. Omitted/`false` = manual. */
+  track?: EventTarget | boolean;
 }
 
 export type RendererType = 'canvas' | 'webgl';

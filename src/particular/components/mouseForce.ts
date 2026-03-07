@@ -1,5 +1,6 @@
 import Vector from '../utils/vector';
-import type { ForceSource } from '../types';
+import type { ForceSource, MouseForceConfig } from '../types';
+import { defaultMouseForce } from '../core/defaults';
 
 export default class MouseForce implements ForceSource {
   position: Vector;
@@ -10,22 +11,45 @@ export default class MouseForce implements ForceSource {
   maxSpeed: number;
   falloff: number;
 
-  constructor(
-    x = 0,
-    y = 0,
-    strength = 1,
-    radius = 200,
-    damping = 0.85,
-    maxSpeed = 10,
-    falloff = 1,
-  ) {
-    this.position = new Vector(x, y);
+  private _trackListener: ((e: MouseEvent) => void) | null = null;
+  private _trackTarget: EventTarget | null = null;
+  private _pixelRatio = 1;
+
+  constructor(config: MouseForceConfig = {}) {
+    const merged = { ...defaultMouseForce, ...config };
+    this.position = new Vector(merged.x, merged.y);
     this.velocity = new Vector(0, 0);
-    this.strength = strength;
-    this.radius = radius;
-    this.damping = damping;
-    this.maxSpeed = maxSpeed;
-    this.falloff = falloff;
+    this.strength = merged.strength;
+    this.radius = merged.radius;
+    this.damping = merged.damping;
+    this.maxSpeed = merged.maxSpeed;
+    this.falloff = merged.falloff;
+  }
+
+  get isTracking(): boolean {
+    return this._trackTarget !== null;
+  }
+
+  startTracking(target: EventTarget, pixelRatio: number): void {
+    this.stopTracking();
+    this._pixelRatio = pixelRatio;
+    this._trackListener = (e: MouseEvent) => {
+      this.updatePosition(e.clientX / this._pixelRatio, e.clientY / this._pixelRatio);
+    };
+    this._trackTarget = target;
+    target.addEventListener('mousemove', this._trackListener as EventListener);
+  }
+
+  stopTracking(): void {
+    if (this._trackTarget && this._trackListener) {
+      this._trackTarget.removeEventListener('mousemove', this._trackListener as EventListener);
+    }
+    this._trackTarget = null;
+    this._trackListener = null;
+  }
+
+  destroy(): void {
+    this.stopTracking();
   }
 
   updatePosition(x: number, y: number): void {

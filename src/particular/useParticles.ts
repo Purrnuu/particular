@@ -10,7 +10,7 @@ import {
   type ScreensaverController,
 } from './convenience';
 import { getParticlesBackgroundLayerStyle } from './canvasStyles';
-import type { FullParticularConfig, RendererType } from './types';
+import type { FullParticularConfig, MouseForceConfig, RendererType } from './types';
 import type { PresetName } from './presets';
 
 export interface UseParticlesOptions {
@@ -136,6 +136,8 @@ export interface UseScreensaverOptions {
   autoResize?: boolean;
   /** When true (default), result includes canvasStyle for a full-viewport click-through canvas. */
   backgroundLayer?: boolean;
+  /** Mouse wind configuration. Pass `false` to disable entirely. */
+  mouseWind?: MouseForceConfig | false;
 }
 
 export interface UseScreensaverResult {
@@ -155,6 +157,7 @@ export function useScreensaver({
   renderer = 'canvas',
   autoResize = true,
   backgroundLayer = true,
+  mouseWind,
 }: UseScreensaverOptions = {}): UseScreensaverResult {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const screensaverRef = useRef<ScreensaverController | null>(null);
@@ -173,6 +176,7 @@ export function useScreensaver({
       config,
       renderer,
       autoResize,
+      mouseWind,
     });
 
     screensaverRef.current = screensaver;
@@ -181,7 +185,7 @@ export function useScreensaver({
       screensaver.destroy();
       screensaverRef.current = null;
     };
-  }, [preset, config, renderer, autoResize]);
+  }, [preset, config, renderer, autoResize, mouseWind]);
 
   const destroy = useCallback(() => {
     screensaverRef.current?.destroy();
