@@ -7,7 +7,7 @@
  * SHARED FIELDS (in ParticleStoryArgs — exposed in every story):
  *   Rendering:      shape, blendMode
  *   Emission:       particleLife, fadeTime, maxCount
- *   Size & Physics: sizeMin, sizeMax, gravity, acceleration, friction
+ *   Size & Physics: sizeMin, sizeMax, gravity, acceleration, accelerationSize, friction, frictionSize
  *   Glow:           glow, glowSize, glowColor, glowAlpha
  *   Trail:          trail, trailLength, trailFade, trailShrink
  *   Shadow:         shadow, shadowBlur, shadowOffsetX, shadowOffsetY, shadowColor, shadowAlpha
@@ -59,7 +59,9 @@ export interface ParticleStoryArgs {
   sizeMax: number;
   gravity: number;
   acceleration: number;
+  accelerationSize: number;
   friction: number;
+  frictionSize: number;
   particleLife: number;
   fadeTime: number;
   maxCount: number;
@@ -94,8 +96,10 @@ export const particleArgTypes: Record<string, InputType> = {
   sizeMin: { control: { type: 'number', min: 1, max: 30 }, description: 'Min particle size', table: { category: 'Size & Physics' } },
   sizeMax: { control: { type: 'number', min: 1, max: 50 }, description: 'Max particle size', table: { category: 'Size & Physics' } },
   gravity: { control: { type: 'number', min: 0, max: 0.5, step: 0.01 }, description: 'Gravity', table: { category: 'Size & Physics' } },
-  acceleration: { control: { type: 'number', min: 0, max: 3, step: 0.1 }, description: 'Acceleration scale (size-derived downward pull)', table: { category: 'Size & Physics' } },
-  friction: { control: { type: 'number', min: 0, max: 3, step: 0.1 }, description: 'Friction scale (size-derived air resistance)', table: { category: 'Size & Physics' } },
+  acceleration: { control: { type: 'number', min: 0, max: 1, step: 0.01 }, description: 'Direct downward acceleration (size-independent)', table: { category: 'Size & Physics' } },
+  accelerationSize: { control: { type: 'number', min: 0, max: 0.1, step: 0.001 }, description: 'Size-coupled downward acceleration (× particle size)', table: { category: 'Size & Physics' } },
+  friction: { control: { type: 'number', min: 0, max: 1, step: 0.01 }, description: 'Direct air resistance (size-independent)', table: { category: 'Size & Physics' } },
+  frictionSize: { control: { type: 'number', min: 0, max: 0.01, step: 0.0001 }, description: 'Size-coupled air resistance (× particle size)', table: { category: 'Size & Physics' } },
   // — Glow —
   glow: { control: 'boolean', description: 'Enable glow effect', table: { category: 'Glow' } },
   glowSize: { control: { type: 'number', min: 8, max: 30 }, description: 'Glow size', table: { category: 'Glow' } },
@@ -138,11 +142,22 @@ export const defaultParticleStoryArgs: ParticleStoryArgs = {
   sizeMax: defaultParticle.sizeMax,
   gravity: defaultParticle.gravity,
   acceleration: defaultParticle.acceleration,
+  accelerationSize: defaultParticle.accelerationSize,
   friction: defaultParticle.friction,
+  frictionSize: defaultParticle.frictionSize,
   particleLife: defaultParticle.particleLife,
   fadeTime: defaultParticle.fadeTime,
   maxCount: defaultParticular.maxCount,
 };
+
+/** Reverse-map a colors array to a named palette key, or 'random' if no match. */
+export function resolveColorPalette(colors: string[] | undefined): string {
+  if (!colors || colors.length === 0) return 'random';
+  for (const [name, palette] of Object.entries(colorPalettes)) {
+    if (palette.length === colors.length && palette.every((c, i) => c === colors[i])) return name;
+  }
+  return 'random';
+}
 
 /** Extract the particle config fields from story args into a Partial<FullParticularConfig>. */
 export function particleStoryArgsToConfig(args: ParticleStoryArgs): Partial<FullParticularConfig> {
@@ -168,7 +183,9 @@ export function particleStoryArgsToConfig(args: ParticleStoryArgs): Partial<Full
     sizeMax: args.sizeMax,
     gravity: args.gravity,
     acceleration: args.acceleration,
+    accelerationSize: args.accelerationSize,
     friction: args.friction,
+    frictionSize: args.frictionSize,
     particleLife: args.particleLife,
     fadeTime: args.fadeTime,
     maxCount: args.maxCount,

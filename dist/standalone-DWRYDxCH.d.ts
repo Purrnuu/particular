@@ -100,10 +100,14 @@ interface ParticleConfig extends ShapeConfig {
     /** Color palette for particles. When provided, particles pick a random color from this array
      *  instead of using randomcolor(). Empty array = use randomcolor() fallback. */
     colors?: string[];
-    /** Acceleration scale — multiplier on size-derived downward acceleration. Default 1. Set < 1 for slower fall, 0 to disable. */
+    /** Direct downward acceleration coefficient (size-independent). Default 0. */
     acceleration?: number;
-    /** Friction scale — multiplier on size-derived air resistance. Default 1. Set < 1 for less drag, 0 to disable. */
+    /** Size-coupled downward acceleration coefficient — multiplied by particle size. Default 0.01. */
+    accelerationSize?: number;
+    /** Direct friction/air-resistance coefficient (size-independent). Default 0. */
     friction?: number;
+    /** Size-coupled friction coefficient — multiplied by particle size. Default 0.0005. */
+    frictionSize?: number;
 }
 interface EmitterConfiguration extends ParticleConfig {
     point: Vector;
@@ -123,7 +127,9 @@ interface EmitterConfiguration extends ParticleConfig {
     spawnHeight: number;
     colors: string[];
     acceleration: number;
+    accelerationSize: number;
     friction: number;
+    frictionSize: number;
 }
 interface ParticleConstructorParams extends ShapeConfig {
     point?: Vector;
@@ -525,6 +531,10 @@ declare const presetRegistry: {
         velocityMultiplier: number;
         fadeTime: number;
         gravity: number;
+        acceleration: number;
+        accelerationSize: number;
+        friction: number;
+        frictionSize: number;
         scaleStep: number;
         maxCount: number;
         continuous: true;
@@ -633,6 +643,10 @@ declare const presets: {
             velocityMultiplier: number;
             fadeTime: number;
             gravity: number;
+            acceleration: number;
+            accelerationSize: number;
+            friction: number;
+            frictionSize: number;
             scaleStep: number;
             maxCount: number;
             continuous: true;
@@ -768,6 +782,10 @@ declare const presets: {
         velocityMultiplier: number;
         fadeTime: number;
         gravity: number;
+        acceleration: number;
+        accelerationSize: number;
+        friction: number;
+        frictionSize: number;
         scaleStep: number;
         maxCount: number;
         continuous: true;

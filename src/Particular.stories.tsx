@@ -10,7 +10,7 @@ import { defaultParticular, defaultParticle } from './particular/core/defaults';
 import { colorPalettes } from './particular/presets';
 import type { BurstSettings, FullParticularConfig } from './particular/types';
 import Vector from './particular/utils/vector';
-import { particleArgTypes } from './storyArgs';
+import { particleArgTypes, resolveColorPalette } from './storyArgs';
 import type { ParticleStoryArgs } from './storyArgs';
 
 const customIcons = [sad1, sad2, sad3];
@@ -65,14 +65,6 @@ export type StoryArgs = ParticleStoryArgs & {
   webglMaxInstances: number;
 };
 
-function resolveColorPalette(colors: string[] | undefined): string {
-  if (!colors || colors.length === 0) return 'random';
-  for (const [name, palette] of Object.entries(colorPalettes)) {
-    if (palette.length === colors.length && palette.every((c, i) => c === colors[i])) return name;
-  }
-  return 'random';
-}
-
 function toStoryArgs(config: Partial<FullParticularConfig>): StoryArgs {
   const merged = {
     ...defaultParticular,
@@ -106,7 +98,9 @@ function toStoryArgs(config: Partial<FullParticularConfig>): StoryArgs {
     velocityMultiplier: merged.velocityMultiplier,
     gravity: merged.gravity,
     acceleration: merged.acceleration,
+    accelerationSize: merged.accelerationSize,
     friction: merged.friction,
+    frictionSize: merged.frictionSize,
     particleLife: merged.particleLife,
     fadeTime: merged.fadeTime,
     maxCount: merged.maxCount,
@@ -160,7 +154,9 @@ function buildConfig(base: Partial<FullParticularConfig>, args: Partial<StoryArg
     velocityMultiplier: args.velocityMultiplier ?? mergedBase.velocityMultiplier,
     gravity: args.gravity ?? mergedBase.gravity,
     acceleration: args.acceleration ?? mergedBase.acceleration,
+    accelerationSize: args.accelerationSize ?? mergedBase.accelerationSize,
     friction: args.friction ?? mergedBase.friction,
+    frictionSize: args.frictionSize ?? mergedBase.frictionSize,
     particleLife: args.particleLife ?? mergedBase.particleLife,
     fadeTime: args.fadeTime ?? mergedBase.fadeTime,
     maxCount: args.maxCount ?? mergedBase.maxCount,

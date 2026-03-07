@@ -19,8 +19,8 @@ Defaults in `src/particular/core/defaults.ts`: `defaultParticular`, `defaultPart
 Key fields with non-obvious behavior:
 
 - `spawnWidth`, `spawnHeight` — randomize particle spawn within a rectangle centered on emitter point. Default 0 (point spawn). Used internally by screensaver to spread across viewport.
-- `acceleration` — scale multiplier on size-derived downward acceleration (`accelerationScale * size / 100`). Default 1 preserves original behavior. Set < 1 for slower fall, 0 to disable size-based acceleration entirely.
-- `friction` — scale multiplier on size-derived air resistance (`frictionScale * size / 2000`). Default 1 preserves original behavior. Set < 1 for less drag, 0 to disable.
+- `acceleration` + `accelerationSize` — downward acceleration split into direct (size-independent) and size-coupled components. Formula: `acceleration + accelerationSize * size`. Defaults: `acceleration: 0, accelerationSize: 0.01`. To disable size-based acceleration, set `accelerationSize: 0`. To add constant downward pull, increase `acceleration`.
+- `friction` + `frictionSize` — air resistance split into direct and size-coupled components. Formula: `friction + frictionSize * size`. Defaults: `friction: 0, frictionSize: 0.0005`. To apply uniform drag regardless of size, set `friction` directly and `frictionSize: 0`.
 - `webglMaxInstances` — max particles per WebGL draw call (default 4096). Increase for fewer draw calls with many particles.
 
 ## Runtime Flow

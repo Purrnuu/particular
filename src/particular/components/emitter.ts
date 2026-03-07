@@ -113,8 +113,10 @@ export default class Emitter {
       shadowColor,
       shadowAlpha,
       colors,
-      acceleration: accelerationScale,
-      friction: frictionScale,
+      acceleration: accelBase,
+      accelerationSize,
+      friction: frictionBase,
+      frictionSize,
     } = this.configuration;
     const angle = velocity.getAngle() + spread - Math.random() * spread * 2;
     const magnitude = velocity.getMagnitude();
@@ -125,8 +127,8 @@ export default class Emitter {
 
     const size = getRandomInt(sizeMin, sizeMax);
     newVelocity.add({ x: 0, y: -((sizeMax - size) / 15) * velocityMultiplier });
-    const friction = (frictionScale * size) / 2000;
-    const acceleration = new Vector(0, (accelerationScale * size) / 100);
+    const friction = frictionBase + frictionSize * size;
+    const acceleration = new Vector(0, accelBase + accelerationSize * size);
 
     this.lifeCycle++;
 

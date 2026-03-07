@@ -1,11 +1,15 @@
 import React, { useEffect, useRef } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 
-import { startScreensaver } from './index';
+import { startScreensaver, presets } from './index';
 import type { ScreensaverController, MouseForceConfig } from './index';
+import { defaultParticle, defaultMouseWind } from './particular/core/defaults';
 import { particlesBackgroundLayerStyle } from './particular/canvasStyles';
-import { particleArgTypes, defaultParticleStoryArgs, particleStoryArgsToConfig } from './storyArgs';
+import { particleArgTypes, particleStoryArgsToConfig, resolveColorPalette } from './storyArgs';
 import type { ParticleStoryArgs } from './storyArgs';
+
+/** Snow preset merged with particle defaults so every shared field is present. */
+const snow = { ...defaultParticle, ...presets.Ambient.snow };
 
 interface ScreensaverStoryArgs extends ParticleStoryArgs {
   renderer: 'canvas' | 'webgl';
@@ -118,20 +122,40 @@ const meta: Meta<ScreensaverStoryArgs> = {
     },
   },
   args: {
-    ...defaultParticleStoryArgs,
+    colorPalette: resolveColorPalette(snow.colors),
     renderer: 'webgl',
-    rate: 0.4,
-    windStrength: 0.12,
-    windRadius: 250,
-    windDamping: 0.92,
-    windMaxSpeed: 8,
-    windFalloff: 0.3,
-    particleLife: 400,
-    sizeMin: 2,
-    sizeMax: 6,
-    gravity: 0.02,
-    maxCount: 200,
-    glowAlpha: 0.2,
+    shape: snow.shape,
+    blendMode: snow.blendMode,
+    glow: snow.glow,
+    glowSize: snow.glowSize,
+    glowColor: snow.glowColor,
+    glowAlpha: snow.glowAlpha,
+    trail: snow.trail,
+    trailLength: snow.trailLength,
+    trailFade: snow.trailFade,
+    trailShrink: snow.trailShrink,
+    shadow: snow.shadow,
+    shadowBlur: snow.shadowBlur,
+    shadowOffsetX: snow.shadowOffsetX,
+    shadowOffsetY: snow.shadowOffsetY,
+    shadowColor: snow.shadowColor,
+    shadowAlpha: snow.shadowAlpha,
+    rate: snow.rate,
+    sizeMin: snow.sizeMin,
+    sizeMax: snow.sizeMax,
+    gravity: snow.gravity,
+    acceleration: snow.acceleration,
+    accelerationSize: snow.accelerationSize,
+    friction: snow.friction,
+    frictionSize: snow.frictionSize,
+    particleLife: snow.particleLife,
+    fadeTime: snow.fadeTime,
+    maxCount: snow.maxCount,
+    windStrength: defaultMouseWind.strength!,
+    windRadius: defaultMouseWind.radius!,
+    windDamping: defaultMouseWind.damping!,
+    windMaxSpeed: defaultMouseWind.maxSpeed!,
+    windFalloff: defaultMouseWind.falloff!,
   },
 };
 

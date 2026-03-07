@@ -145,7 +145,7 @@ export const Sweep: Story = {};
 export const StrongPush: Story = {
   args: {
     strength: 5,
-    radius: 400,
+    radius: 100,
     damping: 0.9,
     maxSpeed: 10,
     falloff: 2,
@@ -155,7 +155,7 @@ export const StrongPush: Story = {
 export const Wind: Story = {
   args: {
     strength: 2,
-    radius: 1000,
+    radius: 100,
     damping: 0.92,
     maxSpeed: 15,
     falloff: 0.3,

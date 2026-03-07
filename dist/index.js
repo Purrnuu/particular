@@ -139,8 +139,10 @@ var defaultParticle = {
   spawnWidth: 0,
   spawnHeight: 0,
   colors: [],
-  acceleration: 1,
-  friction: 1,
+  acceleration: 0,
+  accelerationSize: 0.01,
+  friction: 0,
+  frictionSize: 5e-4,
   shape: "circle",
   blendMode: "normal",
   glow: false,
@@ -175,14 +177,14 @@ var defaultMouseForce = {
   x: 0,
   y: 0,
   strength: 1,
-  radius: 100,
+  radius: 50,
   damping: 0.85,
   maxSpeed: 10,
   falloff: 1
 };
 var defaultMouseWind = {
   strength: 0.12,
-  radius: 150,
+  radius: 50,
   damping: 0.92,
   maxSpeed: 8,
   falloff: 0.3
@@ -572,8 +574,10 @@ var Emitter = class {
       shadowColor,
       shadowAlpha,
       colors,
-      acceleration: accelerationScale,
-      friction: frictionScale
+      acceleration: accelBase,
+      accelerationSize,
+      friction: frictionBase,
+      frictionSize
     } = this.configuration;
     const angle = velocity.getAngle() + spread - Math.random() * spread * 2;
     const magnitude = velocity.getMagnitude();
@@ -583,8 +587,8 @@ var Emitter = class {
     const newVelocity = Vector.fromAngle(angle, magnitude);
     const size = getRandomInt(sizeMin, sizeMax);
     newVelocity.add({ x: 0, y: -((sizeMax - size) / 15) * velocityMultiplier });
-    const friction = frictionScale * size / 2e3;
-    const acceleration = new Vector(0, accelerationScale * size / 100);
+    const friction = frictionBase + frictionSize * size;
+    const acceleration = new Vector(0, accelBase + accelerationSize * size);
     this.lifeCycle++;
     return new Particle({
       point: newPoint,
@@ -1866,18 +1870,22 @@ var Ambient = {
     glowColor: "#ffffff",
     glowAlpha: 0.2,
     shadow: false,
-    rate: 0.4,
+    rate: 0.55,
     life: 999999,
-    particleLife: 400,
-    velocity: Vector.fromAngle(Math.PI / 2, 0.8),
+    particleLife: 500,
+    velocity: Vector.fromAngle(Math.PI / 2, 0.4),
     spread: Math.PI * 0.15,
-    sizeMin: 2,
-    sizeMax: 6,
-    velocityMultiplier: 1.5,
+    sizeMin: 1,
+    sizeMax: 4,
+    velocityMultiplier: 0.3,
     fadeTime: 60,
-    gravity: 0.02,
+    gravity: 5e-3,
+    acceleration: 0,
+    accelerationSize: 1e-3,
+    friction: 1e-3,
+    frictionSize: 3e-3,
     scaleStep: 1,
-    maxCount: 200,
+    maxCount: 280,
     continuous: true,
     autoStart: true,
     colors: snowPalette
