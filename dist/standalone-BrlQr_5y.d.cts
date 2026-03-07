@@ -795,6 +795,8 @@ interface ScreensaverOptions {
     config?: Partial<FullParticularConfig>;
     renderer?: RendererType;
     autoResize?: boolean;
+    /** Mouse wind configuration. Pass `false` to disable entirely. */
+    mouseWind?: MouseForceConfig | false;
 }
 interface ScreensaverController {
     engine: Particular;
@@ -805,7 +807,7 @@ interface ScreensaverController {
  * One-call screensaver setup: spawns particles across the full viewport width.
  * Defaults to the `snow` preset with continuous emission.
  */
-declare function startScreensaver({ canvas, preset, config, renderer, autoResize, }: ScreensaverOptions): ScreensaverController;
+declare function startScreensaver({ canvas, preset, config, renderer, autoResize, mouseWind: mouseWindOption, }: ScreensaverOptions): ScreensaverController;
 
 /**
  * Development aid: shows a small on-screen FPS (and optional particle count)

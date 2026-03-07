@@ -207,6 +207,8 @@ export interface ScreensaverOptions {
   config?: Partial<FullParticularConfig>;
   renderer?: RendererType;
   autoResize?: boolean;
+  /** Mouse wind configuration. Pass `false` to disable entirely. */
+  mouseWind?: MouseForceConfig | false;
 }
 
 export interface ScreensaverController {
@@ -225,6 +227,7 @@ export function startScreensaver({
   config,
   renderer = 'canvas',
   autoResize = true,
+  mouseWind: mouseWindOption,
 }: ScreensaverOptions): ScreensaverController {
   const basePreset = getPreset(preset);
   const mergedConfig: Partial<FullParticularConfig> = {
@@ -256,23 +259,26 @@ export function startScreensaver({
   emitter.isEmitting = true;
   emitter.emit();
 
+  const cleanups: Array<() => void> = [];
+
   // Gentle mouse wind — snowflakes drift away from cursor movement.
-  const mouseWind = controller.addMouseForce({
-    strength: 0.12,
-    radius: 250,
-    damping: 0.92,
-    maxSpeed: 8,
-    falloff: 0.3,
-  });
+  if (mouseWindOption !== false) {
+    const windConfig: MouseForceConfig = {
+      strength: 0.12,
+      radius: 250,
+      damping: 0.92,
+      maxSpeed: 8,
+      falloff: 0.3,
+      ...mouseWindOption,
+    };
+    const mouseWind = controller.addMouseForce(windConfig);
 
-  const onMouseMove = (e: globalThis.MouseEvent) => {
-    mouseWind.updatePosition(e.clientX / pixelRatio, e.clientY / pixelRatio);
-  };
-  window.addEventListener('mousemove', onMouseMove);
-
-  const cleanups: Array<() => void> = [
-    () => window.removeEventListener('mousemove', onMouseMove),
-  ];
+    const onMouseMove = (e: globalThis.MouseEvent) => {
+      mouseWind.updatePosition(e.clientX / pixelRatio, e.clientY / pixelRatio);
+    };
+    window.addEventListener('mousemove', onMouseMove);
+    cleanups.push(() => window.removeEventListener('mousemove', onMouseMove));
+  }
 
   if (autoResize) {
     const onResize = () => {

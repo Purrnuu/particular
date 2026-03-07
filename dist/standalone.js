@@ -2056,7 +2056,8 @@ function startScreensaver({
   preset = "snow",
   config,
   renderer = "canvas",
-  autoResize = true
+  autoResize = true,
+  mouseWind: mouseWindOption
 }) {
   const basePreset = getPreset(preset);
   const mergedConfig = {
@@ -2083,20 +2084,23 @@ function startScreensaver({
   controller.engine.addEmitter(emitter);
   emitter.isEmitting = true;
   emitter.emit();
-  const mouseWind = controller.addMouseForce({
-    strength: 0.12,
-    radius: 250,
-    damping: 0.92,
-    maxSpeed: 8,
-    falloff: 0.3
-  });
-  const onMouseMove = (e) => {
-    mouseWind.updatePosition(e.clientX / pixelRatio, e.clientY / pixelRatio);
-  };
-  window.addEventListener("mousemove", onMouseMove);
-  const cleanups = [
-    () => window.removeEventListener("mousemove", onMouseMove)
-  ];
+  const cleanups = [];
+  if (mouseWindOption !== false) {
+    const windConfig = {
+      strength: 0.12,
+      radius: 250,
+      damping: 0.92,
+      maxSpeed: 8,
+      falloff: 0.3,
+      ...mouseWindOption
+    };
+    const mouseWind = controller.addMouseForce(windConfig);
+    const onMouseMove = (e) => {
+      mouseWind.updatePosition(e.clientX / pixelRatio, e.clientY / pixelRatio);
+    };
+    window.addEventListener("mousemove", onMouseMove);
+    cleanups.push(() => window.removeEventListener("mousemove", onMouseMove));
+  }
   if (autoResize) {
     const onResize = () => {
       const newSpawnWidth = window.innerWidth / pixelRatio;
