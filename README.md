@@ -50,9 +50,7 @@ The canvas is full-viewport and click-through by default. Use any preset: `"magi
 
 ## More
 
-- **[Embeds & API](docs/EMBEDS_AND_API.md)** — Script-tag options, HOC, direct API, presets list, custom icons, configuration.
-- **[Debug & development](docs/DEBUG_AND_DEV.md)** — FPS overlay, Storybook, dev commands, examples.
-- **Contributing:** [QUICKSTART.md](QUICKSTART.md) to run the repo; [SETUP.md](SETUP.md) for full dev environment.
+- **[Development setup](SETUP.md)** — NVM, Storybook, build commands, testing, IDE config.
 
 ---
 
