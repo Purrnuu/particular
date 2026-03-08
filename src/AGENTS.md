@@ -161,6 +161,7 @@ Curated and intentionally limited. Polish over quantity.
 - `presets.Images.showcase` — tuned for icon/image particles
 - `presets.Ambient.snow` — gentle snowfall (continuous, low rate, long life)
 - `presets.Ambient.meteors` — bright diagonal streaks with glowing trails, accelerating as they fall
+- `presets.Burst.fireworksDetonation` — narrow upward launch that auto-detonates into colorful sub-bursts at 70% lifetime
 
 ## Trail System
 
@@ -178,6 +179,44 @@ alphaScale = life * trailFade
 `startScreensaver()` creates a `createParticles` instance with a single emitter at top-center, `spawnWidth` = viewport width, continuous mode. Adds a gentle `MouseForce` with `track: true` (strength 0.12) for drift — mouse tracking is config-driven, not manually wired. On resize, updates emitter `spawnWidth` and `point.x`.
 
 The `mouseWind` option (`MouseForceConfig | false`) controls the mouse wind effect. Omit or pass a partial config to merge over defaults (`strength: 0.12, radius: 250, damping: 0.92, maxSpeed: 8, falloff: 0.3`). Pass `false` to disable mouse wind entirely (no listener, no force). The `useScreensaver` hook also accepts `mouseWind` and passes it through.
+
+## Explosion & Detonation
+
+Two ways to spawn sub-bursts from existing particles:
+
+### Manual Explode: `controller.explode(options?)`
+
+Snapshots all alive particles, optionally destroys parents (`destroyParents: true` by default), creates a collector emitter (`isEmitting: false, life: 0, rate: 0`) and pre-populates it with children via `createExplosionChild()`. The collector emitter lives in the engine and its children fade out naturally.
+
+- `ExplodeOptions` extends `ChildExplosionConfig` with `destroyParents?: boolean`.
+- React: `useParticles()` returns `explode: (options?) => void`.
+- Colors: `inheritColor: true` (default) uses parent color. `inheritColor: false` generates a fresh harmonious palette.
+
+### Timed Detonation: `detonate` config on emitter
+
+Set `detonate: { at: 0.7, childCount: 12, velocity: 4 }` in particle config. In `Emitter.update()`, after `particle.update()`, checks if `particle.lifeTick >= particle.lifeTime * detonate.at`. When triggered:
+1. Snapshots parent position/color/shape/blendMode
+2. Creates children via `createExplosionChild()`
+3. Marks children as `isDetonationChild = true`
+4. Destroys parent (not pushed to `currentParticles`)
+5. Children pushed into same emitter's `particles` array
+
+### Infinite Recursion Guard
+
+Children created by detonation have `particle.isDetonationChild = true`. The detonation check in `Emitter.update()` skips particles with this flag, preventing infinite recursion since children live in the same emitter and share its `detonate` config.
+
+### Shared Utility: `createExplosionChild()`
+
+File: `src/particular/utils/explosion.ts`. Pure factory function used by both manual `explode()` and emitter detonation. Takes a `ParentSnapshot` (position, color, shape, blendMode) + merged `ChildExplosionConfig` + engine ref + fallback colors. Returns a single initialized `Particle` with:
+- Random outward direction: `Vector.fromAngle(Math.random() * Math.PI * 2, velocity)`
+- `scaleStep: size` for instant full size
+- No icon, engine ref set via `particle.init(null, engine)`
+
+### Config Types
+
+- `ChildExplosionConfig`: shared base (childCount, childLife, sizeMin/Max, velocity, gravity, fadeTime, inheritColor, shape/blendMode overrides, glow/shadow/trail)
+- `ExplodeOptions extends ChildExplosionConfig`: adds `destroyParents`
+- `DetonateConfig extends ChildExplosionConfig`: adds `at` (0-1 lifetime fraction)
 
 ## Stable Public API
 

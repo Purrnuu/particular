@@ -6,6 +6,7 @@ import type {
   MouseForceConfig,
   FullParticularConfig,
   RendererType,
+  ChildExplosionConfig,
 } from '../types';
 
 export const defaultParticular: Required<ParticularConfig> = {
@@ -17,7 +18,7 @@ export const defaultParticular: Required<ParticularConfig> = {
   webglMaxInstances: 4096,
 };
 
-export const defaultParticle: Required<ParticleConfig> = {
+export const defaultParticle: Required<Omit<ParticleConfig, 'detonate'>> = {
   rate: 8,
   life: 30,
   particleLife: 100,
@@ -78,6 +79,28 @@ export const defaultMouseForce: Required<Omit<MouseForceConfig, 'track'>> = {
   falloff: 1,
 };
 
+export const defaultExplosionChild: Required<ChildExplosionConfig> = {
+  childCount: 5,
+  childLife: 40,
+  sizeMin: 2,
+  sizeMax: 5,
+  velocity: 3,
+  gravity: 0.12,
+  fadeTime: 15,
+  inheritColor: true,
+  shape: 'circle',
+  blendMode: 'normal',
+  glow: false,
+  glowSize: 10,
+  glowColor: '#ffffff',
+  glowAlpha: 0.25,
+  shadow: false,
+  trail: false,
+  trailLength: 3,
+  trailFade: 0.75,
+  trailShrink: 0.55,
+};
+
 /** Screensaver mouse-wind defaults — softer, broader than base mouse force. */
 export const defaultMouseWind: Omit<MouseForceConfig, 'track'> = {
   strength: 0.12,
@@ -87,15 +110,17 @@ export const defaultMouseWind: Omit<MouseForceConfig, 'track'> = {
   falloff: 0.3,
 };
 
+type ParticleDefaults = Required<Omit<ParticleConfig, 'detonate'>>;
+
 export function configureParticular(
   configuration?: FullParticularConfig,
-): Required<ParticularConfig> & Required<ParticleConfig> & { renderer?: RendererType } {
+): Required<ParticularConfig> & ParticleDefaults & { renderer?: RendererType } {
   return { ...defaultParticular, ...defaultParticle, ...configuration };
 }
 
 export function configureParticle<T extends Partial<ParticleConfig>>(
   settings?: T,
   configuration?: ParticleConfig
-): Required<ParticleConfig> & T {
+): ParticleDefaults & T {
   return { ...defaultParticle, ...configuration, ...settings } as any;
 }

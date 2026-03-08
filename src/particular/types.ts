@@ -55,6 +55,51 @@ export interface ParticularConfig {
   webglMaxInstances?: number;
 }
 
+/** Base options shared by both manual explode() and timed detonation. */
+export interface ChildExplosionConfig {
+  /** Children per parent particle. Default 5. */
+  childCount?: number;
+  /** Child lifetime in ticks. Default 40. */
+  childLife?: number;
+  /** Minimum child size. Default 2. */
+  sizeMin?: number;
+  /** Maximum child size. Default 5. */
+  sizeMax?: number;
+  /** Outward velocity magnitude. Default 3. */
+  velocity?: number;
+  /** Child gravity. Default 0.05. */
+  gravity?: number;
+  /** Child fade time in ticks. Default 15. */
+  fadeTime?: number;
+  /** Inherit parent color. Default true. */
+  inheritColor?: boolean;
+  /** Override child shape (default: inherit parent). */
+  shape?: ParticleShape;
+  /** Override child blend mode (default: inherit parent). */
+  blendMode?: BlendMode;
+  glow?: boolean;
+  glowSize?: number;
+  glowColor?: string;
+  glowAlpha?: number;
+  shadow?: boolean;
+  trail?: boolean;
+  trailLength?: number;
+  trailFade?: number;
+  trailShrink?: number;
+}
+
+/** Options for manual controller.explode(). */
+export interface ExplodeOptions extends ChildExplosionConfig {
+  /** Destroy parent particles after explosion. Default true. */
+  destroyParents?: boolean;
+}
+
+/** Config for timed auto-detonation of particles. */
+export interface DetonateConfig extends ChildExplosionConfig {
+  /** Lifetime fraction (0–1) at which particles auto-explode. */
+  at: number;
+}
+
 export interface ParticleConfig extends ShapeConfig {
   rate?: number;
   /** Emitter emission budget — total number of particles the emitter will create before stopping (burst mode only). */
@@ -85,6 +130,8 @@ export interface ParticleConfig extends ShapeConfig {
   friction?: number;
   /** Size-coupled friction coefficient — multiplied by particle size. Default 0.0005. */
   frictionSize?: number;
+  /** Timed detonation config — particles auto-explode into sub-bursts at a lifetime fraction. */
+  detonate?: DetonateConfig;
 }
 
 export interface EmitterConfiguration extends ParticleConfig {

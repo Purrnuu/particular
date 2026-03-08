@@ -78,6 +78,48 @@ interface ParticularConfig {
     /** WebGL: max particles per draw call (default 4096). Increase for fewer draw calls with many particles. */
     webglMaxInstances?: number;
 }
+/** Base options shared by both manual explode() and timed detonation. */
+interface ChildExplosionConfig {
+    /** Children per parent particle. Default 5. */
+    childCount?: number;
+    /** Child lifetime in ticks. Default 40. */
+    childLife?: number;
+    /** Minimum child size. Default 2. */
+    sizeMin?: number;
+    /** Maximum child size. Default 5. */
+    sizeMax?: number;
+    /** Outward velocity magnitude. Default 3. */
+    velocity?: number;
+    /** Child gravity. Default 0.05. */
+    gravity?: number;
+    /** Child fade time in ticks. Default 15. */
+    fadeTime?: number;
+    /** Inherit parent color. Default true. */
+    inheritColor?: boolean;
+    /** Override child shape (default: inherit parent). */
+    shape?: ParticleShape;
+    /** Override child blend mode (default: inherit parent). */
+    blendMode?: BlendMode;
+    glow?: boolean;
+    glowSize?: number;
+    glowColor?: string;
+    glowAlpha?: number;
+    shadow?: boolean;
+    trail?: boolean;
+    trailLength?: number;
+    trailFade?: number;
+    trailShrink?: number;
+}
+/** Options for manual controller.explode(). */
+interface ExplodeOptions extends ChildExplosionConfig {
+    /** Destroy parent particles after explosion. Default true. */
+    destroyParents?: boolean;
+}
+/** Config for timed auto-detonation of particles. */
+interface DetonateConfig extends ChildExplosionConfig {
+    /** Lifetime fraction (0–1) at which particles auto-explode. */
+    at: number;
+}
 interface ParticleConfig extends ShapeConfig {
     rate?: number;
     /** Emitter emission budget — total number of particles the emitter will create before stopping (burst mode only). */
@@ -108,6 +150,8 @@ interface ParticleConfig extends ShapeConfig {
     friction?: number;
     /** Size-coupled friction coefficient — multiplied by particle size. Default 0.0005. */
     frictionSize?: number;
+    /** Timed detonation config — particles auto-explode into sub-bursts at a lifetime fraction. */
+    detonate?: DetonateConfig;
 }
 interface EmitterConfiguration extends ParticleConfig {
     point: Vector;
@@ -215,6 +259,7 @@ declare class Particle {
     color: string;
     particular: Particular | null;
     image: string | HTMLImageElement | null;
+    isDetonationChild: boolean;
     shape: ParticleShape;
     blendMode: BlendMode;
     glow: boolean;
@@ -496,6 +541,36 @@ declare const presetRegistry: {
         maxCount: number;
         colors: string[];
     };
+    readonly fireworksDetonation: {
+        shape: "circle";
+        blendMode: "normal";
+        glow: true;
+        glowSize: number;
+        glowColor: string;
+        glowAlpha: number;
+        rate: number;
+        life: number;
+        velocity: Vector;
+        spread: number;
+        sizeMin: number;
+        sizeMax: number;
+        velocityMultiplier: number;
+        fadeTime: number;
+        gravity: number;
+        scaleStep: number;
+        maxCount: number;
+        particleLife: number;
+        detonate: {
+            at: number;
+            childCount: number;
+            velocity: number;
+            childLife: number;
+            fadeTime: number;
+            glow: true;
+            glowSize: number;
+            inheritColor: true;
+        };
+    };
     readonly images: {
         shape: "roundedRectangle";
         blendMode: "normal";
@@ -633,6 +708,37 @@ declare const presets: {
             scaleStep: number;
             maxCount: number;
             colors: string[];
+        };
+        /** Fireworks with timed detonation: narrow upward launch that auto-explodes into colorful sub-bursts */
+        readonly fireworksDetonation: {
+            shape: "circle";
+            blendMode: "normal";
+            glow: true;
+            glowSize: number;
+            glowColor: string;
+            glowAlpha: number;
+            rate: number;
+            life: number;
+            velocity: Vector;
+            spread: number;
+            sizeMin: number;
+            sizeMax: number;
+            velocityMultiplier: number;
+            fadeTime: number;
+            gravity: number;
+            scaleStep: number;
+            maxCount: number;
+            particleLife: number;
+            detonate: {
+                at: number;
+                childCount: number;
+                velocity: number;
+                childLife: number;
+                fadeTime: number;
+                glow: true;
+                glowSize: number;
+                inheritColor: true;
+            };
         };
     };
     readonly Images: {
@@ -816,6 +922,36 @@ declare const presets: {
         maxCount: number;
         colors: string[];
     };
+    readonly fireworksDetonation: {
+        shape: "circle";
+        blendMode: "normal";
+        glow: true;
+        glowSize: number;
+        glowColor: string;
+        glowAlpha: number;
+        rate: number;
+        life: number;
+        velocity: Vector;
+        spread: number;
+        sizeMin: number;
+        sizeMax: number;
+        velocityMultiplier: number;
+        fadeTime: number;
+        gravity: number;
+        scaleStep: number;
+        maxCount: number;
+        particleLife: number;
+        detonate: {
+            at: number;
+            childCount: number;
+            velocity: number;
+            childLife: number;
+            fadeTime: number;
+            glow: true;
+            glowSize: number;
+            inheritColor: true;
+        };
+    };
     readonly images: {
         shape: "roundedRectangle";
         blendMode: "normal";
@@ -921,6 +1057,7 @@ interface CreateParticlesOptions {
 interface ParticlesController {
     engine: Particular;
     burst: (options: BurstOptions) => Emitter;
+    explode: (options?: ExplodeOptions) => void;
     addAttractor: (config: AttractorConfig) => Attractor;
     removeAttractor: (attractor: Attractor) => void;
     addRandomAttractors: (count: number, config?: Partial<Omit<AttractorConfig, 'x' | 'y'>>) => Attractor[];
@@ -978,4 +1115,4 @@ interface FPSOverlayController {
 }
 declare function showFPSOverlay(options?: FPSOverlayOptions): FPSOverlayController;
 
-export { Attractor as A, type BurstSettings as B, CanvasRenderer as C, DEFAULT_Z_INDEX as D, Emitter as E, type FullParticularConfig as F, type MouseForceConfig as M, type ParticularConfig as P, type RendererType as R, type ScreensaverController as S, Vector as V, WebGLRenderer as W, type ParticleConfig as a, Particular as b, type PresetName as c, type ParticlesController as d, type BurstOptions as e, type AttractorConfig as f, type BlendMode as g, type CreateParticlesOptions as h, type EmitterConfiguration as i, type FPSOverlayController as j, type FPSOverlayOptions as k, type ForceSource as l, MouseForce as m, Particle as n, type ParticleConstructorParams as o, type ParticleShape as p, type ScreensaverOptions as q, type ShapeConfig as r, type WebGLRendererOptions as s, createParticles as t, getParticlesBackgroundLayerStyle as u, particlesBackgroundLayerStyle as v, presets as w, showFPSOverlay as x, startScreensaver as y };
+export { Attractor as A, type BurstSettings as B, CanvasRenderer as C, type DetonateConfig as D, type ExplodeOptions as E, type FullParticularConfig as F, showFPSOverlay as G, startScreensaver as H, type MouseForceConfig as M, type ParticularConfig as P, type RendererType as R, type ScreensaverController as S, Vector as V, WebGLRenderer as W, type ParticleConfig as a, Particular as b, type PresetName as c, type ParticlesController as d, type BurstOptions as e, type AttractorConfig as f, type BlendMode as g, type ChildExplosionConfig as h, type CreateParticlesOptions as i, Emitter as j, type EmitterConfiguration as k, type FPSOverlayController as l, type FPSOverlayOptions as m, type ForceSource as n, MouseForce as o, Particle as p, type ParticleConstructorParams as q, type ParticleShape as r, type ScreensaverOptions as s, type ShapeConfig as t, type WebGLRendererOptions as u, createParticles as v, getParticlesBackgroundLayerStyle as w, particlesBackgroundLayerStyle as x, DEFAULT_Z_INDEX as y, presets as z };

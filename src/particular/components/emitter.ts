@@ -4,6 +4,7 @@ import Vector from '../utils/vector';
 import Particle from './particle';
 import { getRandomInt } from '../utils/math';
 import { generateHarmoniousPalette } from '../utils/color';
+import { createExplosionChild } from '../utils/explosion';
 import { destroy } from '../utils/genericUtils';
 import type { EmitterConfiguration, ForceSource } from '../types';
 import type Particular from '../core/particular';
@@ -48,6 +49,8 @@ export default class Emitter {
 
   update(boundsX: number, boundsY: number, forces?: ForceSource[], dt = 1): void {
     const currentParticles: Particle[] = [];
+    const detonate = this.configuration.detonate;
+    const newChildren: Particle[] = [];
 
     forEach(this.particles, (particle) => {
       const pos = particle.position;
@@ -67,6 +70,37 @@ export default class Emitter {
       }
 
       particle.update(forces, dt);
+
+      // Timed detonation — auto-explode into sub-burst at lifetime fraction
+      if (
+        detonate &&
+        !particle.isDetonationChild &&
+        this.particular &&
+        particle.lifeTick >= particle.lifeTime * detonate.at
+      ) {
+        const childCount = detonate.childCount ?? 5;
+        const budget = Math.max(0, this.particular.maxCount - this.particular.getCount() - newChildren.length);
+        const toSpawn = Math.min(childCount, budget);
+        for (let i = 0; i < toSpawn; i++) {
+          const child = createExplosionChild(
+            {
+              x: particle.position.x,
+              y: particle.position.y,
+              color: particle.color,
+              shape: particle.shape,
+              blendMode: particle.blendMode,
+            },
+            detonate,
+            this.particular,
+            this.configuration.colors,
+          );
+          child.isDetonationChild = true;
+          newChildren.push(child);
+        }
+        particle.destroy();
+        return; // parent dies — don't push to currentParticles
+      }
+
       const trailActive = particle.trail && particle.trailSegments.length > 0;
       const fadedOut = particle.alpha <= 0 && particle.lifeTick >= particle.lifeTime;
 
@@ -78,7 +112,9 @@ export default class Emitter {
       }
     });
 
-    this.particles = currentParticles;
+    this.particles = newChildren.length > 0
+      ? [...currentParticles, ...newChildren]
+      : currentParticles;
     this.isEmitting = this.particular?.continuous ? true : this.lifeCycle < this.configuration.life;
   }
 

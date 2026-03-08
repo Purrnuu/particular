@@ -36,6 +36,9 @@ export type {
   MouseForceConfig,
   ForceSource,
   RendererType,
+  ChildExplosionConfig,
+  ExplodeOptions,
+  DetonateConfig,
 } from './particular/types';
 export type { PresetName } from './particular/presets';
 export type {

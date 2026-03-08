@@ -54,6 +54,7 @@ src/particular/devFPSOverlay.ts      # Debug FPS counter overlay
 ```
 src/storyArgs.ts                 # Shared particle controls (type, argTypes, defaults, converter)
 src/Particular.stories.tsx       # Burst presets, shapes, effects, performance
+src/Explosion.stories.tsx        # Manual explode + timed firework detonation demos
 src/Attractors.stories.tsx       # Attractor physics demos
 src/MouseForce.stories.tsx       # Mouse-velocity directional force demos
 src/Screensaver.stories.tsx      # Ambient screensaver demos (snow, etc.)
@@ -127,6 +128,7 @@ src/particular/utils/eventDispatcher.ts  # Simple pub/sub for engine events
 - Presets are curated, not abundant. Polish over quantity.
 - New features get a dedicated Storybook story before they're considered complete.
 - Validate both renderers when changing visual behavior.
+- **Defaults must be beautiful.** Presets and defaults are the primary way library users experience effects. All tuning (colors, physics, timing, child config) belongs in presets and `defaults.ts`, not in story files. Stories should demonstrate features using presets with minimal or no inline config overrides. If a story needs many tweaks to look good, those tweaks should be promoted into a preset or default. This ensures `createParticles({ preset: 'fireworksDetonation' })` gives users a polished result without requiring them to hand-tune parameters.
 
 ## Key Pitfalls
 

@@ -32,6 +32,7 @@ export default class Particle {
   color: string;
   particular: Particular | null = null;
   image: string | HTMLImageElement | null = null;
+  isDetonationChild = false;
   
   // Shape configuration
   shape: ParticleShape;

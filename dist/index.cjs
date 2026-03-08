@@ -187,6 +187,27 @@ var defaultMouseForce = {
   maxSpeed: 10,
   falloff: 1
 };
+var defaultExplosionChild = {
+  childCount: 5,
+  childLife: 40,
+  sizeMin: 2,
+  sizeMax: 5,
+  velocity: 3,
+  gravity: 0.12,
+  fadeTime: 15,
+  inheritColor: true,
+  shape: "circle",
+  blendMode: "normal",
+  glow: false,
+  glowSize: 10,
+  glowColor: "#ffffff",
+  glowAlpha: 0.25,
+  shadow: false,
+  trail: false,
+  trailLength: 3,
+  trailFade: 0.75,
+  trailShrink: 0.55
+};
 var defaultMouseWind = {
   strength: 0.12,
   radius: 50,
@@ -392,6 +413,7 @@ var Particle = class {
   }) {
     this.particular = null;
     this.image = null;
+    this.isDetonationChild = false;
     this.trailSegments = [];
     this.position = point ?? new Vector(0, 0);
     this.shadowLightOrigin = new Vector(this.position.x, this.position.y);
@@ -513,6 +535,41 @@ function generateHarmoniousPalette() {
   return colors;
 }
 
+// src/particular/utils/explosion.ts
+function createExplosionChild(parent, config, engine, fallbackColors) {
+  const merged = { ...defaultExplosionChild, ...config };
+  const size = getRandomInt(merged.sizeMin, merged.sizeMax);
+  const angle = Math.random() * Math.PI * 2;
+  const velocity = Vector.fromAngle(angle, merged.velocity);
+  const colors = merged.inheritColor ? [parent.color] : fallbackColors.length > 0 ? fallbackColors : [parent.color];
+  const particle = new Particle({
+    point: new Vector(parent.x, parent.y),
+    velocity,
+    acceleration: new Vector(0, 0),
+    friction: 0,
+    size,
+    particleLife: merged.childLife,
+    gravity: merged.gravity,
+    scaleStep: size,
+    // instant full size
+    fadeTime: merged.fadeTime,
+    shape: merged.shape !== defaultExplosionChild.shape ? merged.shape : parent.shape,
+    blendMode: merged.blendMode !== defaultExplosionChild.blendMode ? merged.blendMode : parent.blendMode,
+    glow: merged.glow,
+    glowSize: merged.glowSize,
+    glowColor: merged.glowColor,
+    glowAlpha: merged.glowAlpha,
+    shadow: merged.shadow,
+    trail: merged.trail,
+    trailLength: merged.trailLength,
+    trailFade: merged.trailFade,
+    trailShrink: merged.trailShrink,
+    colors
+  });
+  particle.init(null, engine);
+  return particle;
+}
+
 // src/particular/components/emitter.ts
 var Emitter = class {
   constructor(configuration) {
@@ -545,6 +602,8 @@ var Emitter = class {
   }
   update(boundsX, boundsY, forces, dt = 1) {
     const currentParticles = [];
+    const detonate = this.configuration.detonate;
+    const newChildren = [];
     lodashEs.forEach(this.particles, (particle) => {
       const pos = particle.position;
       if (pos.x < 0 || pos.x > boundsX || pos.y < -boundsY || pos.y > boundsY) {
@@ -562,6 +621,29 @@ var Emitter = class {
         return;
       }
       particle.update(forces, dt);
+      if (detonate && !particle.isDetonationChild && this.particular && particle.lifeTick >= particle.lifeTime * detonate.at) {
+        const childCount = detonate.childCount ?? 5;
+        const budget = Math.max(0, this.particular.maxCount - this.particular.getCount() - newChildren.length);
+        const toSpawn = Math.min(childCount, budget);
+        for (let i = 0; i < toSpawn; i++) {
+          const child = createExplosionChild(
+            {
+              x: particle.position.x,
+              y: particle.position.y,
+              color: particle.color,
+              shape: particle.shape,
+              blendMode: particle.blendMode
+            },
+            detonate,
+            this.particular,
+            this.configuration.colors
+          );
+          child.isDetonationChild = true;
+          newChildren.push(child);
+        }
+        particle.destroy();
+        return;
+      }
       const trailActive = particle.trail && particle.trailSegments.length > 0;
       const fadedOut = particle.alpha <= 0 && particle.lifeTick >= particle.lifeTime;
       if (!fadedOut || trailActive) {
@@ -570,7 +652,7 @@ var Emitter = class {
         particle.destroy();
       }
     });
-    this.particles = currentParticles;
+    this.particles = newChildren.length > 0 ? [...currentParticles, ...newChildren] : currentParticles;
     this.isEmitting = this.particular?.continuous ? true : this.lifeCycle < this.configuration.life;
   }
   isAlive() {
@@ -1873,6 +1955,37 @@ var Burst = {
     scaleStep: 1.15,
     maxCount: 520,
     colors: mutedPalette
+  },
+  /** Fireworks with timed detonation: narrow upward launch that auto-explodes into colorful sub-bursts */
+  fireworksDetonation: {
+    shape: "circle",
+    blendMode: "normal",
+    glow: true,
+    glowSize: 14,
+    glowColor: "#fff7d6",
+    glowAlpha: 0.5,
+    rate: 22,
+    life: 24,
+    velocity: Vector.fromAngle(-Math.PI / 2, 8.8),
+    spread: Math.PI / 4,
+    sizeMin: 3,
+    sizeMax: 6,
+    velocityMultiplier: 8,
+    fadeTime: 20,
+    gravity: 0.08,
+    scaleStep: 1.15,
+    maxCount: 3e3,
+    particleLife: 80,
+    detonate: {
+      at: 0.7,
+      childCount: 12,
+      velocity: 4,
+      childLife: 50,
+      fadeTime: 20,
+      glow: true,
+      glowSize: 8,
+      inheritColor: true
+    }
   }
 };
 var Images = {
@@ -1985,6 +2098,7 @@ var presetRegistry = {
   confetti: Burst.confetti,
   magic: Burst.magic,
   fireworks: Burst.fireworks,
+  fireworksDetonation: Burst.fireworksDetonation,
   images: Images.showcase,
   snow: Ambient.snow,
   meteors: Ambient.meteors
@@ -1998,6 +2112,7 @@ var presets = {
   confetti: Burst.confetti,
   magic: Burst.magic,
   fireworks: Burst.fireworks,
+  fireworksDetonation: Burst.fireworksDetonation,
   images: Images.showcase,
   snow: Ambient.snow,
   meteors: Ambient.meteors
@@ -2252,6 +2367,50 @@ function createParticles({
     emitter.emit();
     return emitter;
   };
+  const explode = (options = {}) => {
+    const destroyParents = options.destroyParents ?? true;
+    const allParticles = engine.getAllParticles();
+    if (allParticles.length === 0) return;
+    const snapshots = allParticles.map((p) => ({
+      x: p.position.x,
+      y: p.position.y,
+      color: p.color,
+      shape: p.shape,
+      blendMode: p.blendMode
+    }));
+    if (destroyParents) {
+      for (const emitter of engine.emitters) {
+        for (const p of emitter.particles) {
+          p.destroy();
+        }
+        emitter.particles = [];
+      }
+    }
+    const fallbackColors = generateHarmoniousPalette();
+    const collectorConfig = configureParticle({}, mergedConfig);
+    const collector = new Emitter({
+      point: new Vector(0, 0),
+      ...collectorConfig,
+      rate: 0,
+      life: 0,
+      icons: []
+    });
+    collector.isEmitting = false;
+    const childCount = options.childCount ?? 5;
+    const currentCount = engine.getCount();
+    const budget = Math.max(0, engine.maxCount - currentCount);
+    let spawned = 0;
+    for (const parent of snapshots) {
+      for (let i = 0; i < childCount; i++) {
+        if (spawned >= budget) break;
+        const child = createExplosionChild(parent, options, engine, fallbackColors);
+        collector.particles.push(child);
+        spawned++;
+      }
+      if (spawned >= budget) break;
+    }
+    engine.addEmitter(collector);
+  };
   const attachClickBurst = (target = clickTarget ?? document, overrides) => {
     const onClick = (event) => {
       const mouseEvent = event;
@@ -2323,6 +2482,7 @@ function createParticles({
   return {
     engine,
     burst,
+    explode,
     addAttractor,
     removeAttractor,
     addRandomAttractors,
@@ -2449,12 +2609,16 @@ function useParticles({
     },
     []
   );
+  const explode = React.useCallback((options) => {
+    controllerRef.current?.explode(options);
+  }, []);
   return {
     canvasRef,
     canvasStyle,
     controller: controllerRef.current,
     burst,
-    burstFromEvent
+    burstFromEvent,
+    explode
   };
 }
 function useScreensaver({

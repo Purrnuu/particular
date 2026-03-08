@@ -1,8 +1,9 @@
-import { F as FullParticularConfig, P as ParticularConfig, a as ParticleConfig, R as RendererType, b as Particular, B as BurstSettings, c as PresetName, d as ParticlesController, e as BurstOptions, M as MouseForceConfig } from './standalone-DLSbpvvh.cjs';
-export { A as Attractor, f as AttractorConfig, g as BlendMode, C as CanvasRenderer, h as CreateParticlesOptions, E as Emitter, i as EmitterConfiguration, j as FPSOverlayController, k as FPSOverlayOptions, l as ForceSource, m as MouseForce, n as Particle, o as ParticleConstructorParams, p as ParticleShape, S as ScreensaverController, q as ScreensaverOptions, r as ShapeConfig, V as Vector, W as WebGLRenderer, s as WebGLRendererOptions, t as createParticles, u as getParticlesBackgroundLayerStyle, v as particlesBackgroundLayerStyle, D as particlesDefaultZIndex, w as presets, x as showFPSOverlay, y as startScreensaver } from './standalone-DLSbpvvh.cjs';
+import { F as FullParticularConfig, P as ParticularConfig, a as ParticleConfig, R as RendererType, b as Particular, B as BurstSettings, c as PresetName, d as ParticlesController, e as BurstOptions, E as ExplodeOptions, M as MouseForceConfig } from './standalone-BrL78sPy.cjs';
+export { A as Attractor, f as AttractorConfig, g as BlendMode, C as CanvasRenderer, h as ChildExplosionConfig, i as CreateParticlesOptions, D as DetonateConfig, j as Emitter, k as EmitterConfiguration, l as FPSOverlayController, m as FPSOverlayOptions, n as ForceSource, o as MouseForce, p as Particle, q as ParticleConstructorParams, r as ParticleShape, S as ScreensaverController, s as ScreensaverOptions, t as ShapeConfig, V as Vector, W as WebGLRenderer, u as WebGLRendererOptions, v as createParticles, w as getParticlesBackgroundLayerStyle, x as particlesBackgroundLayerStyle, y as particlesDefaultZIndex, z as presets, G as showFPSOverlay, H as startScreensaver } from './standalone-BrL78sPy.cjs';
 import React, { ComponentType, MutableRefObject, CSSProperties, MouseEvent as MouseEvent$1 } from 'react';
 
-declare function configureParticular(configuration?: FullParticularConfig): Required<ParticularConfig> & Required<ParticleConfig> & {
+type ParticleDefaults = Required<Omit<ParticleConfig, 'detonate'>>;
+declare function configureParticular(configuration?: FullParticularConfig): Required<ParticularConfig> & ParticleDefaults & {
     renderer?: RendererType;
 };
 
@@ -108,6 +109,7 @@ interface UseParticlesResult {
     controller: ParticlesController | null;
     burst: (options: BurstOptions) => void;
     burstFromEvent: (event: MouseEvent | MouseEvent$1<HTMLElement> | MouseEvent$1<HTMLButtonElement>, overrides?: Partial<FullParticularConfig>) => void;
+    explode: (options?: ExplodeOptions) => void;
 }
 /**
  * Hooks-first API for React apps.
@@ -144,4 +146,4 @@ interface UseScreensaverResult {
  */
 declare function useScreensaver({ preset, config, renderer, autoResize, backgroundLayer, mouseWind, }?: UseScreensaverOptions): UseScreensaverResult;
 
-export { BurstOptions, BurstSettings, FullParticularConfig, MouseForceConfig, ParticleConfig, ParticlesController, Particular, ParticularConfig, particularWrapper as ParticularWrapper, PresetName, RendererType, type UseParticlesOptions, type UseParticlesResult, type UseScreensaverOptions, type UseScreensaverResult, useParticles, useScreensaver, withParticles };
+export { BurstOptions, BurstSettings, ExplodeOptions, FullParticularConfig, MouseForceConfig, ParticleConfig, ParticlesController, Particular, ParticularConfig, particularWrapper as ParticularWrapper, PresetName, RendererType, type UseParticlesOptions, type UseParticlesResult, type UseScreensaverOptions, type UseScreensaverResult, useParticles, useScreensaver, withParticles };

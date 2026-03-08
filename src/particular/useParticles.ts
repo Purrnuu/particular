@@ -10,7 +10,7 @@ import {
   type ScreensaverController,
 } from './convenience';
 import { getParticlesBackgroundLayerStyle } from './canvasStyles';
-import type { FullParticularConfig, MouseForceConfig, RendererType } from './types';
+import type { FullParticularConfig, MouseForceConfig, RendererType, ExplodeOptions } from './types';
 import type { PresetName } from './presets';
 
 export interface UseParticlesOptions {
@@ -34,6 +34,7 @@ export interface UseParticlesResult {
     event: MouseEvent | ReactMouseEvent<HTMLElement> | ReactMouseEvent<HTMLButtonElement>,
     overrides?: Partial<FullParticularConfig>,
   ) => void;
+  explode: (options?: ExplodeOptions) => void;
 }
 
 /**
@@ -118,12 +119,17 @@ export function useParticles({
     [],
   );
 
+  const explode = useCallback((options?: ExplodeOptions) => {
+    controllerRef.current?.explode(options);
+  }, []);
+
   return {
     canvasRef,
     canvasStyle,
     controller: controllerRef.current,
     burst,
     burstFromEvent,
+    explode,
   };
 }
 
