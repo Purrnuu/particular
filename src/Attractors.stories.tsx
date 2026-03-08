@@ -177,7 +177,7 @@ const meta: Meta<AttractorStoryArgs> = {
     maxCount: 150,
     renderer: 'webgl',
     strength: 1,
-    radius: 200,
+    radius: 50,
     attractorSize: 14,
     attractorColor: '#adb5bd',
     attractorShape: 'circle',
@@ -199,8 +199,8 @@ export const MouseFollow: Story = {
 export const Repulsion: Story = {
   args: {
     maxCount: 100,
-    strength: -2,
-    radius: 300,
+    strength: -1,
+    radius: 100,
   },
 };
 
@@ -313,15 +313,15 @@ const VisibleAttractorDemo: React.FC<AttractorStoryArgs> = (props) => {
 export const VisibleAttractor: Story = {
   args: {
     strength: 1.5,
-    radius: 250,
+    radius: 50,
   },
   render: (args) => <VisibleAttractorDemo {...args} />,
 };
 
 export const VisibleRepulsion: Story = {
   args: {
-    strength: -2,
-    radius: 300,
+    strength: -1,
+    radius: 50,
     attractorColor: '#339af0',
     attractorGlowColor: '#339af0',
     attractorShape: 'circle',
