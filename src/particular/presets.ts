@@ -147,7 +147,7 @@ const Ambient = {
     shadow: false,
     trail: true,
     trailLength: 15,
-    trailFade: 0.5,
+    trailFade: 0.2,
     trailShrink: 0.5,
     rate: 0.3,
     life: 999999,
