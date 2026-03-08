@@ -1,11 +1,6 @@
 'use strict';
 
 var lodashEs = require('lodash-es');
-var randomcolor = require('randomcolor');
-
-function _interopDefault (e) { return e && e.__esModule ? e : { default: e }; }
-
-var randomcolor__default = /*#__PURE__*/_interopDefault(randomcolor);
 
 // src/particular/core/particular.ts
 
@@ -407,7 +402,7 @@ var Particle = class {
     this.scaleStep = scaleStep;
     this.fadeTime = fadeTime;
     this.alpha = 1;
-    this.color = colors && colors.length > 0 ? colors[Math.floor(Math.random() * colors.length)] : randomcolor__default.default();
+    this.color = colors && colors.length > 0 ? colors[Math.floor(Math.random() * colors.length)] : "#888888";
     this.shape = shape;
     this.blendMode = blendMode;
     this.glow = glow;
@@ -486,6 +481,31 @@ var Particle = class {
 };
 EventDispatcher.bind(Particle);
 
+// src/particular/utils/color.ts
+function hslToHex(h, s, l) {
+  const sNorm = s / 100;
+  const lNorm = l / 100;
+  const a = sNorm * Math.min(lNorm, 1 - lNorm);
+  const f = (n) => {
+    const k = (n + h / 30) % 12;
+    const color = lNorm - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color).toString(16).padStart(2, "0");
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+function generateHarmoniousPalette() {
+  const baseHue = Math.random() * 360;
+  const offsets = [-20, -8, 0, 10, 20, 30];
+  const saturations = [65, 75, 85, 80, 70, 60];
+  const lightnesses = [82, 68, 55, 48, 60, 42];
+  const colors = [];
+  for (let i = 0; i < 6; i++) {
+    const h = (baseHue + offsets[i] + 360) % 360;
+    colors.push(hslToHex(h, saturations[i], lightnesses[i]));
+  }
+  return colors;
+}
+
 // src/particular/components/emitter.ts
 var Emitter = class {
   constructor(configuration) {
@@ -494,7 +514,11 @@ var Emitter = class {
     this.particular = null;
     this.lifeCycle = 0;
     this.emitAccumulator = 0;
-    this.configuration = configuration;
+    if (!configuration.colors || configuration.colors.length === 0) {
+      this.configuration = { ...configuration, colors: generateHarmoniousPalette() };
+    } else {
+      this.configuration = configuration;
+    }
   }
   emit(dt = 1) {
     if (!this.isEmitting) return;

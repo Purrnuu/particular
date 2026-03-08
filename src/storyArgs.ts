@@ -73,7 +73,7 @@ export const particleArgTypes: Record<string, InputType> = {
   colorPalette: {
     control: 'select',
     options: ['random', 'snow', 'grayscale', 'coolBlue', 'muted', 'blue', 'orange', 'green', 'finland', 'usa'],
-    description: 'Color palette (random = randomcolor fallback)',
+    description: 'Color palette (random = generated harmonious palette)',
     table: { category: 'Rendering' },
   },
   shape: {

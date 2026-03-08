@@ -97,8 +97,8 @@ interface ParticleConfig extends ShapeConfig {
     spawnWidth?: number;
     /** Height of the rectangular spawn area centered on the emitter point. Default 0 (point spawn). */
     spawnHeight?: number;
-    /** Color palette for particles. When provided, particles pick a random color from this array
-     *  instead of using randomcolor(). Empty array = use randomcolor() fallback. */
+    /** Color palette for particles. When provided, particles pick a random color from this array.
+     *  Empty array = emitter generates a harmonious HSL palette automatically. */
     colors?: string[];
     /** Direct downward acceleration coefficient (size-independent). Default 0. */
     acceleration?: number;

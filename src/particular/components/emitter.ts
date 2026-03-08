@@ -3,6 +3,7 @@ import { sample, forEach } from 'lodash-es';
 import Vector from '../utils/vector';
 import Particle from './particle';
 import { getRandomInt } from '../utils/math';
+import { generateHarmoniousPalette } from '../utils/color';
 import { destroy } from '../utils/genericUtils';
 import type { EmitterConfiguration, ForceSource } from '../types';
 import type Particular from '../core/particular';
@@ -16,7 +17,11 @@ export default class Emitter {
   private emitAccumulator = 0;
 
   constructor(configuration: EmitterConfiguration) {
-    this.configuration = configuration;
+    if (!configuration.colors || configuration.colors.length === 0) {
+      this.configuration = { ...configuration, colors: generateHarmoniousPalette() };
+    } else {
+      this.configuration = configuration;
+    }
   }
 
   emit(dt = 1): void {

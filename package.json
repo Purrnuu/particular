@@ -97,7 +97,6 @@
     "vitest": "^2.1.8"
   },
   "dependencies": {
-    "lodash-es": "^4.17.21",
-    "randomcolor": "^0.6.2"
+    "lodash-es": "^4.17.21"
   }
 }

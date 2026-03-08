@@ -1,5 +1,3 @@
-import randomcolor from 'randomcolor';
-
 import Vector from '../utils/vector';
 import { getRandomInt } from '../utils/math';
 import EventDispatcher from '../utils/eventDispatcher';
@@ -114,7 +112,7 @@ export default class Particle {
     this.alpha = 1;
     this.color = colors && colors.length > 0
       ? colors[Math.floor(Math.random() * colors.length)]!
-      : randomcolor();
+      : '#888888';
     
     // Shape configuration
     this.shape = shape;

@@ -139,9 +139,11 @@ Engine-level components that need DOM event wiring (e.g. mouse tracking, touch i
 
 ## Color System
 
-`colors` field (`string[]`): non-empty → random pick from array; empty → `randomcolor()` fallback.
+`colors` field (`string[]`): non-empty → random pick from array; empty → `generateHarmoniousPalette()` generates a cohesive 6-color analogous HSL palette once per emitter.
 
-Chain: `ParticleConfig.colors?` → `EmitterConfiguration.colors` → `Particle` constructor.
+`generateHarmoniousPalette()` (in `src/particular/utils/color.ts`) picks a random base hue (0–360) and creates 6 colors within ±30° (analogous scheme), with saturation 60–85% and lightness 42–82%. All particles from the same emitter share the palette, ensuring visual harmony.
+
+Chain: `ParticleConfig.colors?` → `Emitter` constructor (generates palette if empty) → `EmitterConfiguration.colors` → `Particle` constructor.
 
 Built-in palettes: snow (white-offwhite), grayscale, coolBlue (cool blue range), muted (desaturated warm/cool), blue (bold saturated blue), orange (bold saturated orange), green (bold saturated green), meteor (white-hot to deep red), finland, usa.
 
