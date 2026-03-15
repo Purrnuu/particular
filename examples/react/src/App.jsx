@@ -3,9 +3,8 @@ import {
   useParticles,
   useScreensaver,
   createParticles,
-  createHeartImage,
-  canvasToDataURL,
 } from "particular";
+import vikingPng from "../../../src/icons/viking.png";
 
 // ── Shared Styles ────────────────────────────────────────────────────────────
 
@@ -165,14 +164,13 @@ function ImageDemo() {
     });
     controllerRef.current = controller;
 
-    const size = Math.min(window.innerWidth, window.innerHeight) * 0.6;
+    const size = Math.min(window.innerWidth, window.innerHeight) * 0.7;
     controller.imageToParticles({
-      image: canvasToDataURL(createHeartImage(400)),
+      image: vikingPng,
       x: window.innerWidth / 2,
       y: window.innerHeight / 2,
       width: size,
       height: size,
-      shape: "circle",
     });
 
     controller.addMouseForce({ track: true, strength: 3, radius: 80 });

@@ -79,7 +79,7 @@ function ImageParticles() {
     });
 
     controller.imageToParticles({
-      image: "/logo.png", // URL, imported asset, or data URI
+      image: "/viking.png", // URL, imported asset, or data URI
       x: window.innerWidth / 2,
       y: window.innerHeight / 2,
       width: 500,
@@ -168,11 +168,10 @@ function Snow() {
   });
 
   controller.imageToParticles({
-    image: "/logo.png",
+    image: "/viking.png", // URL or data URI
     x: window.innerWidth / 2,
     y: window.innerHeight / 2,
     width: 500,
-    shape: "circle", // or "square", "triangle"
   });
 
   controller.addMouseForce({ track: true, strength: 3, radius: 80 });
