@@ -1,12 +1,14 @@
-import { F as FullParticularConfig, P as ParticularConfig, a as ParticleConfig, R as RendererType, b as Particular, B as BurstSettings, c as PresetName, d as ParticlesController, e as BurstOptions, E as ExplodeOptions, I as ImageParticlesConfig, T as TextImageConfig, M as MouseForceConfig } from './standalone-BnRzWamh.cjs';
-export { A as Attractor, f as AttractorConfig, g as BlendMode, h as BoundaryConfig, i as BoundaryHandle, C as CanvasRenderer, j as ChildExplosionConfig, k as CreateParticlesOptions, D as DetonateConfig, l as Emitter, m as EmitterConfiguration, n as FPSOverlayController, o as FPSOverlayOptions, p as ForceSource, H as HomePositionConfig, q as MouseForce, r as Particle, s as ParticleConstructorParams, t as ParticleShape, S as ScreensaverController, u as ScreensaverOptions, v as ShapeConfig, V as Vector, W as WebGLRenderer, w as WebGLRendererOptions, x as canvasToDataURL, y as createHeartImage, z as createParticles, G as createTextImage, J as getParticlesBackgroundLayerStyle, K as getParticlesContainerLayerStyle, L as particlesBackgroundLayerStyle, N as particlesContainerLayerStyle, O as particlesDefaultZIndex, Q as presets, U as showFPSOverlay, X as startScreensaver } from './standalone-BnRzWamh.cjs';
+import { F as FullParticularConfig, P as ParticularConfig, a as ParticleConfig, R as RendererType, b as Particular, B as BurstSettings, c as PresetName, M as MouseForceConfig, d as ParticlesController, e as BurstOptions, E as ExplodeOptions, I as ImageParticlesConfig, T as TextImageConfig } from './standalone-B-DSFkjI.cjs';
+export { A as Attractor, f as AttractorConfig, g as BlendMode, h as BoundaryConfig, i as BoundaryHandle, C as CanvasRenderer, j as ChildExplosionConfig, k as CreateParticlesOptions, D as DetonateConfig, l as Emitter, m as EmitterConfiguration, n as FPSOverlayController, o as FPSOverlayOptions, p as ForceSource, H as HomePositionConfig, q as MouseForce, r as Particle, s as ParticleConstructorParams, t as ParticleShape, S as ScreensaverController, u as ScreensaverOptions, v as ShapeConfig, V as Vector, W as WebGLRenderer, w as WebGLRendererOptions, x as applyCanvasStyles, y as canvasToDataURL, z as createHeartImage, G as createParticles, J as createTextImage, K as getParticlesBackgroundLayerStyle, L as getParticlesContainerLayerStyle, N as particlesBackgroundLayerStyle, O as particlesContainerLayerStyle, Q as particlesDefaultZIndex, U as presets, X as showFPSOverlay, Y as startScreensaver } from './standalone-B-DSFkjI.cjs';
 import React, { ComponentType, MutableRefObject, CSSProperties, MouseEvent as MouseEvent$1 } from 'react';
 
 type ParticleDefaults = Required<Omit<ParticleConfig, 'detonate'>>;
-declare function configureParticular(configuration?: FullParticularConfig): Required<Omit<ParticularConfig, 'container'>> & ParticleDefaults & {
+/** Return type of configureParticular() — the fully-merged config used by helpers. */
+type MergedConfig = Required<Omit<ParticularConfig, 'container'>> & ParticleDefaults & {
     renderer?: RendererType;
     container?: HTMLElement;
 };
+declare function configureParticular(configuration?: FullParticularConfig): MergedConfig;
 
 interface CanvasWrapperState {
     width: number;
@@ -96,7 +98,8 @@ declare const withParticles: (configuration?: FullParticularConfig) => <P extend
 interface UseParticlesOptions {
     preset?: PresetName;
     config?: Partial<FullParticularConfig>;
-    renderer?: 'canvas' | 'webgl';
+    /** Rendering backend. Default `'webgl'`. */
+    renderer?: RendererType;
     autoResize?: boolean;
     autoClick?: boolean;
     clickTarget?: EventTarget;
@@ -105,11 +108,14 @@ interface UseParticlesOptions {
     /** Container element for container-aware mode. Canvas sizes to this element
      *  and coordinates become container-relative. Omit for full-viewport mode. */
     container?: HTMLElement;
+    /** Add a mouse-tracking force. `true` uses sensible defaults, or pass a config object. */
+    mouseForce?: boolean | MouseForceConfig;
 }
 interface UseParticlesResult {
     canvasRef: MutableRefObject<HTMLCanvasElement | null>;
     /** Full-viewport click-through style when backgroundLayer is true; use as <canvas style={canvasStyle} /> */
     canvasStyle: CSSProperties | undefined;
+    /** The full particles controller. Available after mount. */
     controller: ParticlesController | null;
     burst: (options: BurstOptions) => void;
     burstFromEvent: (event: MouseEvent | MouseEvent$1<HTMLElement> | MouseEvent$1<HTMLButtonElement>, overrides?: Partial<FullParticularConfig>) => void;
@@ -118,7 +124,7 @@ interface UseParticlesResult {
         velocity?: number;
     }) => void;
     imageToParticles: (config: ImageParticlesConfig) => void;
-    textToParticles: (text: string, config: Omit<ImageParticlesConfig, 'image'> & {
+    textToParticles: (text: string, config?: Omit<ImageParticlesConfig, 'image'> & {
         textConfig?: Omit<TextImageConfig, 'text'>;
     }) => void;
 }
@@ -126,18 +132,19 @@ interface UseParticlesResult {
  * Hooks-first API for React apps.
  *
  * Usage:
- * const { canvasRef, burstFromEvent } = useParticles({ preset: "magic" });
+ * const { canvasRef, canvasStyle, burstFromEvent } = useParticles({ preset: "magic" });
  * return (
  *   <>
- *     <canvas ref={canvasRef} className="particular" />
+ *     <canvas ref={canvasRef} style={canvasStyle} />
  *     <button onClick={burstFromEvent}>Burst</button>
  *   </>
  * );
  */
-declare function useParticles({ preset, config, renderer, autoResize, autoClick, clickTarget, backgroundLayer, container, }?: UseParticlesOptions): UseParticlesResult;
+declare function useParticles({ preset, config, renderer, autoResize, autoClick, clickTarget, backgroundLayer, container, mouseForce, }?: UseParticlesOptions): UseParticlesResult;
 interface UseScreensaverOptions {
     preset?: PresetName;
     config?: Partial<FullParticularConfig>;
+    /** Rendering backend. Default `'webgl'`. */
     renderer?: RendererType;
     autoResize?: boolean;
     /** When true (default), result includes canvasStyle for a full-viewport click-through canvas. */

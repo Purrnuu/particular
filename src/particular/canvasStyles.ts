@@ -42,3 +42,19 @@ export function getParticlesContainerLayerStyle(zIndex?: number): CSSProperties 
 }
 
 export { DEFAULT_Z_INDEX as particlesDefaultZIndex };
+
+/**
+ * Imperatively apply positioning styles to a canvas element.
+ * Used by createParticles() / startScreensaver() for auto-created canvases
+ * so users don't need to set any styles manually.
+ */
+export function applyCanvasStyles(
+  canvas: HTMLCanvasElement,
+  container?: HTMLElement,
+  zIndex?: number,
+): void {
+  const style = container
+    ? getParticlesContainerLayerStyle(zIndex)
+    : getParticlesBackgroundLayerStyle(zIndex);
+  Object.assign(canvas.style, style);
+}

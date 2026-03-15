@@ -143,9 +143,12 @@ export const defaultMouseWind: Omit<MouseForceConfig, 'track'> = {
 
 type ParticleDefaults = Required<Omit<ParticleConfig, 'detonate'>>;
 
+/** Return type of configureParticular() — the fully-merged config used by helpers. */
+export type MergedConfig = Required<Omit<ParticularConfig, 'container'>> & ParticleDefaults & { renderer?: RendererType; container?: HTMLElement };
+
 export function configureParticular(
   configuration?: FullParticularConfig,
-): Required<Omit<ParticularConfig, 'container'>> & ParticleDefaults & { renderer?: RendererType; container?: HTMLElement } {
+): MergedConfig {
   return { ...defaultParticular, ...defaultParticle, ...configuration };
 }
 

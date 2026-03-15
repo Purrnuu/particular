@@ -2345,6 +2345,10 @@ var particlesContainerLayerStyle = {
 function getParticlesContainerLayerStyle(zIndex) {
   return zIndex !== void 0 ? { ...particlesContainerLayerStyle, zIndex } : particlesContainerLayerStyle;
 }
+function applyCanvasStyles(canvas, container, zIndex) {
+  const style = container ? getParticlesContainerLayerStyle(zIndex) : getParticlesBackgroundLayerStyle(zIndex);
+  Object.assign(canvas.style, style);
+}
 var images = [];
 function processImages(icons) {
   images = [];
@@ -2358,6 +2362,213 @@ function processImages(icons) {
     }
   });
   return images;
+}
+
+// src/particular/convenience/forces.ts
+function createForces(engine, container, cleanups) {
+  const addAttractor = (config) => {
+    const attractor = new Attractor(config);
+    engine.addAttractor(attractor);
+    return attractor;
+  };
+  const removeAttractor = (attractor) => {
+    engine.removeAttractor(attractor);
+  };
+  const addRandomAttractors = (count, config) => {
+    const pixelRatio = engine.pixelRatio;
+    const sourceW = container ? container.clientWidth : window.innerWidth;
+    const sourceH = container ? container.clientHeight : window.innerHeight;
+    const viewW = sourceW / pixelRatio;
+    const viewH = sourceH / pixelRatio;
+    const marginX = viewW * 0.1;
+    const marginY = viewH * 0.1;
+    const result = [];
+    for (let i = 0; i < count; i++) {
+      const x = marginX + Math.random() * (viewW - marginX * 2);
+      const y = marginY + Math.random() * (viewH - marginY * 2);
+      const attractor = addAttractor({
+        x,
+        y,
+        strength: 1,
+        radius: 200,
+        visible: true,
+        ...config
+      });
+      result.push(attractor);
+    }
+    return result;
+  };
+  const removeAllAttractors = () => {
+    engine.attractors.splice(0);
+  };
+  const addMouseForce = (config = {}) => {
+    const { track, ...forceConfig } = config;
+    const mouseForce = new MouseForce(forceConfig);
+    engine.addMouseForce(mouseForce);
+    if (track) {
+      const target = track === true ? window : track;
+      mouseForce.startTracking(target, engine.pixelRatio, container);
+      cleanups.push(() => mouseForce.stopTracking());
+    }
+    return mouseForce;
+  };
+  const removeMouseForce = (mouseForce) => {
+    mouseForce.stopTracking();
+    engine.removeMouseForce(mouseForce);
+  };
+  return { addAttractor, removeAttractor, addRandomAttractors, removeAllAttractors, addMouseForce, removeMouseForce };
+}
+
+// src/particular/convenience/boundary.ts
+function createBoundaryHelper(engine, container, cleanups) {
+  const addBoundary = (config) => {
+    const {
+      element,
+      strength = -1.5,
+      radius = 10,
+      inset: insetFraction = 0.4
+    } = config;
+    const pr = engine.pixelRatio;
+    let attractors = [];
+    let offsets = [];
+    const rebuild = () => {
+      for (const a of attractors) engine.removeAttractor(a);
+      attractors = [];
+      offsets = [];
+      const refRect = container ? container.getBoundingClientRect() : { left: 0, top: 0 };
+      const elRect = element.getBoundingClientRect();
+      const elLeft = (elRect.left - refRect.left) / pr;
+      const elTop = (elRect.top - refRect.top) / pr;
+      const elW = elRect.width / pr;
+      const elH = elRect.height / pr;
+      const ins = radius * insetFraction;
+      const localL = ins;
+      const localR = elW - ins;
+      const localT = ins;
+      const localB = elH - ins;
+      const w = localR - localL;
+      const h = localB - localT;
+      if (w <= 0 || h <= 0) return;
+      const stepsX = Math.max(2, Math.ceil(w / radius) + 1);
+      const stepsY = Math.max(2, Math.ceil(h / radius) + 1);
+      const add = (dx, dy) => {
+        const a = new Attractor({ x: elLeft + dx, y: elTop + dy, strength, radius });
+        engine.addAttractor(a);
+        attractors.push(a);
+        offsets.push({ dx, dy });
+      };
+      for (let i = 0; i < stepsX; i++) {
+        const x = localL + w * i / (stepsX - 1);
+        add(x, localT);
+        add(x, localB);
+      }
+      for (let i = 1; i < stepsY - 1; i++) {
+        const y = localT + h * i / (stepsY - 1);
+        add(localL, y);
+        add(localR, y);
+      }
+    };
+    const reposition = () => {
+      if (attractors.length === 0) return;
+      const refRect = container ? container.getBoundingClientRect() : { left: 0, top: 0 };
+      const elRect = element.getBoundingClientRect();
+      const elLeft = (elRect.left - refRect.left) / pr;
+      const elTop = (elRect.top - refRect.top) / pr;
+      for (let i = 0; i < attractors.length; i++) {
+        const a = attractors[i];
+        const o = offsets[i];
+        a.position.x = elLeft + o.dx;
+        a.position.y = elTop + o.dy;
+      }
+    };
+    rebuild();
+    const ro = new ResizeObserver(rebuild);
+    ro.observe(element);
+    if (container) ro.observe(container);
+    let scrollRafId = 0;
+    const onScroll = () => {
+      if (scrollRafId) return;
+      scrollRafId = requestAnimationFrame(() => {
+        scrollRafId = 0;
+        reposition();
+      });
+    };
+    const scrollTarget = container ?? window;
+    scrollTarget.addEventListener("scroll", onScroll, { passive: true });
+    const handle = {
+      update: rebuild,
+      destroy: () => {
+        ro.disconnect();
+        scrollTarget.removeEventListener("scroll", onScroll);
+        if (scrollRafId) cancelAnimationFrame(scrollRafId);
+        for (const a of attractors) engine.removeAttractor(a);
+        attractors = [];
+        offsets = [];
+      }
+    };
+    cleanups.push(() => handle.destroy());
+    return handle;
+  };
+  return { addBoundary };
+}
+
+// src/particular/convenience/effects.ts
+function createEffects(engine, mergedConfig) {
+  const explode = (options = {}) => {
+    const destroyParents = options.destroyParents ?? true;
+    const allParticles = engine.getAllParticles();
+    if (allParticles.length === 0) return;
+    const snapshots = allParticles.map((p) => ({
+      x: p.position.x,
+      y: p.position.y,
+      color: p.color,
+      shape: p.shape,
+      blendMode: p.blendMode
+    }));
+    if (destroyParents) {
+      for (const emitter of engine.emitters) {
+        for (const p of emitter.particles) {
+          p.destroy();
+        }
+        emitter.particles = [];
+      }
+    }
+    const fallbackColors = generateHarmoniousPalette();
+    const collectorConfig = configureParticle({}, mergedConfig);
+    const collector = new Emitter({
+      point: new Vector(0, 0),
+      ...collectorConfig,
+      rate: 0,
+      life: 0,
+      icons: []
+    });
+    collector.isEmitting = false;
+    const childCount = options.childCount ?? 5;
+    const currentCount = engine.getCount();
+    const budget = Math.max(0, engine.maxCount - currentCount);
+    let spawned = 0;
+    for (const parent of snapshots) {
+      for (let i = 0; i < childCount; i++) {
+        if (spawned >= budget) break;
+        const child = createExplosionChild(parent, options, engine, fallbackColors);
+        collector.particles.push(child);
+        spawned++;
+      }
+      if (spawned >= budget) break;
+    }
+    engine.addEmitter(collector);
+  };
+  const scatter = (options = {}) => {
+    const baseVelocity = options.velocity ?? 10;
+    const allParticles = engine.getAllParticles();
+    for (const particle of allParticles) {
+      const angle = Math.random() * Math.PI * 2;
+      const magnitude = baseVelocity * (0.3 + Math.random() * 1.4);
+      particle.velocity.x += Math.cos(angle) * magnitude;
+      particle.velocity.y += Math.sin(angle) * magnitude;
+    }
+  };
+  return { explode, scatter };
 }
 
 // src/particular/utils/pixelSampler.ts
@@ -2573,131 +2784,18 @@ function canvasToDataURL(canvas) {
   return canvas.toDataURL("image/png");
 }
 
-// src/particular/convenience.ts
-function createParticles({
-  canvas,
-  preset = "magic",
-  config,
-  renderer = "canvas",
-  autoResize = true,
-  autoClick = false,
-  clickTarget,
-  container
-}) {
-  const engine = new Particular();
-  const basePreset = getPreset(preset);
-  const mergedConfig = configureParticular({ ...basePreset, ...config, container });
-  engine.initialize(mergedConfig);
-  if (renderer === "webgl") {
-    engine.addRenderer(
-      new WebGLRenderer(canvas, {
-        maxInstances: mergedConfig.webglMaxInstances
-      })
-    );
-  } else {
-    engine.addRenderer(new CanvasRenderer(canvas));
-  }
-  engine.onResize();
-  const cleanups = [];
-  if (autoResize) {
+// src/particular/convenience/imageParticles.ts
+function createImageParticles(engine, mergedConfig, container) {
+  const getViewportSize = () => {
     if (container) {
-      const ro = new ResizeObserver(() => engine.onResize());
-      ro.observe(container);
-      cleanups.push(() => ro.disconnect());
-    } else {
-      const onResize = () => engine.onResize();
-      window.addEventListener("resize", onResize);
-      cleanups.push(() => window.removeEventListener("resize", onResize));
+      return { w: container.clientWidth, h: container.clientHeight };
     }
-  }
-  const toEngineCoords = (clientX, clientY) => {
-    let x = clientX;
-    let y = clientY;
-    if (container) {
-      const rect = container.getBoundingClientRect();
-      x -= rect.left;
-      y -= rect.top;
-    }
-    return { x: x / mergedConfig.pixelRatio, y: y / mergedConfig.pixelRatio };
+    return { w: window.innerWidth, h: window.innerHeight };
   };
-  const burst = (options) => {
-    const { x, y, ...overrides } = options;
-    const combinedSettings = configureParticle(overrides, mergedConfig);
-    let icons = [];
-    if (combinedSettings.icons) {
-      icons = processImages(combinedSettings.icons);
-    }
-    const enginePos = toEngineCoords(x, y);
-    const emitter = new Emitter({
-      point: new Vector(enginePos.x, enginePos.y),
-      ...combinedSettings,
-      icons
-    });
-    engine.addEmitter(emitter);
-    emitter.isEmitting = true;
-    emitter.emit();
-    return emitter;
-  };
-  const explode = (options = {}) => {
-    const destroyParents = options.destroyParents ?? true;
-    const allParticles = engine.getAllParticles();
-    if (allParticles.length === 0) return;
-    const snapshots = allParticles.map((p) => ({
-      x: p.position.x,
-      y: p.position.y,
-      color: p.color,
-      shape: p.shape,
-      blendMode: p.blendMode
-    }));
-    if (destroyParents) {
-      for (const emitter of engine.emitters) {
-        for (const p of emitter.particles) {
-          p.destroy();
-        }
-        emitter.particles = [];
-      }
-    }
-    const fallbackColors = generateHarmoniousPalette();
-    const collectorConfig = configureParticle({}, mergedConfig);
-    const collector = new Emitter({
-      point: new Vector(0, 0),
-      ...collectorConfig,
-      rate: 0,
-      life: 0,
-      icons: []
-    });
-    collector.isEmitting = false;
-    const childCount = options.childCount ?? 5;
-    const currentCount = engine.getCount();
-    const budget = Math.max(0, engine.maxCount - currentCount);
-    let spawned = 0;
-    for (const parent of snapshots) {
-      for (let i = 0; i < childCount; i++) {
-        if (spawned >= budget) break;
-        const child = createExplosionChild(parent, options, engine, fallbackColors);
-        collector.particles.push(child);
-        spawned++;
-      }
-      if (spawned >= budget) break;
-    }
-    engine.addEmitter(collector);
-  };
-  const scatter = (options = {}) => {
-    const baseVelocity = options.velocity ?? 10;
-    const allParticles = engine.getAllParticles();
-    for (const particle of allParticles) {
-      const angle = Math.random() * Math.PI * 2;
-      const magnitude = baseVelocity * (0.3 + Math.random() * 1.4);
-      particle.velocity.x += Math.cos(angle) * magnitude;
-      particle.velocity.y += Math.sin(angle) * magnitude;
-    }
-  };
-  const imageToParticles = async (config2) => {
-    const merged = { ...defaultImageParticles, ...config2 };
+  const imageToParticles = async (config) => {
+    const merged = { ...defaultImageParticles, ...config };
     const {
       image: imageSrc,
-      x,
-      y,
       resolution: resolutionOverride,
       alphaThreshold = 0.1,
       particleLife = 99999,
@@ -2727,20 +2825,23 @@ function createParticles({
     const resolution = resolutionOverride ?? (shape === "square" ? 400 : 200);
     const image = await loadImage(imageSrc);
     const aspect = image.naturalWidth / image.naturalHeight;
+    const viewport = getViewportSize();
+    const x = config.x ?? viewport.w / 2;
+    const y = config.y ?? viewport.h / 2;
     let displayW;
     let displayH;
-    if (config2.width != null && config2.height != null) {
-      displayW = config2.width;
-      displayH = config2.height;
-    } else if (config2.width != null) {
-      displayW = config2.width;
-      displayH = config2.width / aspect;
-    } else if (config2.height != null) {
-      displayH = config2.height;
-      displayW = config2.height * aspect;
+    if (config.width != null && config.height != null) {
+      displayW = config.width;
+      displayH = config.height;
+    } else if (config.width != null) {
+      displayW = config.width;
+      displayH = config.width / aspect;
+    } else if (config.height != null) {
+      displayH = config.height;
+      displayW = config.height * aspect;
     } else {
-      displayW = image.naturalWidth;
-      displayH = image.naturalHeight;
+      displayW = Math.min(viewport.w * 0.8, 800);
+      displayH = displayW / aspect;
     }
     const pr = mergedConfig.pixelRatio;
     const engineW = displayW / pr;
@@ -2815,195 +2916,23 @@ function createParticles({
     engine.addEmitter(collector);
     return collector;
   };
-  const textToParticles = async (text, config2) => {
-    const { textConfig, ...imageConfig } = config2;
+  const textToParticles = async (text, config) => {
+    const { textConfig, ...imageConfig } = config ?? {};
     const textCanvas = createTextImage({ text, ...textConfig });
     return imageToParticles({
       ...imageConfig,
       image: canvasToDataURL(textCanvas)
     });
   };
-  const attachClickBurst = (target = clickTarget ?? document, overrides) => {
-    const onClick = (event) => {
-      const mouseEvent = event;
-      burst({
-        x: mouseEvent.clientX,
-        y: mouseEvent.clientY,
-        ...overrides ?? {}
-      });
-    };
-    target.addEventListener("click", onClick);
-    return () => target.removeEventListener("click", onClick);
-  };
-  if (autoClick) {
-    const cleanupClick = attachClickBurst(clickTarget ?? document);
-    cleanups.push(cleanupClick);
-  }
-  const addAttractor = (config2) => {
-    const attractor = new Attractor(config2);
-    engine.addAttractor(attractor);
-    return attractor;
-  };
-  const removeAttractor = (attractor) => {
-    engine.removeAttractor(attractor);
-  };
-  const addRandomAttractors = (count, config2) => {
-    const pixelRatio = engine.pixelRatio;
-    const sourceW = container ? container.clientWidth : window.innerWidth;
-    const sourceH = container ? container.clientHeight : window.innerHeight;
-    const viewW = sourceW / pixelRatio;
-    const viewH = sourceH / pixelRatio;
-    const marginX = viewW * 0.1;
-    const marginY = viewH * 0.1;
-    const result = [];
-    for (let i = 0; i < count; i++) {
-      const x = marginX + Math.random() * (viewW - marginX * 2);
-      const y = marginY + Math.random() * (viewH - marginY * 2);
-      const attractor = addAttractor({
-        x,
-        y,
-        strength: 1,
-        radius: 200,
-        visible: true,
-        ...config2
-      });
-      result.push(attractor);
-    }
-    return result;
-  };
-  const removeAllAttractors = () => {
-    engine.attractors.splice(0);
-  };
-  const addBoundary = (config2) => {
-    const {
-      element,
-      strength = -1.5,
-      radius = 10,
-      inset: insetFraction = 0.4
-    } = config2;
-    const pr = engine.pixelRatio;
-    let attractors = [];
-    let offsets = [];
-    const rebuild = () => {
-      for (const a of attractors) engine.removeAttractor(a);
-      attractors = [];
-      offsets = [];
-      const refRect = container ? container.getBoundingClientRect() : { left: 0, top: 0 };
-      const elRect = element.getBoundingClientRect();
-      const elLeft = (elRect.left - refRect.left) / pr;
-      const elTop = (elRect.top - refRect.top) / pr;
-      const elW = elRect.width / pr;
-      const elH = elRect.height / pr;
-      const ins = radius * insetFraction;
-      const localL = ins;
-      const localR = elW - ins;
-      const localT = ins;
-      const localB = elH - ins;
-      const w = localR - localL;
-      const h = localB - localT;
-      if (w <= 0 || h <= 0) return;
-      const stepsX = Math.max(2, Math.ceil(w / radius) + 1);
-      const stepsY = Math.max(2, Math.ceil(h / radius) + 1);
-      const add = (dx, dy) => {
-        const a = new Attractor({ x: elLeft + dx, y: elTop + dy, strength, radius });
-        engine.addAttractor(a);
-        attractors.push(a);
-        offsets.push({ dx, dy });
-      };
-      for (let i = 0; i < stepsX; i++) {
-        const x = localL + w * i / (stepsX - 1);
-        add(x, localT);
-        add(x, localB);
-      }
-      for (let i = 1; i < stepsY - 1; i++) {
-        const y = localT + h * i / (stepsY - 1);
-        add(localL, y);
-        add(localR, y);
-      }
-    };
-    const reposition = () => {
-      if (attractors.length === 0) return;
-      const refRect = container ? container.getBoundingClientRect() : { left: 0, top: 0 };
-      const elRect = element.getBoundingClientRect();
-      const elLeft = (elRect.left - refRect.left) / pr;
-      const elTop = (elRect.top - refRect.top) / pr;
-      for (let i = 0; i < attractors.length; i++) {
-        const a = attractors[i];
-        const o = offsets[i];
-        a.position.x = elLeft + o.dx;
-        a.position.y = elTop + o.dy;
-      }
-    };
-    rebuild();
-    const ro = new ResizeObserver(rebuild);
-    ro.observe(element);
-    if (container) ro.observe(container);
-    let scrollRafId = 0;
-    const onScroll = () => {
-      if (scrollRafId) return;
-      scrollRafId = requestAnimationFrame(() => {
-        scrollRafId = 0;
-        reposition();
-      });
-    };
-    const scrollTarget = container ?? window;
-    scrollTarget.addEventListener("scroll", onScroll, { passive: true });
-    const handle = {
-      update: rebuild,
-      destroy: () => {
-        ro.disconnect();
-        scrollTarget.removeEventListener("scroll", onScroll);
-        if (scrollRafId) cancelAnimationFrame(scrollRafId);
-        for (const a of attractors) engine.removeAttractor(a);
-        attractors = [];
-        offsets = [];
-      }
-    };
-    cleanups.push(() => handle.destroy());
-    return handle;
-  };
-  const addMouseForce = (config2 = {}) => {
-    const { track, ...forceConfig } = config2;
-    const mouseForce = new MouseForce(forceConfig);
-    engine.addMouseForce(mouseForce);
-    if (track) {
-      const target = track === true ? window : track;
-      mouseForce.startTracking(target, engine.pixelRatio, container);
-      cleanups.push(() => mouseForce.stopTracking());
-    }
-    return mouseForce;
-  };
-  const removeMouseForce = (mouseForce) => {
-    mouseForce.stopTracking();
-    engine.removeMouseForce(mouseForce);
-  };
-  const destroy2 = () => {
-    for (const cleanup of cleanups) cleanup();
-    engine.destroy();
-  };
-  return {
-    engine,
-    burst,
-    explode,
-    scatter,
-    imageToParticles,
-    textToParticles,
-    addAttractor,
-    removeAttractor,
-    addRandomAttractors,
-    removeAllAttractors,
-    addBoundary,
-    addMouseForce,
-    removeMouseForce,
-    attachClickBurst,
-    destroy: destroy2
-  };
+  return { imageToParticles, textToParticles };
 }
+
+// src/particular/convenience/screensaver.ts
 function startScreensaver({
   canvas,
   preset = "snow",
   config,
-  renderer = "canvas",
+  renderer = "webgl",
   autoResize = true,
   mouseWind: mouseWindOption,
   container
@@ -3068,6 +2997,127 @@ function startScreensaver({
   return {
     engine: controller.engine,
     controller,
+    destroy: destroy2
+  };
+}
+
+// src/particular/convenience/index.ts
+function createParticles({
+  canvas: userCanvas,
+  preset = "magic",
+  config,
+  renderer = "webgl",
+  autoResize = true,
+  autoClick = false,
+  clickTarget,
+  container,
+  mouseForce
+} = {}) {
+  let canvas;
+  let canvasAutoCreated = false;
+  if (userCanvas) {
+    canvas = userCanvas;
+  } else {
+    canvas = document.createElement("canvas");
+    canvasAutoCreated = true;
+    const parent = container ?? document.body;
+    parent.appendChild(canvas);
+  }
+  applyCanvasStyles(canvas, container, config?.zIndex);
+  const engine = new Particular();
+  const basePreset = getPreset(preset);
+  const mergedConfig = configureParticular({ ...basePreset, ...config, container });
+  engine.initialize(mergedConfig);
+  if (renderer === "webgl") {
+    engine.addRenderer(
+      new WebGLRenderer(canvas, {
+        maxInstances: mergedConfig.webglMaxInstances
+      })
+    );
+  } else {
+    engine.addRenderer(new CanvasRenderer(canvas));
+  }
+  engine.onResize();
+  const cleanups = [];
+  if (autoResize) {
+    if (container) {
+      const ro = new ResizeObserver(() => engine.onResize());
+      ro.observe(container);
+      cleanups.push(() => ro.disconnect());
+    } else {
+      const onResize = () => engine.onResize();
+      window.addEventListener("resize", onResize);
+      cleanups.push(() => window.removeEventListener("resize", onResize));
+    }
+  }
+  const toEngineCoords = (clientX, clientY) => {
+    let x = clientX;
+    let y = clientY;
+    if (container) {
+      const rect = container.getBoundingClientRect();
+      x -= rect.left;
+      y -= rect.top;
+    }
+    return { x: x / mergedConfig.pixelRatio, y: y / mergedConfig.pixelRatio };
+  };
+  const burst = (options) => {
+    const { x, y, ...overrides } = options;
+    const combinedSettings = configureParticle(overrides, mergedConfig);
+    let icons = [];
+    if (combinedSettings.icons) {
+      icons = processImages(combinedSettings.icons);
+    }
+    const enginePos = toEngineCoords(x, y);
+    const emitter = new Emitter({
+      point: new Vector(enginePos.x, enginePos.y),
+      ...combinedSettings,
+      icons
+    });
+    engine.addEmitter(emitter);
+    emitter.isEmitting = true;
+    emitter.emit();
+    return emitter;
+  };
+  const attachClickBurst = (target = clickTarget ?? document, overrides) => {
+    const onClick = (event) => {
+      const mouseEvent = event;
+      burst({
+        x: mouseEvent.clientX,
+        y: mouseEvent.clientY,
+        ...overrides ?? {}
+      });
+    };
+    target.addEventListener("click", onClick);
+    return () => target.removeEventListener("click", onClick);
+  };
+  if (autoClick) {
+    const cleanupClick = attachClickBurst(clickTarget ?? document);
+    cleanups.push(cleanupClick);
+  }
+  const forces = createForces(engine, container, cleanups);
+  const boundary = createBoundaryHelper(engine, container, cleanups);
+  const effects = createEffects(engine, mergedConfig);
+  const imageApi = createImageParticles(engine, mergedConfig, container);
+  if (mouseForce) {
+    const mouseConfig = mouseForce === true ? { track: true } : { track: true, ...mouseForce };
+    forces.addMouseForce(mouseConfig);
+  }
+  const destroy2 = () => {
+    for (const cleanup of cleanups) cleanup();
+    engine.destroy();
+    if (canvasAutoCreated && canvas.parentElement) {
+      canvas.parentElement.removeChild(canvas);
+    }
+  };
+  return {
+    engine,
+    canvas,
+    burst,
+    attachClickBurst,
+    ...forces,
+    ...boundary,
+    ...effects,
+    ...imageApi,
     destroy: destroy2
   };
 }
@@ -3144,6 +3194,7 @@ exports.Particle = Particle;
 exports.Particular = Particular;
 exports.Vector = Vector;
 exports.WebGLRenderer = WebGLRenderer;
+exports.applyCanvasStyles = applyCanvasStyles;
 exports.canvasToDataURL = canvasToDataURL;
 exports.createHeartImage = createHeartImage;
 exports.createParticles = createParticles;

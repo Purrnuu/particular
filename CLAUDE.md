@@ -40,14 +40,20 @@ src/particular/renderers/webglRenderer.ts    # WebGL2 instanced pipeline: shader
 
 ### Public APIs
 ```
-src/index.ts                         # Public exports (npm package entry)
-src/standalone.ts                    # IIFE/CDN entry (window.Particular)
-src/particular/convenience.ts        # createParticles(), startScreensaver() — vanilla API
-src/particular/useParticles.ts       # useParticles(), useScreensaver() — React hooks
-src/particular/ParticularWrapper.tsx # HOC wrapper (legacy React API)
-src/particular/presets.ts            # Curated presets (Burst, Ambient, Images) + color palettes
-src/particular/canvasStyles.ts       # Default canvas CSS (background layer, z-index)
-src/particular/devFPSOverlay.ts      # Debug FPS counter overlay
+src/index.ts                                # Public exports (npm package entry)
+src/standalone.ts                           # IIFE/CDN entry (window.Particular)
+src/particular/convenience/index.ts         # createParticles() — slim orchestrator, composes helpers
+src/particular/convenience/types.ts         # Controller, options, and handle interfaces
+src/particular/convenience/forces.ts        # Attractor + mouse force helpers
+src/particular/convenience/boundary.ts      # DOM element boundary (tiled repulsion + resize/scroll sync)
+src/particular/convenience/effects.ts       # explode() + scatter() particle manipulation
+src/particular/convenience/imageParticles.ts # imageToParticles() + textToParticles()
+src/particular/convenience/screensaver.ts   # startScreensaver() — continuous ambient emission
+src/particular/useParticles.ts              # useParticles(), useScreensaver() — React hooks
+src/particular/ParticularWrapper.tsx        # HOC wrapper (legacy React API)
+src/particular/presets.ts                   # Curated presets (Burst, Ambient, Images) + color palettes
+src/particular/canvasStyles.ts              # Default canvas CSS (background layer, z-index)
+src/particular/devFPSOverlay.ts             # Debug FPS counter overlay
 ```
 
 ### Storybook
@@ -58,6 +64,7 @@ src/Explosion.stories.tsx        # Manual explode + timed firework detonation de
 src/Attractors.stories.tsx       # Attractor physics demos
 src/MouseForce.stories.tsx       # Mouse-velocity directional force demos
 src/Screensaver.stories.tsx      # Ambient screensaver demos (snow, etc.)
+src/PageLayout.stories.tsx       # Page layout demos (boundaries, scrolling, container mode)
 ```
 
 ### Utils

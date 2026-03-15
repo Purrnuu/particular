@@ -13,6 +13,7 @@ export {
   particlesContainerLayerStyle,
   getParticlesContainerLayerStyle,
   particlesDefaultZIndex,
+  applyCanvasStyles,
 } from './particular/canvasStyles';
 export { createParticles, startScreensaver } from './particular/convenience';
 export { createTextImage, createHeartImage, canvasToDataURL } from './particular/utils/imageSource';

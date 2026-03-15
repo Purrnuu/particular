@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type { CSSProperties, MouseEvent as ReactMouseEvent, MutableRefObject } from 'react';
 
 import {
   createParticles,
   startScreensaver,
   type BurstOptions,
-  type CreateParticlesOptions,
   type ParticlesController,
   type ScreensaverController,
 } from './convenience';
@@ -16,7 +15,8 @@ import type { PresetName } from './presets';
 export interface UseParticlesOptions {
   preset?: PresetName;
   config?: Partial<FullParticularConfig>;
-  renderer?: 'canvas' | 'webgl';
+  /** Rendering backend. Default `'webgl'`. */
+  renderer?: RendererType;
   autoResize?: boolean;
   autoClick?: boolean;
   clickTarget?: EventTarget;
@@ -25,12 +25,15 @@ export interface UseParticlesOptions {
   /** Container element for container-aware mode. Canvas sizes to this element
    *  and coordinates become container-relative. Omit for full-viewport mode. */
   container?: HTMLElement;
+  /** Add a mouse-tracking force. `true` uses sensible defaults, or pass a config object. */
+  mouseForce?: boolean | MouseForceConfig;
 }
 
 export interface UseParticlesResult {
   canvasRef: MutableRefObject<HTMLCanvasElement | null>;
   /** Full-viewport click-through style when backgroundLayer is true; use as <canvas style={canvasStyle} /> */
   canvasStyle: CSSProperties | undefined;
+  /** The full particles controller. Available after mount. */
   controller: ParticlesController | null;
   burst: (options: BurstOptions) => void;
   burstFromEvent: (
@@ -42,7 +45,7 @@ export interface UseParticlesResult {
   imageToParticles: (config: ImageParticlesConfig) => void;
   textToParticles: (
     text: string,
-    config: Omit<ImageParticlesConfig, 'image'> & { textConfig?: Omit<TextImageConfig, 'text'> },
+    config?: Omit<ImageParticlesConfig, 'image'> & { textConfig?: Omit<TextImageConfig, 'text'> },
   ) => void;
 }
 
@@ -50,10 +53,10 @@ export interface UseParticlesResult {
  * Hooks-first API for React apps.
  *
  * Usage:
- * const { canvasRef, burstFromEvent } = useParticles({ preset: "magic" });
+ * const { canvasRef, canvasStyle, burstFromEvent } = useParticles({ preset: "magic" });
  * return (
  *   <>
- *     <canvas ref={canvasRef} className="particular" />
+ *     <canvas ref={canvasRef} style={canvasStyle} />
  *     <button onClick={burstFromEvent}>Burst</button>
  *   </>
  * );
@@ -61,12 +64,13 @@ export interface UseParticlesResult {
 export function useParticles({
   preset = 'magic',
   config,
-  renderer = 'canvas',
+  renderer = 'webgl',
   autoResize = true,
   autoClick = false,
   clickTarget,
   backgroundLayer = true,
   container,
+  mouseForce,
 }: UseParticlesOptions = {}): UseParticlesResult {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const controllerRef = useRef<ParticlesController | null>(null);
@@ -77,10 +81,12 @@ export function useParticles({
       ? getParticlesBackgroundLayerStyle(config?.zIndex)
       : undefined;
 
-  const createOptions = useMemo<CreateParticlesOptions>(
-    () => ({
-      // canvas is injected in effect when ref is available
-      canvas: null as unknown as HTMLCanvasElement,
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const controller = createParticles({
+      canvas,
       preset,
       config,
       renderer,
@@ -88,22 +94,7 @@ export function useParticles({
       autoClick,
       clickTarget,
       container,
-    }),
-    [preset, config, renderer, autoResize, autoClick, clickTarget, container],
-  );
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const controller = createParticles({
-      canvas,
-      preset: createOptions.preset,
-      config: createOptions.config,
-      autoResize: createOptions.autoResize,
-      autoClick: createOptions.autoClick,
-      clickTarget: createOptions.clickTarget,
-      container: createOptions.container,
+      mouseForce,
     });
 
     controllerRef.current = controller;
@@ -112,7 +103,7 @@ export function useParticles({
       controller.destroy();
       controllerRef.current = null;
     };
-  }, [createOptions]);
+  }, [preset, config, renderer, autoResize, autoClick, clickTarget, container, mouseForce]);
 
   const burst = useCallback((options: BurstOptions) => {
     controllerRef.current?.burst(options);
@@ -148,7 +139,7 @@ export function useParticles({
   const textToParticles = useCallback(
     (
       text: string,
-      config: Omit<ImageParticlesConfig, 'image'> & { textConfig?: Omit<TextImageConfig, 'text'> },
+      config?: Omit<ImageParticlesConfig, 'image'> & { textConfig?: Omit<TextImageConfig, 'text'> },
     ) => {
       controllerRef.current?.textToParticles(text, config);
     },
@@ -173,6 +164,7 @@ export function useParticles({
 export interface UseScreensaverOptions {
   preset?: PresetName;
   config?: Partial<FullParticularConfig>;
+  /** Rendering backend. Default `'webgl'`. */
   renderer?: RendererType;
   autoResize?: boolean;
   /** When true (default), result includes canvasStyle for a full-viewport click-through canvas. */
@@ -197,7 +189,7 @@ export interface UseScreensaverResult {
 export function useScreensaver({
   preset = 'snow',
   config,
-  renderer = 'canvas',
+  renderer = 'webgl',
   autoResize = true,
   backgroundLayer = true,
   mouseWind,

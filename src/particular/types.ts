@@ -242,11 +242,11 @@ export interface ParticleConstructorParams extends ShapeConfig {
 export interface ImageParticlesConfig extends ShapeConfig {
   /** Image source — URL string or HTMLImageElement. */
   image: string | HTMLImageElement;
-  /** X center position in screen pixels. */
-  x: number;
-  /** Y center position in screen pixels. */
-  y: number;
-  /** Display width in screen pixels. Calculated from height + aspect ratio if omitted. Defaults to image natural width. */
+  /** X center position in screen pixels. Default: center of container/viewport. */
+  x?: number;
+  /** Y center position in screen pixels. Default: center of container/viewport. */
+  y?: number;
+  /** Display width in screen pixels. Calculated from height + aspect ratio if omitted. Default: 80% of container/viewport width (max 800px). */
   width?: number;
   /** Display height in screen pixels. Calculated from width + aspect ratio if omitted. Defaults to image natural height. */
   height?: number;
