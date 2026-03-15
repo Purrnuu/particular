@@ -1311,12 +1311,6 @@ interface ScreensaverController {
 }
 
 /**
- * One-call screensaver setup: spawns particles across the full viewport width.
- * Defaults to the `snow` preset with continuous emission.
- */
-declare function startScreensaver({ canvas, preset, config, renderer, autoResize, mouseWind: mouseWindOption, container, }: ScreensaverOptions): ScreensaverController;
-
-/**
  * High-level convenience API for the particle engine.
  *
  * `createParticles()` initializes the engine and returns a controller
@@ -1335,6 +1329,12 @@ declare function startScreensaver({ canvas, preset, config, renderer, autoResize
  * Returns a controller with burst, forces, effects, and image-to-particles APIs.
  */
 declare function createParticles({ canvas: userCanvas, preset, config, renderer, autoResize, autoClick, clickTarget, container, mouseForce, }?: CreateParticlesOptions): ParticlesController;
+
+/**
+ * One-call screensaver setup: spawns particles across the full viewport width.
+ * Defaults to the `snow` preset with continuous emission.
+ */
+declare function startScreensaver({ canvas, preset, config, renderer, autoResize, mouseWind: mouseWindOption, container, }: ScreensaverOptions): ScreensaverController;
 
 /**
  * Render a text string to an offscreen canvas.

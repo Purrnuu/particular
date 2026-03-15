@@ -3066,80 +3066,6 @@ function createImageParticles(engine, mergedConfig, container) {
   return { imageToParticles, textToParticles };
 }
 
-// src/particular/convenience/screensaver.ts
-function startScreensaver({
-  canvas,
-  preset = "snow",
-  config,
-  renderer = "webgl",
-  autoResize = true,
-  mouseWind: mouseWindOption,
-  container
-}) {
-  const basePreset = getPreset(preset);
-  const mergedConfig = {
-    ...basePreset,
-    continuous: true,
-    ...config
-  };
-  const controller = createParticles({
-    canvas,
-    preset,
-    config: mergedConfig,
-    renderer,
-    autoResize,
-    container
-  });
-  const pixelRatio = controller.engine.pixelRatio;
-  const sourceW = container ? container.clientWidth : window.innerWidth;
-  const spawnWidth = sourceW / pixelRatio;
-  const emitter = new Emitter({
-    point: new Vector(sourceW / 2 / pixelRatio, 0),
-    ...configureParticle(mergedConfig),
-    spawnWidth,
-    spawnHeight: defaultParticle.spawnHeight,
-    icons: []
-  });
-  controller.engine.addEmitter(emitter);
-  emitter.isEmitting = true;
-  emitter.emit();
-  const cleanups = [];
-  if (mouseWindOption !== false) {
-    controller.addMouseForce({
-      ...defaultMouseWind,
-      track: true,
-      ...mouseWindOption
-    });
-  }
-  if (autoResize && !container) {
-    const onResize = () => {
-      const newSpawnWidth = window.innerWidth / pixelRatio;
-      emitter.configuration.spawnWidth = newSpawnWidth;
-      emitter.configuration.point.x = window.innerWidth / 2 / pixelRatio;
-    };
-    window.addEventListener("resize", onResize);
-    cleanups.push(() => window.removeEventListener("resize", onResize));
-  }
-  if (autoResize && container) {
-    const ro = new ResizeObserver(() => {
-      const newSpawnWidth = container.clientWidth / pixelRatio;
-      emitter.configuration.spawnWidth = newSpawnWidth;
-      emitter.configuration.point.x = container.clientWidth / 2 / pixelRatio;
-    });
-    ro.observe(container);
-    cleanups.push(() => ro.disconnect());
-  }
-  const destroy2 = () => {
-    for (const cleanup of cleanups) cleanup();
-    controller.destroy();
-  };
-  return {
-    engine: controller.engine,
-    controller,
-    destroy: destroy2
-  };
-}
-
 // src/particular/convenience/index.ts
 function createParticles({
   canvas: userCanvas,
@@ -3257,6 +3183,80 @@ function createParticles({
     ...boundary,
     ...effects,
     ...imageApi,
+    destroy: destroy2
+  };
+}
+
+// src/particular/convenience/screensaver.ts
+function startScreensaver({
+  canvas,
+  preset = "snow",
+  config,
+  renderer = "webgl",
+  autoResize = true,
+  mouseWind: mouseWindOption,
+  container
+}) {
+  const basePreset = getPreset(preset);
+  const mergedConfig = {
+    ...basePreset,
+    continuous: true,
+    ...config
+  };
+  const controller = createParticles({
+    canvas,
+    preset,
+    config: mergedConfig,
+    renderer,
+    autoResize,
+    container
+  });
+  const pixelRatio = controller.engine.pixelRatio;
+  const sourceW = container ? container.clientWidth : window.innerWidth;
+  const spawnWidth = sourceW / pixelRatio;
+  const emitter = new Emitter({
+    point: new Vector(sourceW / 2 / pixelRatio, 0),
+    ...configureParticle(mergedConfig),
+    spawnWidth,
+    spawnHeight: defaultParticle.spawnHeight,
+    icons: []
+  });
+  controller.engine.addEmitter(emitter);
+  emitter.isEmitting = true;
+  emitter.emit();
+  const cleanups = [];
+  if (mouseWindOption !== false) {
+    controller.addMouseForce({
+      ...defaultMouseWind,
+      track: true,
+      ...mouseWindOption
+    });
+  }
+  if (autoResize && !container) {
+    const onResize = () => {
+      const newSpawnWidth = window.innerWidth / pixelRatio;
+      emitter.configuration.spawnWidth = newSpawnWidth;
+      emitter.configuration.point.x = window.innerWidth / 2 / pixelRatio;
+    };
+    window.addEventListener("resize", onResize);
+    cleanups.push(() => window.removeEventListener("resize", onResize));
+  }
+  if (autoResize && container) {
+    const ro = new ResizeObserver(() => {
+      const newSpawnWidth = container.clientWidth / pixelRatio;
+      emitter.configuration.spawnWidth = newSpawnWidth;
+      emitter.configuration.point.x = container.clientWidth / 2 / pixelRatio;
+    });
+    ro.observe(container);
+    cleanups.push(() => ro.disconnect());
+  }
+  const destroy2 = () => {
+    for (const cleanup of cleanups) cleanup();
+    controller.destroy();
+  };
+  return {
+    engine: controller.engine,
+    controller,
     destroy: destroy2
   };
 }

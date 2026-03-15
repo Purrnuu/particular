@@ -74,6 +74,7 @@ describe('built standalone embed', () => {
     const controller = api.createParticles({
       canvas,
       preset: 'sparkles',
+      renderer: 'canvas',
       autoResize: false,
     });
     const emitter = controller.burst({
@@ -94,6 +95,7 @@ describe('built react embed', () => {
     const HookDemo = () => {
       const { canvasRef, burstFromEvent } = lib.useParticles({
         preset: 'sparkles',
+        renderer: 'canvas',
         config: { rate: 4, life: 10, maxCount: 100 },
       });
 

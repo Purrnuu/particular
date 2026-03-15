@@ -28,8 +28,7 @@ import { createEffects } from './effects';
 import { createImageParticles } from './imageParticles';
 import type { BurstOptions, CreateParticlesOptions, ParticlesController } from './types';
 
-// Re-export all public types and screensaver
-export { startScreensaver } from './screensaver';
+// Re-export public types (screensaver exported separately to avoid circular dep)
 export type {
   BurstOptions,
   CreateParticlesOptions,

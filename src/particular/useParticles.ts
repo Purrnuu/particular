@@ -3,11 +3,11 @@ import type { CSSProperties, MouseEvent as ReactMouseEvent, MutableRefObject } f
 
 import {
   createParticles,
-  startScreensaver,
   type BurstOptions,
   type ParticlesController,
-  type ScreensaverController,
 } from './convenience';
+import { startScreensaver } from './convenience/screensaver';
+import type { ScreensaverController } from './convenience/types';
 import { getParticlesBackgroundLayerStyle, getParticlesContainerLayerStyle } from './canvasStyles';
 import type { FullParticularConfig, MouseForceConfig, RendererType, ExplodeOptions, ImageParticlesConfig, TextImageConfig } from './types';
 import type { PresetName } from './presets';
