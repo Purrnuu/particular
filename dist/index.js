@@ -230,7 +230,7 @@ var defaultImageParticles = {
 };
 var defaultMouseWind = {
   strength: 0.12,
-  radius: 50,
+  radius: 100,
   damping: 0.92,
   maxSpeed: 8,
   falloff: 0.3
@@ -267,6 +267,7 @@ var _Particular = class _Particular {
     this.height = 0;
     this.pixelRatio = 2;
     this.continuous = false;
+    this.container = null;
     this.animateRequest = null;
     this.lastTimestamp = -1;
     this.update = (timestamp) => {
@@ -288,11 +289,13 @@ var _Particular = class _Particular {
   initialize({
     maxCount = defaultParticular.maxCount,
     continuous = defaultParticular.continuous,
-    pixelRatio = defaultParticular.pixelRatio
+    pixelRatio = defaultParticular.pixelRatio,
+    container
   }) {
     this.maxCount = maxCount;
     this.continuous = continuous;
     this.pixelRatio = pixelRatio;
+    this.container = container ?? null;
     this.update();
   }
   start() {
@@ -302,9 +305,15 @@ var _Particular = class _Particular {
     this.isOn = false;
   }
   onResize() {
-    const height = this.height = window.innerHeight;
-    const width = this.width = window.innerWidth;
-    this.dispatchEvent(_Particular.RESIZE, { width, height });
+    if (this.container) {
+      const height = this.height = this.container.clientHeight;
+      const width = this.width = this.container.clientWidth;
+      this.dispatchEvent(_Particular.RESIZE, { width, height });
+    } else {
+      const height = this.height = window.innerHeight;
+      const width = this.width = window.innerWidth;
+      this.dispatchEvent(_Particular.RESIZE, { width, height });
+    }
   }
   addRenderer(renderer) {
     this.renderers.push(renderer);
@@ -1931,6 +1940,16 @@ var particlesBackgroundLayerStyle = {
 function getParticlesBackgroundLayerStyle(zIndex) {
   return zIndex !== void 0 ? { ...particlesBackgroundLayerStyle, zIndex } : particlesBackgroundLayerStyle;
 }
+var particlesContainerLayerStyle = {
+  position: "absolute",
+  inset: 0,
+  width: "100%",
+  height: "100%",
+  pointerEvents: "none"
+};
+function getParticlesContainerLayerStyle(zIndex) {
+  return zIndex !== void 0 ? { ...particlesContainerLayerStyle, zIndex } : particlesContainerLayerStyle;
+}
 var CanvasWrapper = class extends React.Component {
   constructor(props) {
     super(props);
@@ -2402,6 +2421,7 @@ var MouseForce = class {
     this._trackListener = null;
     this._trackTarget = null;
     this._pixelRatio = 1;
+    this._container = null;
     const merged = { ...defaultMouseForce, ...config };
     this.position = new Vector(merged.x, merged.y);
     this.velocity = new Vector(0, 0);
@@ -2414,11 +2434,19 @@ var MouseForce = class {
   get isTracking() {
     return this._trackTarget !== null;
   }
-  startTracking(target, pixelRatio) {
+  startTracking(target, pixelRatio, container) {
     this.stopTracking();
     this._pixelRatio = pixelRatio;
+    this._container = container ?? null;
     this._trackListener = (e) => {
-      this.updatePosition(e.clientX / this._pixelRatio, e.clientY / this._pixelRatio);
+      let x = e.clientX;
+      let y = e.clientY;
+      if (this._container) {
+        const rect = this._container.getBoundingClientRect();
+        x -= rect.left;
+        y -= rect.top;
+      }
+      this.updatePosition(x / this._pixelRatio, y / this._pixelRatio);
     };
     this._trackTarget = target;
     target.addEventListener("mousemove", this._trackListener);
@@ -2686,11 +2714,12 @@ function createParticles({
   renderer = "canvas",
   autoResize = true,
   autoClick = false,
-  clickTarget
+  clickTarget,
+  container
 }) {
   const engine = new Particular();
   const basePreset = getPreset(preset);
-  const mergedConfig = configureParticular({ ...basePreset, ...config });
+  const mergedConfig = configureParticular({ ...basePreset, ...config, container });
   engine.initialize(mergedConfig);
   if (renderer === "webgl") {
     engine.addRenderer(
@@ -2704,10 +2733,26 @@ function createParticles({
   engine.onResize();
   const cleanups = [];
   if (autoResize) {
-    const onResize = () => engine.onResize();
-    window.addEventListener("resize", onResize);
-    cleanups.push(() => window.removeEventListener("resize", onResize));
+    if (container) {
+      const ro = new ResizeObserver(() => engine.onResize());
+      ro.observe(container);
+      cleanups.push(() => ro.disconnect());
+    } else {
+      const onResize = () => engine.onResize();
+      window.addEventListener("resize", onResize);
+      cleanups.push(() => window.removeEventListener("resize", onResize));
+    }
   }
+  const toEngineCoords = (clientX, clientY) => {
+    let x = clientX;
+    let y = clientY;
+    if (container) {
+      const rect = container.getBoundingClientRect();
+      x -= rect.left;
+      y -= rect.top;
+    }
+    return { x: x / mergedConfig.pixelRatio, y: y / mergedConfig.pixelRatio };
+  };
   const burst = (options) => {
     const { x, y, ...overrides } = options;
     const combinedSettings = configureParticle(overrides, mergedConfig);
@@ -2715,8 +2760,9 @@ function createParticles({
     if (combinedSettings.icons) {
       icons = processImages(combinedSettings.icons);
     }
+    const enginePos = toEngineCoords(x, y);
     const emitter = new Emitter({
-      point: new Vector(x / mergedConfig.pixelRatio, y / mergedConfig.pixelRatio),
+      point: new Vector(enginePos.x, enginePos.y),
       ...combinedSettings,
       icons
     });
@@ -2936,8 +2982,10 @@ function createParticles({
   };
   const addRandomAttractors = (count, config2) => {
     const pixelRatio = engine.pixelRatio;
-    const viewW = window.innerWidth / pixelRatio;
-    const viewH = window.innerHeight / pixelRatio;
+    const sourceW = container ? container.clientWidth : window.innerWidth;
+    const sourceH = container ? container.clientHeight : window.innerHeight;
+    const viewW = sourceW / pixelRatio;
+    const viewH = sourceH / pixelRatio;
     const marginX = viewW * 0.1;
     const marginY = viewH * 0.1;
     const result = [];
@@ -2959,13 +3007,101 @@ function createParticles({
   const removeAllAttractors = () => {
     engine.attractors.splice(0);
   };
+  const addBoundary = (config2) => {
+    const {
+      element,
+      strength = -1.5,
+      radius = 10,
+      inset: insetFraction = 0.4
+    } = config2;
+    const pr = engine.pixelRatio;
+    let attractors = [];
+    let offsets = [];
+    const rebuild = () => {
+      for (const a of attractors) engine.removeAttractor(a);
+      attractors = [];
+      offsets = [];
+      const refRect = container ? container.getBoundingClientRect() : { left: 0, top: 0 };
+      const elRect = element.getBoundingClientRect();
+      const elLeft = (elRect.left - refRect.left) / pr;
+      const elTop = (elRect.top - refRect.top) / pr;
+      const elW = elRect.width / pr;
+      const elH = elRect.height / pr;
+      const ins = radius * insetFraction;
+      const localL = ins;
+      const localR = elW - ins;
+      const localT = ins;
+      const localB = elH - ins;
+      const w = localR - localL;
+      const h = localB - localT;
+      if (w <= 0 || h <= 0) return;
+      const stepsX = Math.max(2, Math.ceil(w / radius) + 1);
+      const stepsY = Math.max(2, Math.ceil(h / radius) + 1);
+      const add = (dx, dy) => {
+        const a = new Attractor({ x: elLeft + dx, y: elTop + dy, strength, radius });
+        engine.addAttractor(a);
+        attractors.push(a);
+        offsets.push({ dx, dy });
+      };
+      for (let i = 0; i < stepsX; i++) {
+        const x = localL + w * i / (stepsX - 1);
+        add(x, localT);
+        add(x, localB);
+      }
+      for (let i = 1; i < stepsY - 1; i++) {
+        const y = localT + h * i / (stepsY - 1);
+        add(localL, y);
+        add(localR, y);
+      }
+    };
+    const reposition = () => {
+      if (attractors.length === 0) return;
+      const refRect = container ? container.getBoundingClientRect() : { left: 0, top: 0 };
+      const elRect = element.getBoundingClientRect();
+      const elLeft = (elRect.left - refRect.left) / pr;
+      const elTop = (elRect.top - refRect.top) / pr;
+      for (let i = 0; i < attractors.length; i++) {
+        const a = attractors[i];
+        const o = offsets[i];
+        a.position.x = elLeft + o.dx;
+        a.position.y = elTop + o.dy;
+      }
+    };
+    rebuild();
+    const ro = new ResizeObserver(rebuild);
+    ro.observe(element);
+    if (container) ro.observe(container);
+    let scrollRafId = 0;
+    const onScroll = () => {
+      if (scrollRafId) return;
+      scrollRafId = requestAnimationFrame(() => {
+        scrollRafId = 0;
+        reposition();
+      });
+    };
+    const scrollTarget = container ?? window;
+    scrollTarget.addEventListener("scroll", onScroll, { passive: true });
+    const handle = {
+      update: rebuild,
+      destroy: () => {
+        ro.disconnect();
+        scrollTarget.removeEventListener("scroll", onScroll);
+        if (scrollRafId) cancelAnimationFrame(scrollRafId);
+        for (const a of attractors) engine.removeAttractor(a);
+        attractors = [];
+        offsets = [];
+      }
+    };
+    cleanups.push(() => handle.destroy());
+    return handle;
+  };
   const addMouseForce = (config2 = {}) => {
     const { track, ...forceConfig } = config2;
     const mouseForce = new MouseForce(forceConfig);
     engine.addMouseForce(mouseForce);
     if (track) {
       const target = track === true ? window : track;
-      mouseForce.startTracking(target, engine.pixelRatio);
+      mouseForce.startTracking(target, engine.pixelRatio, container);
       cleanups.push(() => mouseForce.stopTracking());
     }
     return mouseForce;
@@ -2989,6 +3125,7 @@ function createParticles({
     removeAttractor,
     addRandomAttractors,
     removeAllAttractors,
+    addBoundary,
     addMouseForce,
     removeMouseForce,
     attachClickBurst,
@@ -3001,7 +3138,8 @@ function startScreensaver({
   config,
   renderer = "canvas",
   autoResize = true,
-  mouseWind: mouseWindOption
+  mouseWind: mouseWindOption,
+  container
 }) {
   const basePreset = getPreset(preset);
   const mergedConfig = {
@@ -3014,12 +3152,14 @@ function startScreensaver({
     preset,
     config: mergedConfig,
     renderer,
-    autoResize
+    autoResize,
+    container
   });
   const pixelRatio = controller.engine.pixelRatio;
-  const spawnWidth = window.innerWidth / pixelRatio;
+  const sourceW = container ? container.clientWidth : window.innerWidth;
+  const spawnWidth = sourceW / pixelRatio;
   const emitter = new Emitter({
-    point: new Vector(window.innerWidth / 2 / pixelRatio, 0),
+    point: new Vector(sourceW / 2 / pixelRatio, 0),
     ...configureParticle(mergedConfig),
     spawnWidth,
     spawnHeight: defaultParticle.spawnHeight,
@@ -3036,7 +3176,7 @@ function startScreensaver({
       ...mouseWindOption
     });
   }
-  if (autoResize) {
+  if (autoResize && !container) {
     const onResize = () => {
       const newSpawnWidth = window.innerWidth / pixelRatio;
       emitter.configuration.spawnWidth = newSpawnWidth;
@@ -3044,6 +3184,15 @@ function startScreensaver({
     };
     window.addEventListener("resize", onResize);
     cleanups.push(() => window.removeEventListener("resize", onResize));
+  }
+  if (autoResize && container) {
+    const ro = new ResizeObserver(() => {
+      const newSpawnWidth = container.clientWidth / pixelRatio;
+      emitter.configuration.spawnWidth = newSpawnWidth;
+      emitter.configuration.point.x = container.clientWidth / 2 / pixelRatio;
+    });
+    ro.observe(container);
+    cleanups.push(() => ro.disconnect());
   }
   const destroy2 = () => {
     for (const cleanup of cleanups) cleanup();
@@ -3062,11 +3211,12 @@ function useParticles({
   autoResize = true,
   autoClick = false,
   clickTarget,
-  backgroundLayer = true
+  backgroundLayer = true,
+  container
 } = {}) {
   const canvasRef = useRef(null);
   const controllerRef = useRef(null);
-  const canvasStyle = backgroundLayer ? getParticlesBackgroundLayerStyle(config?.zIndex) : void 0;
+  const canvasStyle = container ? getParticlesContainerLayerStyle(config?.zIndex) : backgroundLayer ? getParticlesBackgroundLayerStyle(config?.zIndex) : void 0;
   const createOptions = useMemo(
     () => ({
       // canvas is injected in effect when ref is available
@@ -3076,9 +3226,10 @@ function useParticles({
       renderer,
       autoResize,
       autoClick,
-      clickTarget
+      clickTarget,
+      container
     }),
-    [preset, config, renderer, autoResize, autoClick, clickTarget]
+    [preset, config, renderer, autoResize, autoClick, clickTarget, container]
   );
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -3089,7 +3240,8 @@ function useParticles({
       config: createOptions.config,
       autoResize: createOptions.autoResize,
       autoClick: createOptions.autoClick,
-      clickTarget: createOptions.clickTarget
+      clickTarget: createOptions.clickTarget,
+      container: createOptions.container
     });
     controllerRef.current = controller;
     return () => {
@@ -3144,11 +3296,12 @@ function useScreensaver({
   renderer = "canvas",
   autoResize = true,
   backgroundLayer = true,
-  mouseWind
+  mouseWind,
+  container
 } = {}) {
   const canvasRef = useRef(null);
   const screensaverRef = useRef(null);
-  const canvasStyle = backgroundLayer ? getParticlesBackgroundLayerStyle(config?.zIndex) : void 0;
+  const canvasStyle = container ? getParticlesContainerLayerStyle(config?.zIndex) : backgroundLayer ? getParticlesBackgroundLayerStyle(config?.zIndex) : void 0;
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -3158,14 +3311,15 @@ function useScreensaver({
       config,
       renderer,
       autoResize,
-      mouseWind
+      mouseWind,
+      container
     });
     screensaverRef.current = screensaver;
     return () => {
       screensaver.destroy();
       screensaverRef.current = null;
     };
-  }, [preset, config, renderer, autoResize, mouseWind]);
+  }, [preset, config, renderer, autoResize, mouseWind, container]);
   const destroy2 = useCallback(() => {
     screensaverRef.current?.destroy();
     screensaverRef.current = null;
@@ -3241,6 +3395,6 @@ function showFPSOverlay(options = {}) {
   };
 }
 
-export { Attractor, CanvasRenderer, Emitter, MouseForce, Particle, Particular, ParticularWrapper_default as ParticularWrapper, Vector, WebGLRenderer, canvasToDataURL, createHeartImage, createParticles, createTextImage, getParticlesBackgroundLayerStyle, particlesBackgroundLayerStyle, DEFAULT_Z_INDEX as particlesDefaultZIndex, presets, showFPSOverlay, startScreensaver, useParticles, useScreensaver, withParticles };
+export { Attractor, CanvasRenderer, Emitter, MouseForce, Particle, Particular, ParticularWrapper_default as ParticularWrapper, Vector, WebGLRenderer, canvasToDataURL, createHeartImage, createParticles, createTextImage, getParticlesBackgroundLayerStyle, getParticlesContainerLayerStyle, particlesBackgroundLayerStyle, particlesContainerLayerStyle, DEFAULT_Z_INDEX as particlesDefaultZIndex, presets, showFPSOverlay, startScreensaver, useParticles, useScreensaver, withParticles };
 //# sourceMappingURL=index.js.map
 //# sourceMappingURL=index.js.map

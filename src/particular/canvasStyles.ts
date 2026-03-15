@@ -22,4 +22,23 @@ export function getParticlesBackgroundLayerStyle(zIndex?: number): CSSProperties
     : particlesBackgroundLayerStyle;
 }
 
+/**
+ * Style for a container-aware particle canvas.
+ * The canvas fills its parent container using absolute positioning.
+ * The parent element must have `position: relative` (or absolute/fixed).
+ */
+export const particlesContainerLayerStyle: CSSProperties = {
+  position: 'absolute',
+  inset: 0,
+  width: '100%',
+  height: '100%',
+  pointerEvents: 'none',
+};
+
+export function getParticlesContainerLayerStyle(zIndex?: number): CSSProperties {
+  return zIndex !== undefined
+    ? { ...particlesContainerLayerStyle, zIndex }
+    : particlesContainerLayerStyle;
+}
+
 export { DEFAULT_Z_INDEX as particlesDefaultZIndex };

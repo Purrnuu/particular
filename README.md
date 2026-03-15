@@ -226,6 +226,58 @@ function Snow() {
 
 Image/text particles have spring physics — they return to their home positions after being pushed. Press E (in the examples) to scatter them.
 
+## Container Mode
+
+By default, particles render as a full-viewport overlay (`position: fixed`). To render particles inside a specific element (e.g. a scrollable section, a card, or a hero area), pass a `container`:
+
+### React — Container-Aware
+
+```tsx
+import { useRef } from "react";
+import { useParticles } from "particular";
+
+function HeroSection() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { canvasRef, canvasStyle, burstFromEvent } = useParticles({
+    preset: "magic",
+    renderer: "webgl",
+    container: containerRef.current!,
+  });
+
+  return (
+    <div ref={containerRef} style={{ position: "relative", height: 400 }}>
+      <canvas ref={canvasRef} style={canvasStyle} />
+      <button onClick={burstFromEvent}>Click for particles</button>
+    </div>
+  );
+}
+```
+
+### Vanilla — Container-Aware
+
+```html
+<div id="hero" style="position:relative;height:400px;overflow:hidden">
+  <canvas id="particles"></canvas>
+</div>
+<script src="https://unpkg.com/particular/dist/particular.global.js"></script>
+<script>
+  const { createParticles } = window.Particular;
+  const container = document.getElementById("hero");
+
+  const particles = createParticles({
+    canvas: document.getElementById("particles"),
+    container: container,
+    preset: "magic",
+    renderer: "webgl",
+    autoResize: true,
+  });
+
+  particles.attachClickBurst(container);
+</script>
+```
+
+The container must have `position: relative` (or `absolute`/`fixed`). The canvas auto-sizes to the container via `ResizeObserver`, and all coordinates (burst, mouse force, attractors) become container-relative.
+
 ---
 
 ## Examples

@@ -127,6 +127,8 @@ src/particular/utils/eventDispatcher.ts  # Simple pub/sub for engine events
 - Keep Canvas/WebGL feature parity when feasible.
 - Presets are curated, not abundant. Polish over quantity.
 - New features get a dedicated Storybook story before they're considered complete.
+- Storybooks contain only the necessary information to setup the effect. The effect details should be contained in the library, in helpers, components, and internals.
+- The interface to the library should be simple, human readable, amazing for agents like Claude to modify, and easy without configuration.
 - Validate both renderers when changing visual behavior.
 - **Defaults must be beautiful.** Presets and defaults are the primary way library users experience effects. All tuning (colors, physics, timing, child config) belongs in presets and `defaults.ts`, not in story files. Stories should demonstrate features using presets with minimal or no inline config overrides. If a story needs many tweaks to look good, those tweaks should be promoted into a preset or default. This ensures `createParticles({ preset: 'fireworksDetonation' })` gives users a polished result without requiring them to hand-tune parameters.
 
@@ -137,6 +139,7 @@ src/particular/utils/eventDispatcher.ts  # Simple pub/sub for engine events
 - **dt normalization**: Multiply additive values by dt. Use `Math.pow(base, dt)` for exponential decay. Never skip dt or animations break at non-60fps refresh rates.
 - **WebGL batching**: Effect changes (blend mode, glow, shadow) create batch breaks. Don't add per-particle state that fragments batches.
 - **Config merge order**: `configureParticular({ ...preset, ...userConfig })` — user config wins. Presets are base defaults, not overrides.
+- **Default values in stories**: Use defaults.ts and add features as helpers and components in the main engine, use stories only to highlight the use cases, not set default values or behaviours
 
 ## Deep Reference
 

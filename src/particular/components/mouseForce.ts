@@ -14,6 +14,7 @@ export default class MouseForce implements ForceSource {
   private _trackListener: ((e: MouseEvent) => void) | null = null;
   private _trackTarget: EventTarget | null = null;
   private _pixelRatio = 1;
+  private _container: HTMLElement | null = null;
 
   constructor(config: MouseForceConfig = {}) {
     const merged = { ...defaultMouseForce, ...config };
@@ -30,11 +31,19 @@ export default class MouseForce implements ForceSource {
     return this._trackTarget !== null;
   }
 
-  startTracking(target: EventTarget, pixelRatio: number): void {
+  startTracking(target: EventTarget, pixelRatio: number, container?: HTMLElement | null): void {
     this.stopTracking();
     this._pixelRatio = pixelRatio;
+    this._container = container ?? null;
     this._trackListener = (e: MouseEvent) => {
-      this.updatePosition(e.clientX / this._pixelRatio, e.clientY / this._pixelRatio);
+      let x = e.clientX;
+      let y = e.clientY;
+      if (this._container) {
+        const rect = this._container.getBoundingClientRect();
+        x -= rect.left;
+        y -= rect.top;
+      }
+      this.updatePosition(x / this._pixelRatio, y / this._pixelRatio);
     };
     this._trackTarget = target;
     target.addEventListener('mousemove', this._trackListener as EventListener);

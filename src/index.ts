@@ -15,6 +15,8 @@ export { presets } from './particular/presets';
 export {
   particlesBackgroundLayerStyle,
   getParticlesBackgroundLayerStyle,
+  particlesContainerLayerStyle,
+  getParticlesContainerLayerStyle,
   particlesDefaultZIndex,
 } from './particular/canvasStyles';
 export { createParticles, startScreensaver } from './particular/convenience';
@@ -43,12 +45,14 @@ export type {
   ImageParticlesConfig,
   HomePositionConfig,
   TextImageConfig,
+  BoundaryConfig,
 } from './particular/types';
 export type { PresetName } from './particular/presets';
 export type {
   BurstOptions,
   CreateParticlesOptions,
   ParticlesController,
+  BoundaryHandle,
   ScreensaverOptions,
   ScreensaverController,
 } from './particular/convenience';

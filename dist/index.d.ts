@@ -1,10 +1,11 @@
-import { F as FullParticularConfig, P as ParticularConfig, a as ParticleConfig, R as RendererType, b as Particular, B as BurstSettings, c as PresetName, d as ParticlesController, e as BurstOptions, E as ExplodeOptions, I as ImageParticlesConfig, T as TextImageConfig, M as MouseForceConfig } from './standalone-BI6ucbRg.js';
-export { A as Attractor, f as AttractorConfig, g as BlendMode, C as CanvasRenderer, h as ChildExplosionConfig, i as CreateParticlesOptions, D as DetonateConfig, j as Emitter, k as EmitterConfiguration, l as FPSOverlayController, m as FPSOverlayOptions, n as ForceSource, H as HomePositionConfig, o as MouseForce, p as Particle, q as ParticleConstructorParams, r as ParticleShape, S as ScreensaverController, s as ScreensaverOptions, t as ShapeConfig, V as Vector, W as WebGLRenderer, u as WebGLRendererOptions, v as canvasToDataURL, w as createHeartImage, x as createParticles, y as createTextImage, z as getParticlesBackgroundLayerStyle, G as particlesBackgroundLayerStyle, J as particlesDefaultZIndex, K as presets, L as showFPSOverlay, N as startScreensaver } from './standalone-BI6ucbRg.js';
+import { F as FullParticularConfig, P as ParticularConfig, a as ParticleConfig, R as RendererType, b as Particular, B as BurstSettings, c as PresetName, d as ParticlesController, e as BurstOptions, E as ExplodeOptions, I as ImageParticlesConfig, T as TextImageConfig, M as MouseForceConfig } from './standalone-BnRzWamh.js';
+export { A as Attractor, f as AttractorConfig, g as BlendMode, h as BoundaryConfig, i as BoundaryHandle, C as CanvasRenderer, j as ChildExplosionConfig, k as CreateParticlesOptions, D as DetonateConfig, l as Emitter, m as EmitterConfiguration, n as FPSOverlayController, o as FPSOverlayOptions, p as ForceSource, H as HomePositionConfig, q as MouseForce, r as Particle, s as ParticleConstructorParams, t as ParticleShape, S as ScreensaverController, u as ScreensaverOptions, v as ShapeConfig, V as Vector, W as WebGLRenderer, w as WebGLRendererOptions, x as canvasToDataURL, y as createHeartImage, z as createParticles, G as createTextImage, J as getParticlesBackgroundLayerStyle, K as getParticlesContainerLayerStyle, L as particlesBackgroundLayerStyle, N as particlesContainerLayerStyle, O as particlesDefaultZIndex, Q as presets, U as showFPSOverlay, X as startScreensaver } from './standalone-BnRzWamh.js';
 import React, { ComponentType, MutableRefObject, CSSProperties, MouseEvent as MouseEvent$1 } from 'react';
 
 type ParticleDefaults = Required<Omit<ParticleConfig, 'detonate'>>;
-declare function configureParticular(configuration?: FullParticularConfig): Required<ParticularConfig> & ParticleDefaults & {
+declare function configureParticular(configuration?: FullParticularConfig): Required<Omit<ParticularConfig, 'container'>> & ParticleDefaults & {
     renderer?: RendererType;
+    container?: HTMLElement;
 };
 
 interface CanvasWrapperState {
@@ -101,6 +102,9 @@ interface UseParticlesOptions {
     clickTarget?: EventTarget;
     /** When true (default), result includes canvasStyle for a full-viewport click-through canvas. */
     backgroundLayer?: boolean;
+    /** Container element for container-aware mode. Canvas sizes to this element
+     *  and coordinates become container-relative. Omit for full-viewport mode. */
+    container?: HTMLElement;
 }
 interface UseParticlesResult {
     canvasRef: MutableRefObject<HTMLCanvasElement | null>;
@@ -130,7 +134,7 @@ interface UseParticlesResult {
  *   </>
  * );
  */
-declare function useParticles({ preset, config, renderer, autoResize, autoClick, clickTarget, backgroundLayer, }?: UseParticlesOptions): UseParticlesResult;
+declare function useParticles({ preset, config, renderer, autoResize, autoClick, clickTarget, backgroundLayer, container, }?: UseParticlesOptions): UseParticlesResult;
 interface UseScreensaverOptions {
     preset?: PresetName;
     config?: Partial<FullParticularConfig>;
@@ -140,6 +144,8 @@ interface UseScreensaverOptions {
     backgroundLayer?: boolean;
     /** Mouse wind configuration. Pass `false` to disable entirely. */
     mouseWind?: MouseForceConfig | false;
+    /** Container element for container-aware mode. Omit for full-viewport mode. */
+    container?: HTMLElement;
 }
 interface UseScreensaverResult {
     canvasRef: MutableRefObject<HTMLCanvasElement | null>;
@@ -151,6 +157,6 @@ interface UseScreensaverResult {
  * React hook for a one-call screensaver setup.
  * Wraps `startScreensaver()` in a `useEffect`.
  */
-declare function useScreensaver({ preset, config, renderer, autoResize, backgroundLayer, mouseWind, }?: UseScreensaverOptions): UseScreensaverResult;
+declare function useScreensaver({ preset, config, renderer, autoResize, backgroundLayer, mouseWind, container, }?: UseScreensaverOptions): UseScreensaverResult;
 
 export { BurstOptions, BurstSettings, ExplodeOptions, FullParticularConfig, ImageParticlesConfig, MouseForceConfig, ParticleConfig, ParticlesController, Particular, ParticularConfig, particularWrapper as ParticularWrapper, PresetName, RendererType, TextImageConfig, type UseParticlesOptions, type UseParticlesResult, type UseScreensaverOptions, type UseScreensaverResult, useParticles, useScreensaver, withParticles };

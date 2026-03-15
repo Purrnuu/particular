@@ -53,6 +53,10 @@ export interface ParticularConfig {
   continuous?: boolean;
   /** WebGL: max particles per draw call (default 4096). Increase for fewer draw calls with many particles. */
   webglMaxInstances?: number;
+  /** Container element for container-aware mode. When set, the canvas sizes to the container
+   *  and coordinates are relative to the container instead of the viewport.
+   *  Omit for full-viewport overlay mode (default). */
+  container?: HTMLElement;
 }
 
 /** Base options shared by both manual explode() and timed detonation. */
@@ -311,6 +315,19 @@ export interface MouseForceConfig {
   falloff?: number;
   /** EventTarget to track mouse on. `true` = window. Omitted/`false` = manual. */
   track?: EventTarget | boolean;
+}
+
+/** Configuration for an element-based repulsion boundary. */
+export interface BoundaryConfig {
+  /** The HTML element to create a repulsion boundary around. */
+  element: HTMLElement;
+  /** Repulsion strength (negative = repel). Default -1.5. */
+  strength?: number;
+  /** Repulsion radius in engine units — how far from the edge particles are pushed. Default 10. */
+  radius?: number;
+  /** Inset fraction (0–1) — moves repulsors inside the element edge so the
+   *  repulsion boundary aligns with the visible edge. Default 0.4. */
+  inset?: number;
 }
 
 export type RendererType = 'canvas' | 'webgl';

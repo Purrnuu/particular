@@ -11,7 +11,7 @@ import type {
   ImageParticlesConfig,
 } from '../types';
 
-export const defaultParticular: Required<ParticularConfig> = {
+export const defaultParticular: Required<Omit<ParticularConfig, 'container'>> = {
   pixelRatio: 2,
   zIndex: 10000,
   maxCount: 500,
@@ -135,7 +135,7 @@ export const defaultImageParticles: Partial<ImageParticlesConfig> = {
 /** Screensaver mouse-wind defaults — softer, broader than base mouse force. */
 export const defaultMouseWind: Omit<MouseForceConfig, 'track'> = {
   strength: 0.12,
-  radius: 50,
+  radius: 100,
   damping: 0.92,
   maxSpeed: 8,
   falloff: 0.3,
@@ -145,7 +145,7 @@ type ParticleDefaults = Required<Omit<ParticleConfig, 'detonate'>>;
 
 export function configureParticular(
   configuration?: FullParticularConfig,
-): Required<ParticularConfig> & ParticleDefaults & { renderer?: RendererType } {
+): Required<Omit<ParticularConfig, 'container'>> & ParticleDefaults & { renderer?: RendererType; container?: HTMLElement } {
   return { ...defaultParticular, ...defaultParticle, ...configuration };
 }
 

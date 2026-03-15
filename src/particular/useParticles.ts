@@ -9,7 +9,7 @@ import {
   type ParticlesController,
   type ScreensaverController,
 } from './convenience';
-import { getParticlesBackgroundLayerStyle } from './canvasStyles';
+import { getParticlesBackgroundLayerStyle, getParticlesContainerLayerStyle } from './canvasStyles';
 import type { FullParticularConfig, MouseForceConfig, RendererType, ExplodeOptions, ImageParticlesConfig, TextImageConfig } from './types';
 import type { PresetName } from './presets';
 
@@ -22,6 +22,9 @@ export interface UseParticlesOptions {
   clickTarget?: EventTarget;
   /** When true (default), result includes canvasStyle for a full-viewport click-through canvas. */
   backgroundLayer?: boolean;
+  /** Container element for container-aware mode. Canvas sizes to this element
+   *  and coordinates become container-relative. Omit for full-viewport mode. */
+  container?: HTMLElement;
 }
 
 export interface UseParticlesResult {
@@ -63,13 +66,16 @@ export function useParticles({
   autoClick = false,
   clickTarget,
   backgroundLayer = true,
+  container,
 }: UseParticlesOptions = {}): UseParticlesResult {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const controllerRef = useRef<ParticlesController | null>(null);
 
-  const canvasStyle = backgroundLayer
-    ? getParticlesBackgroundLayerStyle(config?.zIndex)
-    : undefined;
+  const canvasStyle = container
+    ? getParticlesContainerLayerStyle(config?.zIndex)
+    : backgroundLayer
+      ? getParticlesBackgroundLayerStyle(config?.zIndex)
+      : undefined;
 
   const createOptions = useMemo<CreateParticlesOptions>(
     () => ({
@@ -81,8 +87,9 @@ export function useParticles({
       autoResize,
       autoClick,
       clickTarget,
+      container,
     }),
-    [preset, config, renderer, autoResize, autoClick, clickTarget],
+    [preset, config, renderer, autoResize, autoClick, clickTarget, container],
   );
 
   useEffect(() => {
@@ -96,6 +103,7 @@ export function useParticles({
       autoResize: createOptions.autoResize,
       autoClick: createOptions.autoClick,
       clickTarget: createOptions.clickTarget,
+      container: createOptions.container,
     });
 
     controllerRef.current = controller;
@@ -171,6 +179,8 @@ export interface UseScreensaverOptions {
   backgroundLayer?: boolean;
   /** Mouse wind configuration. Pass `false` to disable entirely. */
   mouseWind?: MouseForceConfig | false;
+  /** Container element for container-aware mode. Omit for full-viewport mode. */
+  container?: HTMLElement;
 }
 
 export interface UseScreensaverResult {
@@ -191,13 +201,16 @@ export function useScreensaver({
   autoResize = true,
   backgroundLayer = true,
   mouseWind,
+  container,
 }: UseScreensaverOptions = {}): UseScreensaverResult {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const screensaverRef = useRef<ScreensaverController | null>(null);
 
-  const canvasStyle = backgroundLayer
-    ? getParticlesBackgroundLayerStyle(config?.zIndex)
-    : undefined;
+  const canvasStyle = container
+    ? getParticlesContainerLayerStyle(config?.zIndex)
+    : backgroundLayer
+      ? getParticlesBackgroundLayerStyle(config?.zIndex)
+      : undefined;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -210,6 +223,7 @@ export function useScreensaver({
       renderer,
       autoResize,
       mouseWind,
+      container,
     });
 
     screensaverRef.current = screensaver;
@@ -218,7 +232,7 @@ export function useScreensaver({
       screensaver.destroy();
       screensaverRef.current = null;
     };
-  }, [preset, config, renderer, autoResize, mouseWind]);
+  }, [preset, config, renderer, autoResize, mouseWind, container]);
 
   const destroy = useCallback(() => {
     screensaverRef.current?.destroy();

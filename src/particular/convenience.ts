@@ -13,7 +13,7 @@ import { generateHarmoniousPalette } from './utils/color';
 import Vector from './utils/vector';
 import { loadImage, sampleImagePixels } from './utils/pixelSampler';
 import { createTextImage, canvasToDataURL } from './utils/imageSource';
-import type { FullParticularConfig, RendererType, AttractorConfig, MouseForceConfig, ExplodeOptions, ImageParticlesConfig, TextImageConfig } from './types';
+import type { FullParticularConfig, RendererType, AttractorConfig, MouseForceConfig, ExplodeOptions, ImageParticlesConfig, TextImageConfig, BoundaryConfig } from './types';
 
 export interface BurstOptions extends Partial<FullParticularConfig> {
   x: number;
@@ -28,6 +28,17 @@ export interface CreateParticlesOptions {
   autoResize?: boolean;
   autoClick?: boolean;
   clickTarget?: EventTarget;
+  /** Container element for container-aware mode. Canvas sizes to this element
+   *  and all coordinates become container-relative. Omit for full-viewport mode. */
+  container?: HTMLElement;
+}
+
+/** Handle returned by addBoundary(). */
+export interface BoundaryHandle {
+  /** Re-sync repulsors to the element's current position/size. Called automatically on resize. */
+  update: () => void;
+  /** Remove this boundary and its repulsors. */
+  destroy: () => void;
 }
 
 export interface ParticlesController {
@@ -47,6 +58,9 @@ export interface ParticlesController {
   removeAllAttractors: () => void;
   addMouseForce: (config?: MouseForceConfig) => MouseForce;
   removeMouseForce: (mouseForce: MouseForce) => void;
+  /** Create a repulsion boundary around an HTML element. Particles are pushed away from its edges.
+   *  The boundary auto-syncs when the element resizes. Returns a handle to update or remove it. */
+  addBoundary: (config: BoundaryConfig) => BoundaryHandle;
   attachClickBurst: (
     target?: EventTarget,
     overrides?: Partial<FullParticularConfig>,
@@ -66,10 +80,11 @@ export function createParticles({
   autoResize = true,
   autoClick = false,
   clickTarget,
+  container,
 }: CreateParticlesOptions): ParticlesController {
   const engine = new Particular();
   const basePreset = getPreset(preset);
-  const mergedConfig = configureParticular({ ...basePreset, ...config });
+  const mergedConfig = configureParticular({ ...basePreset, ...config, container });
 
   engine.initialize(mergedConfig);
   if (renderer === 'webgl') {
@@ -86,10 +101,28 @@ export function createParticles({
   const cleanups: Array<() => void> = [];
 
   if (autoResize) {
-    const onResize = () => engine.onResize();
-    window.addEventListener('resize', onResize);
-    cleanups.push(() => window.removeEventListener('resize', onResize));
+    if (container) {
+      const ro = new ResizeObserver(() => engine.onResize());
+      ro.observe(container);
+      cleanups.push(() => ro.disconnect());
+    } else {
+      const onResize = () => engine.onResize();
+      window.addEventListener('resize', onResize);
+      cleanups.push(() => window.removeEventListener('resize', onResize));
+    }
   }
+
+  /** Convert screen/client coordinates to engine coordinates, accounting for container offset. */
+  const toEngineCoords = (clientX: number, clientY: number): { x: number; y: number } => {
+    let x = clientX;
+    let y = clientY;
+    if (container) {
+      const rect = container.getBoundingClientRect();
+      x -= rect.left;
+      y -= rect.top;
+    }
+    return { x: x / mergedConfig.pixelRatio, y: y / mergedConfig.pixelRatio };
+  };
 
   const burst = (options: BurstOptions): Emitter => {
     const { x, y, ...overrides } = options;
@@ -100,8 +133,9 @@ export function createParticles({
       icons = processImages(combinedSettings.icons);
     }
 
+    const enginePos = toEngineCoords(x, y);
     const emitter = new Emitter({
-      point: new Vector(x / mergedConfig.pixelRatio, y / mergedConfig.pixelRatio),
+      point: new Vector(enginePos.x, enginePos.y),
       ...combinedSettings,
       icons,
     });
@@ -236,7 +270,7 @@ export function createParticles({
       displayH = image.naturalHeight;
     }
 
-    // Convert to engine coordinates
+    // Convert to engine coordinates (x,y are already container-relative in container mode)
     const pr = mergedConfig.pixelRatio;
     const engineW = displayW / pr;
     const engineH = displayH / pr;
@@ -374,8 +408,10 @@ export function createParticles({
     config?: Partial<Omit<AttractorConfig, 'x' | 'y'>>,
   ): Attractor[] => {
     const pixelRatio = engine.pixelRatio;
-    const viewW = window.innerWidth / pixelRatio;
-    const viewH = window.innerHeight / pixelRatio;
+    const sourceW = container ? container.clientWidth : window.innerWidth;
+    const sourceH = container ? container.clientHeight : window.innerHeight;
+    const viewW = sourceW / pixelRatio;
+    const viewH = sourceH / pixelRatio;
     const marginX = viewW * 0.1;
     const marginY = viewH * 0.1;
     const result: Attractor[] = [];
@@ -400,6 +436,121 @@ export function createParticles({
     engine.attractors.splice(0);
   };
 
+  const addBoundary = (config: BoundaryConfig): BoundaryHandle => {
+    const {
+      element,
+      strength = -1.5,
+      radius = 10,
+      inset: insetFraction = 0.4,
+    } = config;
+    const pr = engine.pixelRatio;
+    let attractors: Attractor[] = [];
+    // Store offsets relative to element top-left (engine coords) for fast scroll reposition
+    let offsets: { dx: number; dy: number }[] = [];
+
+    /** Full rebuild: recompute tiling and create/destroy attractors. Called on resize. */
+    const rebuild = () => {
+      for (const a of attractors) engine.removeAttractor(a);
+      attractors = [];
+      offsets = [];
+
+      const refRect = container
+        ? container.getBoundingClientRect()
+        : { left: 0, top: 0 };
+
+      const elRect = element.getBoundingClientRect();
+      const elLeft = (elRect.left - refRect.left) / pr;
+      const elTop = (elRect.top - refRect.top) / pr;
+      const elW = elRect.width / pr;
+      const elH = elRect.height / pr;
+
+      // Inset so the repulsion boundary aligns with the visible edge
+      const ins = radius * insetFraction;
+      const localL = ins;
+      const localR = elW - ins;
+      const localT = ins;
+      const localB = elH - ins;
+      const w = localR - localL;
+      const h = localB - localT;
+      if (w <= 0 || h <= 0) return;
+
+      const stepsX = Math.max(2, Math.ceil(w / radius) + 1);
+      const stepsY = Math.max(2, Math.ceil(h / radius) + 1);
+
+      const add = (dx: number, dy: number) => {
+        const a = new Attractor({ x: elLeft + dx, y: elTop + dy, strength, radius });
+        engine.addAttractor(a);
+        attractors.push(a);
+        offsets.push({ dx, dy });
+      };
+
+      // Top and bottom edges
+      for (let i = 0; i < stepsX; i++) {
+        const x = localL + (w * i) / (stepsX - 1);
+        add(x, localT);
+        add(x, localB);
+      }
+      // Left and right edges (skip corners — already placed)
+      for (let i = 1; i < stepsY - 1; i++) {
+        const y = localT + (h * i) / (stepsY - 1);
+        add(localL, y);
+        add(localR, y);
+      }
+    };
+
+    /** Lightweight reposition: move existing attractors without alloc. Called on scroll. */
+    const reposition = () => {
+      if (attractors.length === 0) return;
+      const refRect = container
+        ? container.getBoundingClientRect()
+        : { left: 0, top: 0 };
+      const elRect = element.getBoundingClientRect();
+      const elLeft = (elRect.left - refRect.left) / pr;
+      const elTop = (elRect.top - refRect.top) / pr;
+      for (let i = 0; i < attractors.length; i++) {
+        const a = attractors[i]!;
+        const o = offsets[i]!;
+        a.position.x = elLeft + o.dx;
+        a.position.y = elTop + o.dy;
+      }
+    };
+
+    // Initial build
+    rebuild();
+
+    // Auto-rebuild on element/container resize (tiling count may change)
+    const ro = new ResizeObserver(rebuild);
+    ro.observe(element);
+    if (container) ro.observe(container);
+
+    // rAF-throttled scroll reposition (just moves existing attractors — cheap)
+    let scrollRafId = 0;
+    const onScroll = () => {
+      if (scrollRafId) return;
+      scrollRafId = requestAnimationFrame(() => {
+        scrollRafId = 0;
+        reposition();
+      });
+    };
+    const scrollTarget = container ?? window;
+    scrollTarget.addEventListener('scroll', onScroll, { passive: true });
+
+    const handle: BoundaryHandle = {
+      update: rebuild,
+      destroy: () => {
+        ro.disconnect();
+        scrollTarget.removeEventListener('scroll', onScroll);
+        if (scrollRafId) cancelAnimationFrame(scrollRafId);
+        for (const a of attractors) engine.removeAttractor(a);
+        attractors = [];
+        offsets = [];
+      },
+    };
+
+    cleanups.push(() => handle.destroy());
+    return handle;
+  };
+
   const addMouseForce = (config: MouseForceConfig = {}): MouseForce => {
     const { track, ...forceConfig } = config;
     const mouseForce = new MouseForce(forceConfig);
@@ -407,7 +558,7 @@ export function createParticles({
 
     if (track) {
       const target = track === true ? window : track;
-      mouseForce.startTracking(target, engine.pixelRatio);
+      mouseForce.startTracking(target, engine.pixelRatio, container);
       cleanups.push(() => mouseForce.stopTracking());
     }
 
@@ -435,6 +586,7 @@ export function createParticles({
     removeAttractor,
     addRandomAttractors,
     removeAllAttractors,
+    addBoundary,
     addMouseForce,
     removeMouseForce,
     attachClickBurst,
@@ -452,6 +604,8 @@ export interface ScreensaverOptions {
   autoResize?: boolean;
   /** Mouse wind configuration. Pass `false` to disable entirely. */
   mouseWind?: MouseForceConfig | false;
+  /** Container element for container-aware mode. Omit for full-viewport mode. */
+  container?: HTMLElement;
 }
 
 export interface ScreensaverController {
@@ -471,6 +625,7 @@ export function startScreensaver({
   renderer = 'canvas',
   autoResize = true,
   mouseWind: mouseWindOption,
+  container,
 }: ScreensaverOptions): ScreensaverController {
   const basePreset = getPreset(preset);
   const mergedConfig: Partial<FullParticularConfig> = {
@@ -485,13 +640,15 @@ export function startScreensaver({
     config: mergedConfig,
     renderer,
     autoResize,
+    container,
   });
 
   const pixelRatio = controller.engine.pixelRatio;
-  const spawnWidth = window.innerWidth / pixelRatio;
+  const sourceW = container ? container.clientWidth : window.innerWidth;
+  const spawnWidth = sourceW / pixelRatio;
 
   const emitter = new Emitter({
-    point: new Vector(window.innerWidth / 2 / pixelRatio, 0),
+    point: new Vector(sourceW / 2 / pixelRatio, 0),
     ...configureParticle(mergedConfig),
     spawnWidth,
     spawnHeight: defaultParticle.spawnHeight,
@@ -513,7 +670,10 @@ export function startScreensaver({
     });
   }
 
-  if (autoResize) {
+  if (autoResize && !container) {
+    // Viewport mode: listen to window resize for emitter spawn width.
+    // Container mode: ResizeObserver is already set up in createParticles,
+    // and the emitter spawn width is updated via the engine's onResize dispatch.
     const onResize = () => {
       const newSpawnWidth = window.innerWidth / pixelRatio;
       emitter.configuration.spawnWidth = newSpawnWidth;
@@ -521,6 +681,17 @@ export function startScreensaver({
     };
     window.addEventListener('resize', onResize);
     cleanups.push(() => window.removeEventListener('resize', onResize));
+  }
+
+  if (autoResize && container) {
+    // Container mode: update emitter spawn width when container resizes.
+    const ro = new ResizeObserver(() => {
+      const newSpawnWidth = container.clientWidth / pixelRatio;
+      emitter.configuration.spawnWidth = newSpawnWidth;
+      emitter.configuration.point.x = container.clientWidth / 2 / pixelRatio;
+    });
+    ro.observe(container);
+    cleanups.push(() => ro.disconnect());
   }
 
   const destroy = () => {

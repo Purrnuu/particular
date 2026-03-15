@@ -28,6 +28,7 @@ export default class Particular implements IEventDispatcher {
   height = 0;
   pixelRatio = 2;
   continuous = false;
+  container: HTMLElement | null = null;
   private animateRequest: number | null = null;
   private lastTimestamp = -1;
 
@@ -41,10 +42,12 @@ export default class Particular implements IEventDispatcher {
     maxCount = defaultParticular.maxCount,
     continuous = defaultParticular.continuous,
     pixelRatio = defaultParticular.pixelRatio,
+    container,
   }: ParticularConfig): void {
     this.maxCount = maxCount;
     this.continuous = continuous;
     this.pixelRatio = pixelRatio;
+    this.container = container ?? null;
     this.update();
   }
 
@@ -57,9 +60,15 @@ export default class Particular implements IEventDispatcher {
   }
 
   onResize(): void {
-    const height = (this.height = window.innerHeight);
-    const width = (this.width = window.innerWidth);
-    this.dispatchEvent(Particular.RESIZE, { width, height });
+    if (this.container) {
+      const height = (this.height = this.container.clientHeight);
+      const width = (this.width = this.container.clientWidth);
+      this.dispatchEvent(Particular.RESIZE, { width, height });
+    } else {
+      const height = (this.height = window.innerHeight);
+      const width = (this.width = window.innerWidth);
+      this.dispatchEvent(Particular.RESIZE, { width, height });
+    }
   }
 
   addRenderer(renderer: Renderer): void {

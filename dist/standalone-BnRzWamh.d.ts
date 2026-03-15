@@ -77,6 +77,10 @@ interface ParticularConfig {
     continuous?: boolean;
     /** WebGL: max particles per draw call (default 4096). Increase for fewer draw calls with many particles. */
     webglMaxInstances?: number;
+    /** Container element for container-aware mode. When set, the canvas sizes to the container
+     *  and coordinates are relative to the container instead of the viewport.
+     *  Omit for full-viewport overlay mode (default). */
+    container?: HTMLElement;
 }
 /** Base options shared by both manual explode() and timed detonation. */
 interface ChildExplosionConfig {
@@ -324,6 +328,18 @@ interface MouseForceConfig {
     /** EventTarget to track mouse on. `true` = window. Omitted/`false` = manual. */
     track?: EventTarget | boolean;
 }
+/** Configuration for an element-based repulsion boundary. */
+interface BoundaryConfig {
+    /** The HTML element to create a repulsion boundary around. */
+    element: HTMLElement;
+    /** Repulsion strength (negative = repel). Default -1.5. */
+    strength?: number;
+    /** Repulsion radius in engine units — how far from the edge particles are pushed. Default 10. */
+    radius?: number;
+    /** Inset fraction (0–1) — moves repulsors inside the element edge so the
+     *  repulsion boundary aligns with the visible edge. Default 0.4. */
+    inset?: number;
+}
 type RendererType = 'canvas' | 'webgl';
 
 interface TrailSegment {
@@ -455,9 +471,10 @@ declare class MouseForce implements ForceSource {
     private _trackListener;
     private _trackTarget;
     private _pixelRatio;
+    private _container;
     constructor(config?: MouseForceConfig);
     get isTracking(): boolean;
-    startTracking(target: EventTarget, pixelRatio: number): void;
+    startTracking(target: EventTarget, pixelRatio: number, container?: HTMLElement | null): void;
     stopTracking(): void;
     destroy(): void;
     updatePosition(x: number, y: number): void;
@@ -483,6 +500,7 @@ declare class Particular implements IEventDispatcher {
     height: number;
     pixelRatio: number;
     continuous: boolean;
+    container: HTMLElement | null;
     private animateRequest;
     private lastTimestamp;
     addEventListener: EventDispatcher['addEventListener'];
@@ -490,7 +508,7 @@ declare class Particular implements IEventDispatcher {
     removeAllEventListeners: EventDispatcher['removeAllEventListeners'];
     dispatchEvent: EventDispatcher['dispatchEvent'];
     hasEventListener: EventDispatcher['hasEventListener'];
-    initialize({ maxCount, continuous, pixelRatio, }: ParticularConfig): void;
+    initialize({ maxCount, continuous, pixelRatio, container, }: ParticularConfig): void;
     start(): void;
     stop(): void;
     onResize(): void;
@@ -1205,6 +1223,13 @@ declare const DEFAULT_Z_INDEX = 10000;
  */
 declare const particlesBackgroundLayerStyle: CSSProperties;
 declare function getParticlesBackgroundLayerStyle(zIndex?: number): CSSProperties;
+/**
+ * Style for a container-aware particle canvas.
+ * The canvas fills its parent container using absolute positioning.
+ * The parent element must have `position: relative` (or absolute/fixed).
+ */
+declare const particlesContainerLayerStyle: CSSProperties;
+declare function getParticlesContainerLayerStyle(zIndex?: number): CSSProperties;
 
 interface BurstOptions extends Partial<FullParticularConfig> {
     x: number;
@@ -1218,6 +1243,16 @@ interface CreateParticlesOptions {
     autoResize?: boolean;
     autoClick?: boolean;
     clickTarget?: EventTarget;
+    /** Container element for container-aware mode. Canvas sizes to this element
+     *  and all coordinates become container-relative. Omit for full-viewport mode. */
+    container?: HTMLElement;
+}
+/** Handle returned by addBoundary(). */
+interface BoundaryHandle {
+    /** Re-sync repulsors to the element's current position/size. Called automatically on resize. */
+    update: () => void;
+    /** Remove this boundary and its repulsors. */
+    destroy: () => void;
 }
 interface ParticlesController {
     engine: Particular;
@@ -1237,6 +1272,9 @@ interface ParticlesController {
     removeAllAttractors: () => void;
     addMouseForce: (config?: MouseForceConfig) => MouseForce;
     removeMouseForce: (mouseForce: MouseForce) => void;
+    /** Create a repulsion boundary around an HTML element. Particles are pushed away from its edges.
+     *  The boundary auto-syncs when the element resizes. Returns a handle to update or remove it. */
+    addBoundary: (config: BoundaryConfig) => BoundaryHandle;
     attachClickBurst: (target?: EventTarget, overrides?: Partial<FullParticularConfig>) => () => void;
     destroy: () => void;
 }
@@ -1244,7 +1282,7 @@ interface ParticlesController {
  * One-call setup for standalone sites.
  * Uses a premium default preset and returns a small controller API.
  */
-declare function createParticles({ canvas, preset, config, renderer, autoResize, autoClick, clickTarget, }: CreateParticlesOptions): ParticlesController;
+declare function createParticles({ canvas, preset, config, renderer, autoResize, autoClick, clickTarget, container, }: CreateParticlesOptions): ParticlesController;
 interface ScreensaverOptions {
     canvas: HTMLCanvasElement;
     preset?: PresetName;
@@ -1253,6 +1291,8 @@ interface ScreensaverOptions {
     autoResize?: boolean;
     /** Mouse wind configuration. Pass `false` to disable entirely. */
     mouseWind?: MouseForceConfig | false;
+    /** Container element for container-aware mode. Omit for full-viewport mode. */
+    container?: HTMLElement;
 }
 interface ScreensaverController {
     engine: Particular;
@@ -1263,7 +1303,7 @@ interface ScreensaverController {
  * One-call screensaver setup: spawns particles across the full viewport width.
  * Defaults to the `snow` preset with continuous emission.
  */
-declare function startScreensaver({ canvas, preset, config, renderer, autoResize, mouseWind: mouseWindOption, }: ScreensaverOptions): ScreensaverController;
+declare function startScreensaver({ canvas, preset, config, renderer, autoResize, mouseWind: mouseWindOption, container, }: ScreensaverOptions): ScreensaverController;
 
 /**
  * Render a text string to an offscreen canvas.
@@ -1304,4 +1344,4 @@ interface FPSOverlayController {
 }
 declare function showFPSOverlay(options?: FPSOverlayOptions): FPSOverlayController;
 
-export { Attractor as A, type BurstSettings as B, CanvasRenderer as C, type DetonateConfig as D, type ExplodeOptions as E, type FullParticularConfig as F, particlesBackgroundLayerStyle as G, type HomePositionConfig as H, type ImageParticlesConfig as I, DEFAULT_Z_INDEX as J, presets as K, showFPSOverlay as L, type MouseForceConfig as M, startScreensaver as N, type ParticularConfig as P, type RendererType as R, type ScreensaverController as S, type TextImageConfig as T, Vector as V, WebGLRenderer as W, type ParticleConfig as a, Particular as b, type PresetName as c, type ParticlesController as d, type BurstOptions as e, type AttractorConfig as f, type BlendMode as g, type ChildExplosionConfig as h, type CreateParticlesOptions as i, Emitter as j, type EmitterConfiguration as k, type FPSOverlayController as l, type FPSOverlayOptions as m, type ForceSource as n, MouseForce as o, Particle as p, type ParticleConstructorParams as q, type ParticleShape as r, type ScreensaverOptions as s, type ShapeConfig as t, type WebGLRendererOptions as u, canvasToDataURL as v, createHeartImage as w, createParticles as x, createTextImage as y, getParticlesBackgroundLayerStyle as z };
+export { Attractor as A, type BurstSettings as B, CanvasRenderer as C, type DetonateConfig as D, type ExplodeOptions as E, type FullParticularConfig as F, createTextImage as G, type HomePositionConfig as H, type ImageParticlesConfig as I, getParticlesBackgroundLayerStyle as J, getParticlesContainerLayerStyle as K, particlesBackgroundLayerStyle as L, type MouseForceConfig as M, particlesContainerLayerStyle as N, DEFAULT_Z_INDEX as O, type ParticularConfig as P, presets as Q, type RendererType as R, type ScreensaverController as S, type TextImageConfig as T, showFPSOverlay as U, Vector as V, WebGLRenderer as W, startScreensaver as X, type ParticleConfig as a, Particular as b, type PresetName as c, type ParticlesController as d, type BurstOptions as e, type AttractorConfig as f, type BlendMode as g, type BoundaryConfig as h, type BoundaryHandle as i, type ChildExplosionConfig as j, type CreateParticlesOptions as k, Emitter as l, type EmitterConfiguration as m, type FPSOverlayController as n, type FPSOverlayOptions as o, type ForceSource as p, MouseForce as q, Particle as r, type ParticleConstructorParams as s, type ParticleShape as t, type ScreensaverOptions as u, type ShapeConfig as v, type WebGLRendererOptions as w, canvasToDataURL as x, createHeartImage as y, createParticles as z };
