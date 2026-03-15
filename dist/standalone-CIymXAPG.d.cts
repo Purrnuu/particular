@@ -175,7 +175,66 @@ interface EmitterConfiguration extends ParticleConfig {
     friction: number;
     frictionSize: number;
 }
+/** Configuration for home-position spring return and idle animation. */
+interface HomePositionConfig {
+    /** Spring stiffness — how strongly particles are pulled back to home. Default 0.02. */
+    springStrength?: number;
+    /** Spring damping — velocity decay when spring is active (0–1). Applied as Math.pow(damping, dt). Default 0.92. */
+    springDamping?: number;
+    /** Distance threshold (engine units) below which idle animation engages. Default 2. */
+    homeThreshold?: number;
+    /** Velocity threshold — idle animation only engages when speed is also below this. Default 0.5.
+     *  Prevents idle snap from eating external forces (scatter, mouse). */
+    velocityThreshold?: number;
+    /** Per-particle random scale pulsing amplitude (fractional, 0–1). 0 = off. Default 0.
+     *  e.g. 0.2 = particles randomly pulse ±20% of their size. */
+    wiggleAmplitude?: number;
+    /** Wiggle angular speed (radians per tick). Default 0.05. */
+    wiggleSpeed?: number;
+    /** Breathing size oscillation amplitude (fractional, 0–1). 0 = off. Default 0.
+     *  Additive with wave/wiggle. e.g. 0.1 = ±10% size oscillation. */
+    breathingAmplitude?: number;
+    /** Breathing angular speed. Default 0.03. */
+    breathingSpeed?: number;
+    /** Coordinated scale wave amplitude (fractional, 0–1). 0 = off. Default 0.
+     *  When > 0, a size oscillation sweeps across the image based on particle position. */
+    waveAmplitude?: number;
+    /** Wave temporal speed (radians per tick). Default 0.03. */
+    waveSpeed?: number;
+    /** Wave spatial frequency — how many wave cycles fit across the image. Default 0.15. */
+    waveFrequency?: number;
+    /** Random velocity perturbation during spring return (engine units per tick). Adds organic wobble
+     *  so particles don't travel in straight lines back to home. Default 0.15. 0 = straight-line return. */
+    returnNoise?: number;
+    /** Idle pulse: velocity magnitude of random twitches when settled. 0 = off. Default 2.
+     *  Particles periodically receive a small impulse and spring back, keeping the image alive. */
+    idlePulseStrength?: number;
+    /** Minimum ticks between idle pulse waves. Default 300 (~5 sec at 60fps). */
+    idlePulseIntervalMin?: number;
+    /** Maximum ticks between idle pulse waves. Default 1800 (~30 sec at 60fps). */
+    idlePulseIntervalMax?: number;
+}
+/** Configuration for generating an image from text. */
+interface TextImageConfig {
+    /** The text string to render. */
+    text: string;
+    /** Font size in pixels. Default 200. */
+    fontSize?: number;
+    /** CSS font family. Default 'system-ui, -apple-system, sans-serif'. */
+    fontFamily?: string;
+    /** Font weight. Default 'bold'. */
+    fontWeight?: string;
+    /** Fill color string, or gradient stops array. Default: rainbow gradient. */
+    fill?: string | {
+        offset: number;
+        color: string;
+    }[];
+}
 interface ParticleConstructorParams extends ShapeConfig {
+    /** Explicit color for this particle. Overrides random selection from `colors` array. */
+    color?: string;
+    /** Base alpha multiplier (0–1). Applied on top of lifetime fade. Used for anti-aliased edges from source images. Default 1. */
+    baseAlpha?: number;
     point?: Vector;
     velocity?: Vector;
     acceleration?: Vector;
@@ -186,6 +245,41 @@ interface ParticleConstructorParams extends ShapeConfig {
     scaleStep: number;
     fadeTime: number;
     colors?: string[];
+    /** Home position — when set, particle experiences spring return force and idle animation. */
+    homePosition?: Vector;
+    /** Center of the image (engine coords). Used to compute ripple delay for idle wave pulses. */
+    homeCenter?: Vector;
+    /** Home position spring + idle animation config. */
+    homeConfig?: HomePositionConfig;
+}
+/** Configuration for mapping an image into a grid of colored particles. */
+interface ImageParticlesConfig extends ShapeConfig {
+    /** Image source — URL string or HTMLImageElement. */
+    image: string | HTMLImageElement;
+    /** X center position in screen pixels. */
+    x: number;
+    /** Y center position in screen pixels. */
+    y: number;
+    /** Display width in screen pixels. Calculated from height + aspect ratio if omitted. Defaults to image natural width. */
+    width?: number;
+    /** Display height in screen pixels. Calculated from width + aspect ratio if omitted. Defaults to image natural height. */
+    height?: number;
+    /** Number of particles along the longest image axis. Default depends on shape: 400 for squares, 200 for circles/triangles. */
+    resolution?: number;
+    /** Skip pixels with alpha below this threshold (0–1). Default 0.1. */
+    alphaThreshold?: number;
+    /** Override particle size. Auto-calculated from grid spacing if omitted (≈1px for high-fidelity). */
+    particleSize?: number;
+    /** Individual particle lifetime in ticks. Default 99999 (effectively permanent). */
+    particleLife?: number;
+    /** Gravity applied to particles. Default 0 (static). */
+    gravity?: number;
+    /** Fade time in ticks. Default 40. */
+    fadeTime?: number;
+    /** Scale step — how quickly particles grow to full size. Default: instant (equal to size). */
+    scaleStep?: number;
+    /** Home position spring + idle animation config. Applied to all generated particles. */
+    homeConfig?: HomePositionConfig;
 }
 interface BurstSettings {
     clientX: number;
@@ -279,18 +373,37 @@ declare class Particle {
     shadowAlpha: number;
     shadowLightOrigin: Vector;
     trailSegments: TrailSegment[];
+    homePosition: Vector | null;
+    homeConfig: Required<HomePositionConfig> | null;
+    private breathingPhase;
+    /** Per-particle spring multiplier (0.6–1.4) — breaks sync so particles return at different rates. */
+    private springMultiplier;
+    /** Monotonic tick counter for coordinated idle wave (never resets). */
+    private idleTicks;
+    /** How many pulse cycles this particle has completed. */
+    private pulseCycleCount;
+    /** Tick at which the next pulse wave starts (computed deterministically so all particles agree). */
+    private nextPulseAt;
+    /** Distance from image center (set once in constructor, used for ripple delay). */
+    private homeDistFromCenter;
+    /** Angle from image center to this particle's home (radians). Used for outward ripple direction. */
+    private homeAngleFromCenter;
     addEventListener: EventDispatcher['addEventListener'];
     removeEventListener: EventDispatcher['removeEventListener'];
     removeAllEventListeners: EventDispatcher['removeAllEventListeners'];
     dispatchEvent: EventDispatcher['dispatchEvent'];
     hasEventListener: EventDispatcher['hasEventListener'];
-    constructor({ point, velocity, acceleration, friction, size, particleLife, gravity, scaleStep, fadeTime, shape, blendMode, glow, glowSize, glowColor, glowAlpha, trail, trailLength, trailFade, trailShrink, imageTint, shadow, shadowBlur, shadowOffsetX, shadowOffsetY, shadowColor, shadowAlpha, colors, }: ParticleConstructorParams);
+    /** Permanent alpha multiplier from source image (anti-aliased edges). */
+    baseAlpha: number;
+    constructor({ color, baseAlpha, point, velocity, acceleration, friction, size, particleLife, gravity, scaleStep, fadeTime, shape, blendMode, glow, glowSize, glowColor, glowAlpha, trail, trailLength, trailFade, trailShrink, imageTint, shadow, shadowBlur, shadowOffsetX, shadowOffsetY, shadowColor, shadowAlpha, colors, homePosition, homeCenter, homeConfig, }: ParticleConstructorParams);
     init(image: string | HTMLImageElement | null, particular: Particular): void;
     update(forces?: ForceSource[], dt?: number): void;
     advanceTrail(dt?: number): void;
     private updateTrail;
     resetImage(): void;
     getRoundedLocation(): [number, number];
+    /** Deterministic pseudo-random interval from cycle number — same output for all particles in the same cycle. */
+    private static deterministicInterval;
     private dispatch;
     destroy(): void;
 }
@@ -588,6 +701,22 @@ declare const presetRegistry: {
         scaleStep: number;
         maxCount: number;
     };
+    readonly imageText: {
+        shape: "square";
+        blendMode: "normal";
+        shadow: false;
+        glow: false;
+        maxCount: number;
+    };
+    readonly imageShape: {
+        shape: "circle";
+        blendMode: "normal";
+        shadow: false;
+        glow: true;
+        glowSize: number;
+        glowAlpha: number;
+        maxCount: number;
+    };
     readonly snow: {
         shape: "circle";
         blendMode: "normal";
@@ -758,6 +887,26 @@ declare const presets: {
             fadeTime: number;
             gravity: number;
             scaleStep: number;
+            maxCount: number;
+        };
+    };
+    readonly ImageParticles: {
+        /** High-fidelity text rendered as tiny particles with spring return. */
+        readonly text: {
+            shape: "square";
+            blendMode: "normal";
+            shadow: false;
+            glow: false;
+            maxCount: number;
+        };
+        /** Shape/icon rendered as particles with soft glow. */
+        readonly shape: {
+            shape: "circle";
+            blendMode: "normal";
+            shadow: false;
+            glow: true;
+            glowSize: number;
+            glowAlpha: number;
             maxCount: number;
         };
     };
@@ -969,6 +1118,22 @@ declare const presets: {
         scaleStep: number;
         maxCount: number;
     };
+    readonly imageText: {
+        shape: "square";
+        blendMode: "normal";
+        shadow: false;
+        glow: false;
+        maxCount: number;
+    };
+    readonly imageShape: {
+        shape: "circle";
+        blendMode: "normal";
+        shadow: false;
+        glow: true;
+        glowSize: number;
+        glowAlpha: number;
+        maxCount: number;
+    };
     readonly snow: {
         shape: "circle";
         blendMode: "normal";
@@ -1058,6 +1223,14 @@ interface ParticlesController {
     engine: Particular;
     burst: (options: BurstOptions) => Emitter;
     explode: (options?: ExplodeOptions) => void;
+    /** Scatter all particles with a random impulse. Particles with home positions spring back. */
+    scatter: (options?: {
+        velocity?: number;
+    }) => void;
+    imageToParticles: (config: ImageParticlesConfig) => Promise<Emitter>;
+    textToParticles: (text: string, config: Omit<ImageParticlesConfig, 'image'> & {
+        textConfig?: Omit<TextImageConfig, 'text'>;
+    }) => Promise<Emitter>;
     addAttractor: (config: AttractorConfig) => Attractor;
     removeAttractor: (attractor: Attractor) => void;
     addRandomAttractors: (count: number, config?: Partial<Omit<AttractorConfig, 'x' | 'y'>>) => Attractor[];
@@ -1093,6 +1266,20 @@ interface ScreensaverController {
 declare function startScreensaver({ canvas, preset, config, renderer, autoResize, mouseWind: mouseWindOption, }: ScreensaverOptions): ScreensaverController;
 
 /**
+ * Render a text string to an offscreen canvas.
+ * Returns a canvas that can be converted to a data URL for imageToParticles().
+ */
+declare function createTextImage(config: TextImageConfig): HTMLCanvasElement;
+/**
+ * Render a heart shape to an offscreen canvas.
+ */
+declare function createHeartImage(size?: number): HTMLCanvasElement;
+/**
+ * Convert a canvas element to a data URL for use as an image source.
+ */
+declare function canvasToDataURL(canvas: HTMLCanvasElement): string;
+
+/**
  * Development aid: shows a small on-screen FPS (and optional particle count)
  * to help debug effect density and rendering performance.
  *
@@ -1115,4 +1302,4 @@ interface FPSOverlayController {
 }
 declare function showFPSOverlay(options?: FPSOverlayOptions): FPSOverlayController;
 
-export { Attractor as A, type BurstSettings as B, CanvasRenderer as C, type DetonateConfig as D, type ExplodeOptions as E, type FullParticularConfig as F, showFPSOverlay as G, startScreensaver as H, type MouseForceConfig as M, type ParticularConfig as P, type RendererType as R, type ScreensaverController as S, Vector as V, WebGLRenderer as W, type ParticleConfig as a, Particular as b, type PresetName as c, type ParticlesController as d, type BurstOptions as e, type AttractorConfig as f, type BlendMode as g, type ChildExplosionConfig as h, type CreateParticlesOptions as i, Emitter as j, type EmitterConfiguration as k, type FPSOverlayController as l, type FPSOverlayOptions as m, type ForceSource as n, MouseForce as o, Particle as p, type ParticleConstructorParams as q, type ParticleShape as r, type ScreensaverOptions as s, type ShapeConfig as t, type WebGLRendererOptions as u, createParticles as v, getParticlesBackgroundLayerStyle as w, particlesBackgroundLayerStyle as x, DEFAULT_Z_INDEX as y, presets as z };
+export { Attractor as A, type BurstSettings as B, CanvasRenderer as C, type DetonateConfig as D, type ExplodeOptions as E, type FullParticularConfig as F, particlesBackgroundLayerStyle as G, type HomePositionConfig as H, type ImageParticlesConfig as I, DEFAULT_Z_INDEX as J, presets as K, showFPSOverlay as L, type MouseForceConfig as M, startScreensaver as N, type ParticularConfig as P, type RendererType as R, type ScreensaverController as S, type TextImageConfig as T, Vector as V, WebGLRenderer as W, type ParticleConfig as a, Particular as b, type PresetName as c, type ParticlesController as d, type BurstOptions as e, type AttractorConfig as f, type BlendMode as g, type ChildExplosionConfig as h, type CreateParticlesOptions as i, Emitter as j, type EmitterConfiguration as k, type FPSOverlayController as l, type FPSOverlayOptions as m, type ForceSource as n, MouseForce as o, Particle as p, type ParticleConstructorParams as q, type ParticleShape as r, type ScreensaverOptions as s, type ShapeConfig as t, type WebGLRendererOptions as u, canvasToDataURL as v, createHeartImage as w, createParticles as x, createTextImage as y, getParticlesBackgroundLayerStyle as z };

@@ -157,7 +157,65 @@ export interface EmitterConfiguration extends ParticleConfig {
   frictionSize: number;
 }
 
+/** Configuration for home-position spring return and idle animation. */
+export interface HomePositionConfig {
+  /** Spring stiffness — how strongly particles are pulled back to home. Default 0.02. */
+  springStrength?: number;
+  /** Spring damping — velocity decay when spring is active (0–1). Applied as Math.pow(damping, dt). Default 0.92. */
+  springDamping?: number;
+  /** Distance threshold (engine units) below which idle animation engages. Default 2. */
+  homeThreshold?: number;
+  /** Velocity threshold — idle animation only engages when speed is also below this. Default 0.5.
+   *  Prevents idle snap from eating external forces (scatter, mouse). */
+  velocityThreshold?: number;
+  /** Per-particle random scale pulsing amplitude (fractional, 0–1). 0 = off. Default 0.
+   *  e.g. 0.2 = particles randomly pulse ±20% of their size. */
+  wiggleAmplitude?: number;
+  /** Wiggle angular speed (radians per tick). Default 0.05. */
+  wiggleSpeed?: number;
+  /** Breathing size oscillation amplitude (fractional, 0–1). 0 = off. Default 0.
+   *  Additive with wave/wiggle. e.g. 0.1 = ±10% size oscillation. */
+  breathingAmplitude?: number;
+  /** Breathing angular speed. Default 0.03. */
+  breathingSpeed?: number;
+  /** Coordinated scale wave amplitude (fractional, 0–1). 0 = off. Default 0.
+   *  When > 0, a size oscillation sweeps across the image based on particle position. */
+  waveAmplitude?: number;
+  /** Wave temporal speed (radians per tick). Default 0.03. */
+  waveSpeed?: number;
+  /** Wave spatial frequency — how many wave cycles fit across the image. Default 0.15. */
+  waveFrequency?: number;
+  /** Random velocity perturbation during spring return (engine units per tick). Adds organic wobble
+   *  so particles don't travel in straight lines back to home. Default 0.15. 0 = straight-line return. */
+  returnNoise?: number;
+  /** Idle pulse: velocity magnitude of random twitches when settled. 0 = off. Default 2.
+   *  Particles periodically receive a small impulse and spring back, keeping the image alive. */
+  idlePulseStrength?: number;
+  /** Minimum ticks between idle pulse waves. Default 300 (~5 sec at 60fps). */
+  idlePulseIntervalMin?: number;
+  /** Maximum ticks between idle pulse waves. Default 1800 (~30 sec at 60fps). */
+  idlePulseIntervalMax?: number;
+}
+
+/** Configuration for generating an image from text. */
+export interface TextImageConfig {
+  /** The text string to render. */
+  text: string;
+  /** Font size in pixels. Default 200. */
+  fontSize?: number;
+  /** CSS font family. Default 'system-ui, -apple-system, sans-serif'. */
+  fontFamily?: string;
+  /** Font weight. Default 'bold'. */
+  fontWeight?: string;
+  /** Fill color string, or gradient stops array. Default: rainbow gradient. */
+  fill?: string | { offset: number; color: string }[];
+}
+
 export interface ParticleConstructorParams extends ShapeConfig {
+  /** Explicit color for this particle. Overrides random selection from `colors` array. */
+  color?: string;
+  /** Base alpha multiplier (0–1). Applied on top of lifetime fade. Used for anti-aliased edges from source images. Default 1. */
+  baseAlpha?: number;
   point?: Vector;
   velocity?: Vector;
   acceleration?: Vector;
@@ -168,6 +226,42 @@ export interface ParticleConstructorParams extends ShapeConfig {
   scaleStep: number;
   fadeTime: number;
   colors?: string[];
+  /** Home position — when set, particle experiences spring return force and idle animation. */
+  homePosition?: Vector;
+  /** Center of the image (engine coords). Used to compute ripple delay for idle wave pulses. */
+  homeCenter?: Vector;
+  /** Home position spring + idle animation config. */
+  homeConfig?: HomePositionConfig;
+}
+
+/** Configuration for mapping an image into a grid of colored particles. */
+export interface ImageParticlesConfig extends ShapeConfig {
+  /** Image source — URL string or HTMLImageElement. */
+  image: string | HTMLImageElement;
+  /** X center position in screen pixels. */
+  x: number;
+  /** Y center position in screen pixels. */
+  y: number;
+  /** Display width in screen pixels. Calculated from height + aspect ratio if omitted. Defaults to image natural width. */
+  width?: number;
+  /** Display height in screen pixels. Calculated from width + aspect ratio if omitted. Defaults to image natural height. */
+  height?: number;
+  /** Number of particles along the longest image axis. Default depends on shape: 400 for squares, 200 for circles/triangles. */
+  resolution?: number;
+  /** Skip pixels with alpha below this threshold (0–1). Default 0.1. */
+  alphaThreshold?: number;
+  /** Override particle size. Auto-calculated from grid spacing if omitted (≈1px for high-fidelity). */
+  particleSize?: number;
+  /** Individual particle lifetime in ticks. Default 99999 (effectively permanent). */
+  particleLife?: number;
+  /** Gravity applied to particles. Default 0 (static). */
+  gravity?: number;
+  /** Fade time in ticks. Default 40. */
+  fadeTime?: number;
+  /** Scale step — how quickly particles grow to full size. Default: instant (equal to size). */
+  scaleStep?: number;
+  /** Home position spring + idle animation config. Applied to all generated particles. */
+  homeConfig?: HomePositionConfig;
 }
 
 export interface BurstSettings {

@@ -7,6 +7,8 @@ import type {
   FullParticularConfig,
   RendererType,
   ChildExplosionConfig,
+  HomePositionConfig,
+  ImageParticlesConfig,
 } from '../types';
 
 export const defaultParticular: Required<ParticularConfig> = {
@@ -99,6 +101,35 @@ export const defaultExplosionChild: Required<ChildExplosionConfig> = {
   trailLength: 3,
   trailFade: 0.75,
   trailShrink: 0.55,
+};
+
+export const defaultHomeConfig: Required<HomePositionConfig> = {
+  springStrength: 0.05,
+  springDamping: 0.9,
+  homeThreshold: 2,
+  velocityThreshold: 0.5,
+  wiggleAmplitude: 0,
+  wiggleSpeed: 0.05,
+  breathingAmplitude: 0,
+  breathingSpeed: 0.03,
+  waveAmplitude: 0,
+  waveSpeed: 0.03,
+  waveFrequency: 0.15,
+  returnNoise: 0.3,
+  idlePulseStrength: 2,
+  idlePulseIntervalMin: 300,
+  idlePulseIntervalMax: 1800,
+};
+
+/** Default image-to-particles config — 1px-ish particles, no effects, permanent lifetime. */
+export const defaultImageParticles: Partial<ImageParticlesConfig> = {
+  alphaThreshold: 0.1,
+  particleLife: 99999,
+  gravity: 0,
+  fadeTime: 40,
+  shape: 'square',
+  shadow: false,
+  glow: false,
 };
 
 /** Screensaver mouse-wind defaults — softer, broader than base mouse force. */

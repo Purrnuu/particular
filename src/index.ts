@@ -18,6 +18,7 @@ export {
   particlesDefaultZIndex,
 } from './particular/canvasStyles';
 export { createParticles, startScreensaver } from './particular/convenience';
+export { createTextImage, createHeartImage, canvasToDataURL } from './particular/utils/imageSource';
 export { useParticles, useScreensaver } from './particular/useParticles';
 export { showFPSOverlay } from './particular/devFPSOverlay';
 
@@ -39,6 +40,9 @@ export type {
   ChildExplosionConfig,
   ExplodeOptions,
   DetonateConfig,
+  ImageParticlesConfig,
+  HomePositionConfig,
+  TextImageConfig,
 } from './particular/types';
 export type { PresetName } from './particular/presets';
 export type {

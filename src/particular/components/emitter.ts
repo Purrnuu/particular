@@ -55,6 +55,12 @@ export default class Emitter {
     forEach(this.particles, (particle) => {
       const pos = particle.position;
       if (pos.x < 0 || pos.x > boundsX || pos.y < -boundsY || pos.y > boundsY) {
+        // Particles with a home position are never killed by bounds — they'll spring back
+        if (particle.homePosition) {
+          particle.update(forces, dt);
+          currentParticles.push(particle);
+          return;
+        }
         const hasTrail = particle.trail && particle.trailSegments.length > 0;
         if (hasTrail) {
           particle.advanceTrail(dt);

@@ -10,7 +10,7 @@ import {
   type ScreensaverController,
 } from './convenience';
 import { getParticlesBackgroundLayerStyle } from './canvasStyles';
-import type { FullParticularConfig, MouseForceConfig, RendererType, ExplodeOptions } from './types';
+import type { FullParticularConfig, MouseForceConfig, RendererType, ExplodeOptions, ImageParticlesConfig, TextImageConfig } from './types';
 import type { PresetName } from './presets';
 
 export interface UseParticlesOptions {
@@ -35,6 +35,12 @@ export interface UseParticlesResult {
     overrides?: Partial<FullParticularConfig>,
   ) => void;
   explode: (options?: ExplodeOptions) => void;
+  scatter: (options?: { velocity?: number }) => void;
+  imageToParticles: (config: ImageParticlesConfig) => void;
+  textToParticles: (
+    text: string,
+    config: Omit<ImageParticlesConfig, 'image'> & { textConfig?: Omit<TextImageConfig, 'text'> },
+  ) => void;
 }
 
 /**
@@ -123,6 +129,24 @@ export function useParticles({
     controllerRef.current?.explode(options);
   }, []);
 
+  const scatter = useCallback((options?: { velocity?: number }) => {
+    controllerRef.current?.scatter(options);
+  }, []);
+
+  const imageToParticles = useCallback((config: ImageParticlesConfig) => {
+    controllerRef.current?.imageToParticles(config);
+  }, []);
+
+  const textToParticles = useCallback(
+    (
+      text: string,
+      config: Omit<ImageParticlesConfig, 'image'> & { textConfig?: Omit<TextImageConfig, 'text'> },
+    ) => {
+      controllerRef.current?.textToParticles(text, config);
+    },
+    [],
+  );
+
   return {
     canvasRef,
     canvasStyle,
@@ -130,6 +154,9 @@ export function useParticles({
     burst,
     burstFromEvent,
     explode,
+    scatter,
+    imageToParticles,
+    textToParticles,
   };
 }
 

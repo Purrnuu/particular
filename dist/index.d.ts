@@ -1,5 +1,5 @@
-import { F as FullParticularConfig, P as ParticularConfig, a as ParticleConfig, R as RendererType, b as Particular, B as BurstSettings, c as PresetName, d as ParticlesController, e as BurstOptions, E as ExplodeOptions, M as MouseForceConfig } from './standalone-BrL78sPy.js';
-export { A as Attractor, f as AttractorConfig, g as BlendMode, C as CanvasRenderer, h as ChildExplosionConfig, i as CreateParticlesOptions, D as DetonateConfig, j as Emitter, k as EmitterConfiguration, l as FPSOverlayController, m as FPSOverlayOptions, n as ForceSource, o as MouseForce, p as Particle, q as ParticleConstructorParams, r as ParticleShape, S as ScreensaverController, s as ScreensaverOptions, t as ShapeConfig, V as Vector, W as WebGLRenderer, u as WebGLRendererOptions, v as createParticles, w as getParticlesBackgroundLayerStyle, x as particlesBackgroundLayerStyle, y as particlesDefaultZIndex, z as presets, G as showFPSOverlay, H as startScreensaver } from './standalone-BrL78sPy.js';
+import { F as FullParticularConfig, P as ParticularConfig, a as ParticleConfig, R as RendererType, b as Particular, B as BurstSettings, c as PresetName, d as ParticlesController, e as BurstOptions, E as ExplodeOptions, I as ImageParticlesConfig, T as TextImageConfig, M as MouseForceConfig } from './standalone-CIymXAPG.js';
+export { A as Attractor, f as AttractorConfig, g as BlendMode, C as CanvasRenderer, h as ChildExplosionConfig, i as CreateParticlesOptions, D as DetonateConfig, j as Emitter, k as EmitterConfiguration, l as FPSOverlayController, m as FPSOverlayOptions, n as ForceSource, H as HomePositionConfig, o as MouseForce, p as Particle, q as ParticleConstructorParams, r as ParticleShape, S as ScreensaverController, s as ScreensaverOptions, t as ShapeConfig, V as Vector, W as WebGLRenderer, u as WebGLRendererOptions, v as canvasToDataURL, w as createHeartImage, x as createParticles, y as createTextImage, z as getParticlesBackgroundLayerStyle, G as particlesBackgroundLayerStyle, J as particlesDefaultZIndex, K as presets, L as showFPSOverlay, N as startScreensaver } from './standalone-CIymXAPG.js';
 import React, { ComponentType, MutableRefObject, CSSProperties, MouseEvent as MouseEvent$1 } from 'react';
 
 type ParticleDefaults = Required<Omit<ParticleConfig, 'detonate'>>;
@@ -110,6 +110,13 @@ interface UseParticlesResult {
     burst: (options: BurstOptions) => void;
     burstFromEvent: (event: MouseEvent | MouseEvent$1<HTMLElement> | MouseEvent$1<HTMLButtonElement>, overrides?: Partial<FullParticularConfig>) => void;
     explode: (options?: ExplodeOptions) => void;
+    scatter: (options?: {
+        velocity?: number;
+    }) => void;
+    imageToParticles: (config: ImageParticlesConfig) => void;
+    textToParticles: (text: string, config: Omit<ImageParticlesConfig, 'image'> & {
+        textConfig?: Omit<TextImageConfig, 'text'>;
+    }) => void;
 }
 /**
  * Hooks-first API for React apps.
@@ -146,4 +153,4 @@ interface UseScreensaverResult {
  */
 declare function useScreensaver({ preset, config, renderer, autoResize, backgroundLayer, mouseWind, }?: UseScreensaverOptions): UseScreensaverResult;
 
-export { BurstOptions, BurstSettings, ExplodeOptions, FullParticularConfig, MouseForceConfig, ParticleConfig, ParticlesController, Particular, ParticularConfig, particularWrapper as ParticularWrapper, PresetName, RendererType, type UseParticlesOptions, type UseParticlesResult, type UseScreensaverOptions, type UseScreensaverResult, useParticles, useScreensaver, withParticles };
+export { BurstOptions, BurstSettings, ExplodeOptions, FullParticularConfig, ImageParticlesConfig, MouseForceConfig, ParticleConfig, ParticlesController, Particular, ParticularConfig, particularWrapper as ParticularWrapper, PresetName, RendererType, TextImageConfig, type UseParticlesOptions, type UseParticlesResult, type UseScreensaverOptions, type UseScreensaverResult, useParticles, useScreensaver, withParticles };

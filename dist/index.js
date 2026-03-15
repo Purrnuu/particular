@@ -202,6 +202,32 @@ var defaultExplosionChild = {
   trailFade: 0.75,
   trailShrink: 0.55
 };
+var defaultHomeConfig = {
+  springStrength: 0.05,
+  springDamping: 0.9,
+  homeThreshold: 2,
+  velocityThreshold: 0.5,
+  wiggleAmplitude: 0,
+  wiggleSpeed: 0.05,
+  breathingAmplitude: 0,
+  breathingSpeed: 0.03,
+  waveAmplitude: 0,
+  waveSpeed: 0.03,
+  waveFrequency: 0.15,
+  returnNoise: 0.3,
+  idlePulseStrength: 2,
+  idlePulseIntervalMin: 300,
+  idlePulseIntervalMax: 1800
+};
+var defaultImageParticles = {
+  alphaThreshold: 0.1,
+  particleLife: 99999,
+  gravity: 0,
+  fadeTime: 40,
+  shape: "square",
+  shadow: false,
+  glow: false
+};
 var defaultMouseWind = {
   strength: 0.12,
   radius: 50,
@@ -375,8 +401,10 @@ function degToRad(deg) {
 }
 
 // src/particular/components/particle.ts
-var Particle = class {
+var Particle = class _Particle {
   constructor({
+    color,
+    baseAlpha = 1,
     point,
     velocity,
     acceleration,
@@ -403,12 +431,31 @@ var Particle = class {
     shadowOffsetY = 3,
     shadowColor = "#000000",
     shadowAlpha = 0.3,
-    colors
+    colors,
+    homePosition,
+    homeCenter,
+    homeConfig
   }) {
     this.particular = null;
     this.image = null;
     this.isDetonationChild = false;
     this.trailSegments = [];
+    // Home position — spring return + idle animation
+    this.homePosition = null;
+    this.homeConfig = null;
+    this.breathingPhase = Math.random() * Math.PI * 2;
+    /** Per-particle spring multiplier (0.6–1.4) — breaks sync so particles return at different rates. */
+    this.springMultiplier = 1;
+    /** Monotonic tick counter for coordinated idle wave (never resets). */
+    this.idleTicks = 0;
+    /** How many pulse cycles this particle has completed. */
+    this.pulseCycleCount = 0;
+    /** Tick at which the next pulse wave starts (computed deterministically so all particles agree). */
+    this.nextPulseAt = 0;
+    /** Distance from image center (set once in constructor, used for ripple delay). */
+    this.homeDistFromCenter = 0;
+    /** Angle from image center to this particle's home (radians). Used for outward ripple direction. */
+    this.homeAngleFromCenter = 0;
     this.position = point ?? new Vector(0, 0);
     this.shadowLightOrigin = new Vector(this.position.x, this.position.y);
     this.velocity = velocity ?? new Vector(0, 0);
@@ -425,7 +472,8 @@ var Particle = class {
     this.scaleStep = scaleStep;
     this.fadeTime = fadeTime;
     this.alpha = 1;
-    this.color = colors && colors.length > 0 ? colors[Math.floor(Math.random() * colors.length)] : "#888888";
+    this.baseAlpha = baseAlpha;
+    this.color = color ?? (colors && colors.length > 0 ? colors[Math.floor(Math.random() * colors.length)] : "#888888");
     this.shape = shape;
     this.blendMode = blendMode;
     this.glow = glow;
@@ -443,6 +491,24 @@ var Particle = class {
     this.shadowOffsetY = shadowOffsetY;
     this.shadowColor = shadowColor;
     this.shadowAlpha = shadowAlpha;
+    if (homePosition) {
+      this.homePosition = new Vector(homePosition.x, homePosition.y);
+      this.homeConfig = { ...defaultHomeConfig, ...homeConfig };
+      this.rotation = 0;
+      this.rotationVelocity = 0;
+      this.springMultiplier = 0.6 + Math.random() * 0.8;
+      this.nextPulseAt = _Particle.deterministicInterval(
+        0,
+        this.homeConfig.idlePulseIntervalMin,
+        this.homeConfig.idlePulseIntervalMax
+      );
+      if (homeCenter) {
+        const cdx = homePosition.x - homeCenter.x;
+        const cdy = homePosition.y - homeCenter.y;
+        this.homeDistFromCenter = Math.sqrt(cdx * cdx + cdy * cdy);
+        this.homeAngleFromCenter = Math.atan2(cdy, cdx);
+      }
+    }
   }
   init(image, particular) {
     this.image = image;
@@ -459,10 +525,59 @@ var Particle = class {
         this.velocity.add(force.getForce(this.position), dt);
       }
     }
+    if (this.homePosition && this.homeConfig) {
+      const dx = this.homePosition.x - this.position.x;
+      const dy = this.homePosition.y - this.position.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const speed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y);
+      const isSettled = dist < this.homeConfig.homeThreshold && speed < this.homeConfig.velocityThreshold;
+      if (this.homeConfig.idlePulseStrength > 0 && this.homeConfig.idlePulseIntervalMin > 0) {
+        this.idleTicks += dt;
+      }
+      if (isSettled) {
+        this.velocity.x = 0;
+        this.velocity.y = 0;
+        this.position.x = this.homePosition.x;
+        this.position.y = this.homePosition.y;
+        if (this.homeConfig.idlePulseStrength > 0 && this.homeConfig.idlePulseIntervalMin > 0) {
+          const waveDelay = this.homeDistFromCenter * 0.3;
+          if (this.idleTicks >= this.nextPulseAt + waveDelay) {
+            const angle = this.homeAngleFromCenter + (Math.random() - 0.5) * 1;
+            const mag = this.homeConfig.idlePulseStrength * (0.6 + Math.random() * 0.4);
+            this.velocity.x = Math.cos(angle) * mag;
+            this.velocity.y = Math.sin(angle) * mag;
+            this.pulseCycleCount++;
+            this.nextPulseAt += _Particle.deterministicInterval(
+              this.pulseCycleCount,
+              this.homeConfig.idlePulseIntervalMin,
+              this.homeConfig.idlePulseIntervalMax
+            );
+          }
+        }
+      } else {
+        const k = this.homeConfig.springStrength * this.springMultiplier;
+        this.velocity.x += dx * k * dt;
+        this.velocity.y += dy * k * dt;
+        const dampFactor = Math.pow(this.homeConfig.springDamping, dt);
+        this.velocity.x *= dampFactor;
+        this.velocity.y *= dampFactor;
+        if (this.homeConfig.returnNoise > 0) {
+          const noise = this.homeConfig.returnNoise * dt;
+          this.velocity.x += (Math.random() - 0.5) * noise;
+          this.velocity.y += (Math.random() - 0.5) * noise;
+        }
+      }
+    }
     this.position.add(this.velocity, dt);
     this.rotation = this.rotation + this.rotationVelocity * dt;
-    this.factoredSize = Math.min(this.factoredSize + this.scaleStep * dt, this.size);
-    this.alpha = Math.min(1, Math.max((this.lifeTime - this.lifeTick) / this.fadeTime, 0));
+    const baseSize = Math.min(this.factoredSize + this.scaleStep * dt, this.size);
+    if (this.homePosition && this.homeConfig && this.homeConfig.breathingAmplitude > 0) {
+      this.breathingPhase += this.homeConfig.breathingSpeed * dt;
+      this.factoredSize = baseSize * (1 + Math.sin(this.breathingPhase) * this.homeConfig.breathingAmplitude);
+    } else {
+      this.factoredSize = baseSize;
+    }
+    this.alpha = Math.min(1, Math.max((this.lifeTime - this.lifeTick) / this.fadeTime, 0)) * this.baseAlpha;
     this.lifeTick += dt;
     this.dispatch("PARTICLE_UPDATE", this);
   }
@@ -492,6 +607,12 @@ var Particle = class {
   }
   getRoundedLocation() {
     return [(this.position.x * 10 << 0) * 0.1, (this.position.y * 10 << 0) * 0.1];
+  }
+  /** Deterministic pseudo-random interval from cycle number — same output for all particles in the same cycle. */
+  static deterministicInterval(cycle, min, max) {
+    const hash = Math.sin(cycle * 12.9898 + 78.233) * 43758.5453;
+    const t = hash - Math.floor(hash);
+    return min + t * (max - min);
   }
   dispatch(event, target) {
     if (this.particular) {
@@ -601,6 +722,11 @@ var Emitter = class {
     forEach(this.particles, (particle) => {
       const pos = particle.position;
       if (pos.x < 0 || pos.x > boundsX || pos.y < -boundsY || pos.y > boundsY) {
+        if (particle.homePosition) {
+          particle.update(forces, dt);
+          currentParticles.push(particle);
+          return;
+        }
         const hasTrail = particle.trail && particle.trailSegments.length > 0;
         if (hasTrail) {
           particle.advanceTrail(dt);
@@ -2066,6 +2192,26 @@ var Ambient = {
     colors: meteorPalette
   }
 };
+var ImageParticles = {
+  /** High-fidelity text rendered as tiny particles with spring return. */
+  text: {
+    shape: "square",
+    blendMode: "normal",
+    shadow: false,
+    glow: false,
+    maxCount: 1e4
+  },
+  /** Shape/icon rendered as particles with soft glow. */
+  shape: {
+    shape: "circle",
+    blendMode: "normal",
+    shadow: false,
+    glow: true,
+    glowSize: 8,
+    glowAlpha: 0.3,
+    maxCount: 1e4
+  }
+};
 var Colors = {
   /** White to offwhite range */
   snow: { colors: snowPalette },
@@ -2094,12 +2240,15 @@ var presetRegistry = {
   fireworks: Burst.fireworks,
   fireworksDetonation: Burst.fireworksDetonation,
   images: Images.showcase,
+  imageText: ImageParticles.text,
+  imageShape: ImageParticles.shape,
   snow: Ambient.snow,
   meteors: Ambient.meteors
 };
 var presets = {
   Burst,
   Images,
+  ImageParticles,
   Ambient,
   Colors,
   // Backward-compatible aliases
@@ -2108,6 +2257,8 @@ var presets = {
   fireworks: Burst.fireworks,
   fireworksDetonation: Burst.fireworksDetonation,
   images: Images.showcase,
+  imageText: ImageParticles.text,
+  imageShape: ImageParticles.shape,
   snow: Ambient.snow,
   meteors: Ambient.meteors
 };
@@ -2314,6 +2465,146 @@ var MouseForce = class {
   }
 };
 
+// src/particular/utils/pixelSampler.ts
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    if (src instanceof HTMLCanvasElement) {
+      const img2 = new Image();
+      img2.onload = () => resolve(img2);
+      img2.onerror = reject;
+      img2.src = src.toDataURL("image/png");
+      return;
+    }
+    if (src instanceof HTMLImageElement) {
+      if (src.complete && src.naturalWidth > 0) {
+        resolve(src);
+      } else {
+        src.onload = () => resolve(src);
+        src.onerror = reject;
+      }
+      return;
+    }
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+function sampleImagePixels(source, resolution, alphaThreshold) {
+  const srcWidth = source instanceof HTMLCanvasElement ? source.width : source.naturalWidth;
+  const srcHeight = source instanceof HTMLCanvasElement ? source.height : source.naturalHeight;
+  const aspect = srcWidth / srcHeight;
+  let sampleW;
+  let sampleH;
+  if (aspect >= 1) {
+    sampleW = resolution;
+    sampleH = Math.max(1, Math.round(resolution / aspect));
+  } else {
+    sampleH = resolution;
+    sampleW = Math.max(1, Math.round(resolution * aspect));
+  }
+  const canvas = document.createElement("canvas");
+  canvas.width = sampleW;
+  canvas.height = sampleH;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(source, 0, 0, sampleW, sampleH);
+  const imageData = ctx.getImageData(0, 0, sampleW, sampleH);
+  const { data } = imageData;
+  const samples = [];
+  for (let y = 0; y < sampleH; y++) {
+    for (let x = 0; x < sampleW; x++) {
+      const i = (y * sampleW + x) * 4;
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const a = data[i + 3] / 255;
+      if (a < alphaThreshold) continue;
+      const hex = "#" + r.toString(16).padStart(2, "0") + g.toString(16).padStart(2, "0") + b.toString(16).padStart(2, "0");
+      samples.push({
+        nx: (x + 0.5) / sampleW,
+        ny: (y + 0.5) / sampleH,
+        color: hex,
+        alpha: a,
+        gridX: x,
+        gridY: y
+      });
+    }
+  }
+  return samples;
+}
+
+// src/particular/utils/imageSource.ts
+var defaultGradientStops = [
+  { offset: 0, color: "#ff6b6b" },
+  { offset: 0.3, color: "#feca57" },
+  { offset: 0.5, color: "#48dbfb" },
+  { offset: 0.7, color: "#ff9ff3" },
+  { offset: 1, color: "#54a0ff" }
+];
+function createTextImage(config) {
+  const {
+    text,
+    fontSize = 200,
+    fontFamily = "system-ui, -apple-system, sans-serif",
+    fontWeight = "bold",
+    fill
+  } = config;
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  const font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+  ctx.font = font;
+  const metrics = ctx.measureText(text);
+  canvas.width = Math.ceil(metrics.width) + 4;
+  canvas.height = Math.ceil(fontSize * 1.3);
+  ctx.font = font;
+  ctx.textBaseline = "top";
+  if (typeof fill === "string") {
+    ctx.fillStyle = fill;
+  } else {
+    const stops = fill ?? defaultGradientStops;
+    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    for (const stop of stops) {
+      gradient.addColorStop(stop.offset, stop.color);
+    }
+    ctx.fillStyle = gradient;
+  }
+  ctx.fillText(text, 2, fontSize * 0.12);
+  return canvas;
+}
+function createHeartImage(size = 400) {
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  const gradient = ctx.createRadialGradient(
+    size * 0.5,
+    size * 0.4,
+    size * 0.05,
+    size * 0.5,
+    size * 0.5,
+    size * 0.5
+  );
+  gradient.addColorStop(0, "#ff4757");
+  gradient.addColorStop(0.4, "#ff6b81");
+  gradient.addColorStop(0.7, "#ee5a24");
+  gradient.addColorStop(1, "#c44569");
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  const cx = size / 2;
+  const cy = size / 2;
+  const s = size * 0.28;
+  ctx.moveTo(cx, cy + s * 0.7);
+  ctx.bezierCurveTo(cx - s * 2, cy - s * 0.6, cx - s * 1.2, cy - s * 2, cx, cy - s * 0.8);
+  ctx.bezierCurveTo(cx + s * 1.2, cy - s * 2, cx + s * 2, cy - s * 0.6, cx, cy + s * 0.7);
+  ctx.closePath();
+  ctx.fill();
+  return canvas;
+}
+function canvasToDataURL(canvas) {
+  return canvas.toDataURL("image/png");
+}
+
 // src/particular/convenience.ts
 function createParticles({
   canvas,
@@ -2405,6 +2696,147 @@ function createParticles({
     }
     engine.addEmitter(collector);
   };
+  const scatter = (options = {}) => {
+    const baseVelocity = options.velocity ?? 10;
+    const allParticles = engine.getAllParticles();
+    for (const particle of allParticles) {
+      const angle = Math.random() * Math.PI * 2;
+      const magnitude = baseVelocity * (0.3 + Math.random() * 1.4);
+      particle.velocity.x += Math.cos(angle) * magnitude;
+      particle.velocity.y += Math.sin(angle) * magnitude;
+    }
+  };
+  const imageToParticles = async (config2) => {
+    const merged = { ...defaultImageParticles, ...config2 };
+    const {
+      image: imageSrc,
+      x,
+      y,
+      resolution: resolutionOverride,
+      alphaThreshold = 0.1,
+      particleLife = 99999,
+      gravity = 0,
+      fadeTime = 40,
+      particleSize: sizeOverride,
+      scaleStep: scaleStepOverride,
+      shape,
+      blendMode,
+      glow,
+      glowSize,
+      glowColor,
+      glowAlpha,
+      shadow,
+      shadowBlur,
+      shadowOffsetX,
+      shadowOffsetY,
+      shadowColor,
+      shadowAlpha,
+      trail,
+      trailLength,
+      trailFade,
+      trailShrink,
+      imageTint,
+      homeConfig
+    } = merged;
+    const resolution = resolutionOverride ?? (shape === "square" ? 400 : 200);
+    const image = await loadImage(imageSrc);
+    const aspect = image.naturalWidth / image.naturalHeight;
+    let displayW;
+    let displayH;
+    if (config2.width != null && config2.height != null) {
+      displayW = config2.width;
+      displayH = config2.height;
+    } else if (config2.width != null) {
+      displayW = config2.width;
+      displayH = config2.width / aspect;
+    } else if (config2.height != null) {
+      displayH = config2.height;
+      displayW = config2.height * aspect;
+    } else {
+      displayW = image.naturalWidth;
+      displayH = image.naturalHeight;
+    }
+    const pr = mergedConfig.pixelRatio;
+    const engineW = displayW / pr;
+    const engineH = displayH / pr;
+    const centerX = x / pr;
+    const centerY = y / pr;
+    const originX = centerX - engineW / 2;
+    const originY = centerY - engineH / 2;
+    const samples = sampleImagePixels(image, resolution, alphaThreshold);
+    const gridCols = aspect >= 1 ? resolution : Math.max(1, Math.round(resolution * aspect));
+    const spacing = engineW / gridCols;
+    const sizeScale = shape === "square" ? 0.55 : 0.7;
+    const size = sizeOverride != null ? sizeOverride / pr : spacing * sizeScale;
+    const scaleStep = scaleStepOverride ?? size;
+    const needed = samples.length;
+    if (engine.maxCount < engine.getCount() + needed) {
+      engine.maxCount = engine.getCount() + needed;
+    }
+    const collectorConfig = configureParticle({}, mergedConfig);
+    const collector = new Emitter({
+      point: new Vector(0, 0),
+      ...collectorConfig,
+      rate: 0,
+      life: 0,
+      icons: []
+    });
+    collector.isEmitting = false;
+    const imageCenter = new Vector(centerX, centerY);
+    for (const sample2 of samples) {
+      const px = originX + sample2.nx * engineW;
+      const py = originY + sample2.ny * engineH;
+      const homePos = new Vector(px, py);
+      const particle = new Particle({
+        color: sample2.color,
+        baseAlpha: sample2.alpha,
+        point: new Vector(px, py),
+        velocity: new Vector(0, 0),
+        acceleration: new Vector(0, 0),
+        friction: 0,
+        size,
+        particleLife,
+        gravity,
+        scaleStep,
+        fadeTime,
+        shape,
+        blendMode,
+        glow,
+        glowSize,
+        glowColor,
+        glowAlpha,
+        shadow,
+        shadowBlur,
+        shadowOffsetX,
+        shadowOffsetY,
+        shadowColor,
+        shadowAlpha,
+        trail,
+        trailLength,
+        trailFade,
+        trailShrink,
+        imageTint,
+        homePosition: homePos,
+        homeCenter: imageCenter,
+        homeConfig
+      });
+      if (shape === "triangle" && (sample2.gridX + sample2.gridY) % 2 === 1) {
+        particle.rotation = 180;
+      }
+      particle.init(null, engine);
+      collector.particles.push(particle);
+    }
+    engine.addEmitter(collector);
+    return collector;
+  };
+  const textToParticles = async (text, config2) => {
+    const { textConfig, ...imageConfig } = config2;
+    const textCanvas = createTextImage({ text, ...textConfig });
+    return imageToParticles({
+      ...imageConfig,
+      image: canvasToDataURL(textCanvas)
+    });
+  };
   const attachClickBurst = (target = clickTarget ?? document, overrides) => {
     const onClick = (event) => {
       const mouseEvent = event;
@@ -2477,6 +2909,9 @@ function createParticles({
     engine,
     burst,
     explode,
+    scatter,
+    imageToParticles,
+    textToParticles,
     addAttractor,
     removeAttractor,
     addRandomAttractors,
@@ -2606,13 +3041,28 @@ function useParticles({
   const explode = useCallback((options) => {
     controllerRef.current?.explode(options);
   }, []);
+  const scatter = useCallback((options) => {
+    controllerRef.current?.scatter(options);
+  }, []);
+  const imageToParticles = useCallback((config2) => {
+    controllerRef.current?.imageToParticles(config2);
+  }, []);
+  const textToParticles = useCallback(
+    (text, config2) => {
+      controllerRef.current?.textToParticles(text, config2);
+    },
+    []
+  );
   return {
     canvasRef,
     canvasStyle,
     controller: controllerRef.current,
     burst,
     burstFromEvent,
-    explode
+    explode,
+    scatter,
+    imageToParticles,
+    textToParticles
   };
 }
 function useScreensaver({
@@ -2718,6 +3168,6 @@ function showFPSOverlay(options = {}) {
   };
 }
 
-export { Attractor, CanvasRenderer, Emitter, MouseForce, Particle, Particular, ParticularWrapper_default as ParticularWrapper, Vector, WebGLRenderer, createParticles, getParticlesBackgroundLayerStyle, particlesBackgroundLayerStyle, DEFAULT_Z_INDEX as particlesDefaultZIndex, presets, showFPSOverlay, startScreensaver, useParticles, useScreensaver, withParticles };
+export { Attractor, CanvasRenderer, Emitter, MouseForce, Particle, Particular, ParticularWrapper_default as ParticularWrapper, Vector, WebGLRenderer, canvasToDataURL, createHeartImage, createParticles, createTextImage, getParticlesBackgroundLayerStyle, particlesBackgroundLayerStyle, DEFAULT_Z_INDEX as particlesDefaultZIndex, presets, showFPSOverlay, startScreensaver, useParticles, useScreensaver, withParticles };
 //# sourceMappingURL=index.js.map
 //# sourceMappingURL=index.js.map

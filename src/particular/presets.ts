@@ -203,6 +203,28 @@ const Ambient = {
   } satisfies FullParticularConfig,
 } as const;
 
+const ImageParticles = {
+  /** High-fidelity text rendered as tiny particles with spring return. */
+  text: {
+    shape: 'square' as const,
+    blendMode: 'normal' as const,
+    shadow: false,
+    glow: false,
+    maxCount: 10000,
+  } satisfies FullParticularConfig,
+
+  /** Shape/icon rendered as particles with soft glow. */
+  shape: {
+    shape: 'circle' as const,
+    blendMode: 'normal' as const,
+    shadow: false,
+    glow: true,
+    glowSize: 8,
+    glowAlpha: 0.3,
+    maxCount: 10000,
+  } satisfies FullParticularConfig,
+} as const;
+
 // ── Spreadable Color Presets ────────────────────────────────────────────────
 
 const Colors = {
@@ -236,6 +258,8 @@ const presetRegistry = {
   fireworks: Burst.fireworks,
   fireworksDetonation: Burst.fireworksDetonation,
   images: Images.showcase,
+  imageText: ImageParticles.text,
+  imageShape: ImageParticles.shape,
   snow: Ambient.snow,
   meteors: Ambient.meteors,
 } as const;
@@ -243,6 +267,7 @@ const presetRegistry = {
 export const presets = {
   Burst,
   Images,
+  ImageParticles,
   Ambient,
   Colors,
   // Backward-compatible aliases
@@ -251,6 +276,8 @@ export const presets = {
   fireworks: Burst.fireworks,
   fireworksDetonation: Burst.fireworksDetonation,
   images: Images.showcase,
+  imageText: ImageParticles.text,
+  imageShape: ImageParticles.shape,
   snow: Ambient.snow,
   meteors: Ambient.meteors,
 } as const;
