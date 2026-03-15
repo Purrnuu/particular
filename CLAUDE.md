@@ -2,6 +2,36 @@
 
 Browser particle engine (Canvas 2D + WebGL2) with React and vanilla APIs. ~3400 LOC.
 
+## Git Workflow
+
+- **`master` is the release branch.** It always reflects the latest published version. Do NOT commit directly to master during development.
+- **Develop on feature branches.** Create a branch for each feature, fix, or group of changes: `git checkout -b feat/my-feature`
+- **Branch naming**: `feat/description`, `fix/description`, `chore/description`, `docs/description`
+- **Merge to master = release.** When a branch is ready, merge it to master, then bump version and publish.
+- **Build dist/ and docs/ on master only.** Don't rebuild or commit `dist/` or `docs/` on feature branches — they create noisy diffs. Build them once when merging to master.
+
+### Development flow
+```
+1. git checkout -b feat/my-feature        # branch from master
+2. Develop, commit, iterate               # all work on the branch
+3. npm run type-check && npm test          # verify before merge
+4. git checkout master && git merge feat/my-feature
+5. npm run build                           # rebuild dist/ + docs/
+6. git add dist/ docs/ && git commit       # commit built artifacts
+7. npm version patch|minor|major           # bump + tag
+8. git push && git push --tags             # push to remote
+9. npm publish --otp=CODE                  # publish to npm
+10. gh release create vX.Y.Z --generate-notes  # GitHub release
+```
+
+### Release scripts (shorthand for steps 7–10)
+```
+npm run release:patch   # bug fixes
+npm run release:minor   # new features
+npm run release:major   # breaking changes
+```
+These run: build → test → type-check → version bump → push → npm publish → GitHub release.
+
 ## Commands
 
 ```
@@ -15,8 +45,8 @@ npm run lint         # eslint
 
 ## Build Outputs
 
-- `dist/` — built library (ESM, CJS, IIFE, type declarations, source maps). **Tracked in git** so GitHub-based installs work. Must be rebuilt and committed after source changes (`npm run build:lib`).
-- `docs/` — static Storybook build for GitHub Pages. Also tracked in git. Rebuilt via `npm run build:storybook`.
+- `dist/` — built library (ESM, CJS, IIFE, type declarations, source maps). **Tracked in git** so GitHub-based installs work. Rebuilt and committed on master only, before publishing.
+- `docs/` — static Storybook build for GitHub Pages. Also tracked in git. Rebuilt on master only, before publishing.
 
 ## File Map
 
@@ -152,6 +182,7 @@ src/particular/utils/explosion.ts        # Shared child particle factory (used b
 
 ## Conventions
 
+- **Never commit directly to master.** Always work on a feature branch. See Git Workflow above.
 - Default to WebGL for stories/examples and recommended integration paths.
 - Keep Canvas/WebGL feature parity when feasible.
 - Presets are curated, not abundant. Polish over quantity.
