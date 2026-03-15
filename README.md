@@ -178,6 +178,7 @@ function Snow() {
 | `explode()` | Explode all particles into child fragments |
 | `imageToParticles({ image })` | Convert an image to an interactive particle grid |
 | `textToParticles(text)` | Convert text to an interactive particle grid |
+| `setIdleEffect(enabled)` | Toggle idle animations on image/text particles |
 | `addMouseForce({ track, strength, radius })` | Add mouse-driven push force |
 | `addAttractor({ x, y, strength, radius })` | Add a gravity attractor point |
 | `addBoundary({ element })` | Create repulsion boundary around a DOM element |

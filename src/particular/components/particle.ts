@@ -59,6 +59,8 @@ export default class Particle {
   // Home position — spring return + idle animation
   homePosition: Vector | null = null;
   homeConfig: Required<HomePositionConfig> | null = null;
+  /** When false, idle animations (breathing, wiggle, wave, pulse) are suppressed. Spring return still works. */
+  idleEnabled: boolean = true;
   private breathingPhase: number = Math.random() * Math.PI * 2;
   /** Per-particle spring multiplier (0.6–1.4) — breaks sync so particles return at different rates. */
   private springMultiplier: number = 1;
@@ -212,7 +214,9 @@ export default class Particle {
       const speed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y);
       const isSettled = dist < this.homeConfig.homeThreshold && speed < this.homeConfig.velocityThreshold;
 
-      // Idle pulse timer always ticks (monotonic, never resets) — mouse/scatter don't affect wave timing
+      // Idle pulse timer ticks when idle is enabled (monotonic, never resets) — mouse/scatter don't affect wave timing.
+      // When idle is disabled, we still advance the timer so re-enabling doesn't fire a burst of missed pulses.
+      // Instead, we skip the pulse check above via the idleEnabled guard.
       if (this.homeConfig.idlePulseStrength > 0 && this.homeConfig.idlePulseIntervalMin > 0) {
         this.idleTicks += dt;
       }
@@ -226,7 +230,7 @@ export default class Particle {
         // Coordinated idle ripple — fire pulse AFTER zeroing velocity so impulse isn't overwritten.
         // nextPulseAt is computed deterministically from cycle count, so all particles agree on timing.
         // idleTicks is monotonic — never resets — so nextPulseAt accumulates across cycles.
-        if (this.homeConfig.idlePulseStrength > 0 && this.homeConfig.idlePulseIntervalMin > 0) {
+        if (this.idleEnabled && this.homeConfig.idlePulseStrength > 0 && this.homeConfig.idlePulseIntervalMin > 0) {
           const waveDelay = this.homeDistFromCenter * 0.3;
           if (this.idleTicks >= this.nextPulseAt + waveDelay) {
             const angle = this.homeAngleFromCenter + (Math.random() - 0.5) * 1.0;
@@ -261,9 +265,9 @@ export default class Particle {
     this.position.add(this.velocity, dt);
     this.rotation = this.rotation + this.rotationVelocity * dt;
 
-    // Size: grow toward target, apply breathing if configured
+    // Size: grow toward target, apply breathing if configured and idle is enabled
     const baseSize = Math.min(this.factoredSize + this.scaleStep * dt, this.size);
-    if (this.homePosition && this.homeConfig && this.homeConfig.breathingAmplitude > 0) {
+    if (this.idleEnabled && this.homePosition && this.homeConfig && this.homeConfig.breathingAmplitude > 0) {
       this.breathingPhase += this.homeConfig.breathingSpeed * dt;
       this.factoredSize = baseSize * (1 + Math.sin(this.breathingPhase) * this.homeConfig.breathingAmplitude);
     } else {

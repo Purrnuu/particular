@@ -109,6 +109,7 @@ Returned by createParticles(). Methods:
 #### Image/Text
 - imageToParticles(config) → Promise<Emitter>       — see ImageParticlesConfig below
 - textToParticles(text, config?) → Promise<Emitter> — config is optional, auto-centers with smart defaults
+- setIdleEffect(enabled) → void                    — toggle idle animations (breathing, wiggle, wave, pulse) on all home-position particles. Spring return still works when disabled
 
 #### Properties
 - engine: Particular                                 — the underlying engine instance

@@ -78,6 +78,9 @@ export interface ParticlesController {
     text: string,
     config?: Omit<ImageParticlesConfig, 'image'> & { textConfig?: Omit<TextImageConfig, 'text'> },
   ) => Promise<Emitter>;
+  /** Toggle idle animations (breathing, wiggle, wave, pulse) on all particles with home positions.
+   *  Spring return still works when idle is disabled — particles return home but stay still once there. */
+  setIdleEffect: (enabled: boolean) => void;
 
   // ── Lifecycle ──
   destroy: () => void;

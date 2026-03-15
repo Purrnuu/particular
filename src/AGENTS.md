@@ -247,6 +247,12 @@ In `Particle.update()`, when `homePosition` is set:
 - Velocity *= `Math.pow(springDamping, dt)` — decays velocity during return.
 - `returnNoise` adds small random velocity perturbations so particles wobble organically instead of traveling in straight lines.
 
+### Runtime Toggle
+
+`particle.idleEnabled` (boolean, default `true`) gates all idle animations: breathing, wiggle, wave, and idle pulse. Spring return is unaffected — particles still return home, they just stay still once there. The convenience API exposes `controller.setIdleEffect(enabled)` which toggles this on all particles with home positions.
+
+The idle tick counter (`idleTicks`) keeps advancing even when disabled, so re-enabling doesn't fire a burst of missed pulses.
+
 ### Idle state
 
 When distance to home < `homeThreshold` AND speed < `velocityThreshold`, particle enters idle mode:

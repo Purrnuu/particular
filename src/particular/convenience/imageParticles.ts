@@ -186,5 +186,14 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
     });
   };
 
-  return { imageToParticles, textToParticles };
+  /** Toggle idle animations (breathing, wiggle, wave, pulse) on all particles with home positions. */
+  const setIdleEffect = (enabled: boolean): void => {
+    for (const particle of engine.getAllParticles()) {
+      if (particle.homePosition) {
+        particle.idleEnabled = enabled;
+      }
+    }
+  };
+
+  return { imageToParticles, textToParticles, setIdleEffect };
 }
