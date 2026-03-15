@@ -3,58 +3,152 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Particular Vanilla Example</title>
+    <title>Particular — Vanilla Examples</title>
     <style>
-      html,
-      body {
-        margin: 0;
-        padding: 0;
-        width: 100%;
-        height: 100%;
-        background: #0b1020;
-        color: #fff;
-        font-family: Inter, system-ui, -apple-system, sans-serif;
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body { width: 100%; height: 100%; background: #0b1020; color: #fff; font-family: Inter, system-ui, -apple-system, sans-serif; }
+      canvas { position: fixed; inset: 0; pointer-events: none; z-index: 10000; }
+      nav { position: fixed; top: 0; left: 0; right: 0; z-index: 20000; display: flex; gap: 4px; padding: 12px; background: rgba(11,16,32,0.85); backdrop-filter: blur(8px); flex-wrap: wrap; }
+      nav button {
+        font-size: 0.85rem; padding: 6px 14px; border-radius: 8px;
+        border: 1px solid #2e3552; background: #121a33; color: #fff; cursor: pointer;
+        transition: background 0.15s;
       }
-      #particles {
-        position: fixed;
-        inset: 0;
-      }
-      .hint {
-        position: fixed;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
-        pointer-events: none;
-        user-select: none;
-        text-align: center;
-        opacity: 0.9;
-      }
+      nav button:hover { background: #1a2440; }
+      nav button.active { background: #2a4080; border-color: #4a6cc0; }
+      .demo { min-height: 100vh; display: grid; place-items: center; padding-top: 60px; }
+      .hint { text-align: center; pointer-events: none; user-select: none; opacity: 0.6; }
+      .hint h2 { font-size: 1.4rem; margin-bottom: 0.3rem; }
+      .hint p { font-size: 0.9rem; }
     </style>
   </head>
   <body>
     <canvas id="particles"></canvas>
-    <div class="hint">
-      <h1>Click anywhere</h1>
-      <p>Standalone embed using `particular.global.js`</p>
+
+    <nav id="nav">
+      <button data-demo="burst" class="active">Click Burst</button>
+      <button data-demo="screensaver">Screensaver</button>
+      <button data-demo="text">Text → Particles</button>
+      <button data-demo="image">Image → Particles</button>
+    </nav>
+
+    <div class="demo">
+      <div class="hint" id="hint">
+        <h2>Click anywhere</h2>
+        <p>Magic preset — click to create particle bursts</p>
+      </div>
     </div>
 
     <script src="../../dist/particular.global.js"></script>
     <script>
-      const { createParticles, presets } = window.Particular;
-
+      const { createParticles, startScreensaver, createHeartImage, canvasToDataURL } = window.Particular;
       const canvas = document.getElementById("particles");
-      const particles = createParticles({
-        canvas,
-        preset: "magic",
-        renderer: "webgl",
-        config: {
-          ...presets.magic,
-          pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
-          maxCount: 500,
-        },
+      const hint = document.getElementById("hint");
+      const nav = document.getElementById("nav");
+
+      let currentCleanup = null;
+
+      // ── Demo: Click Burst ──────────────────────────────────────────────
+      function startBurstDemo() {
+        const controller = createParticles({
+          canvas,
+          preset: "magic",
+          renderer: "webgl",
+          autoResize: true,
+        });
+        controller.attachClickBurst(document);
+        hint.innerHTML = '<h2>Click anywhere</h2><p>Magic preset — click to create particle bursts</p>';
+        canvas.style.pointerEvents = "";
+        return () => controller.destroy();
+      }
+
+      // ── Demo: Screensaver ──────────────────────────────────────────────
+      function startScreensaverDemo() {
+        const screensaver = startScreensaver({
+          canvas,
+          preset: "snow",
+          renderer: "webgl",
+          autoResize: true,
+        });
+        hint.innerHTML = '<h2>Snowfall</h2><p>Ambient screensaver — move your mouse to push snowflakes</p>';
+        canvas.style.pointerEvents = "";
+        return () => screensaver.destroy();
+      }
+
+      // ── Demo: Text → Particles ─────────────────────────────────────────
+      function startTextDemo() {
+        const controller = createParticles({
+          canvas,
+          preset: "imageText",
+          renderer: "webgl",
+          autoResize: true,
+        });
+
+        controller.textToParticles("Particular", {
+          x: window.innerWidth / 2,
+          y: window.innerHeight / 2,
+          width: Math.min(window.innerWidth * 0.8, 800),
+        });
+
+        controller.addMouseForce({ track: true, strength: 3, radius: 80 });
+
+        hint.innerHTML = '<h2>&nbsp;</h2><p>Move mouse to push particles · Press E to scatter</p>';
+        canvas.style.pointerEvents = "";
+
+        const onKey = (e) => {
+          if (e.key === "e" || e.key === "E") controller.scatter({ velocity: 12 });
+        };
+        window.addEventListener("keydown", onKey);
+        return () => { window.removeEventListener("keydown", onKey); controller.destroy(); };
+      }
+
+      // ── Demo: Image → Particles ────────────────────────────────────────
+      function startImageDemo() {
+        const controller = createParticles({
+          canvas,
+          preset: "imageShape",
+          renderer: "webgl",
+          autoResize: true,
+        });
+
+        const size = Math.min(window.innerWidth, window.innerHeight) * 0.6;
+        controller.imageToParticles({
+          image: canvasToDataURL(createHeartImage(400)),
+          x: window.innerWidth / 2,
+          y: window.innerHeight / 2,
+          width: size,
+          height: size,
+          shape: "circle",
+        });
+
+        controller.addMouseForce({ track: true, strength: 3, radius: 80 });
+
+        hint.innerHTML = '<h2>&nbsp;</h2><p>Move mouse to push particles · Press E to scatter</p>';
+        canvas.style.pointerEvents = "";
+
+        const onKey = (e) => {
+          if (e.key === "e" || e.key === "E") controller.scatter({ velocity: 12 });
+        };
+        window.addEventListener("keydown", onKey);
+        return () => { window.removeEventListener("keydown", onKey); controller.destroy(); };
+      }
+
+      // ── Navigation ─────────────────────────────────────────────────────
+      const demos = { burst: startBurstDemo, screensaver: startScreensaverDemo, text: startTextDemo, image: startImageDemo };
+
+      function switchDemo(name) {
+        if (currentCleanup) currentCleanup();
+        currentCleanup = demos[name]();
+        nav.querySelectorAll("button").forEach((btn) => btn.classList.toggle("active", btn.dataset.demo === name));
+      }
+
+      nav.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-demo]");
+        if (btn) switchDemo(btn.dataset.demo);
       });
 
-      particles.attachClickBurst(document, presets.magic);
+      // Start with burst demo
+      switchDemo("burst");
     </script>
   </body>
 </html>
