@@ -39,7 +39,17 @@ export function loadImage(
       return;
     }
     const img = new Image();
-    img.crossOrigin = 'anonymous';
+    // Only set crossOrigin for absolute cross-origin HTTP URLs.
+    // Relative paths, data URIs, blob URLs, and same-origin URLs must NOT have
+    // crossOrigin set — otherwise servers without CORS headers taint the canvas.
+    try {
+      const absolute = new URL(src, window.location.href);
+      if (absolute.origin !== window.location.origin && /^https?:$/.test(absolute.protocol)) {
+        img.crossOrigin = 'anonymous';
+      }
+    } catch {
+      // Invalid URL (e.g. data URI on some engines) — skip crossOrigin
+    }
     img.onload = () => resolve(img);
     img.onerror = reject;
     img.src = src;

@@ -41,7 +41,7 @@
 
     <script src="../../dist/particular.global.js"></script>
     <script>
-      const { createParticles, startScreensaver } = window.Particular;
+      const { createParticles, startScreensaver, createHeartImage, canvasToDataURL } = window.Particular;
       const canvas = document.getElementById("particles");
       const hint = document.getElementById("hint");
       const nav = document.getElementById("nav");
@@ -111,13 +111,14 @@
           autoResize: true,
         });
 
-        const size = Math.min(window.innerWidth, window.innerHeight) * 0.7;
+        const size = Math.min(window.innerWidth, window.innerHeight) * 0.6;
         controller.imageToParticles({
-          image: "../../src/icons/viking.png",
+          image: canvasToDataURL(createHeartImage(400)),
           x: window.innerWidth / 2,
           y: window.innerHeight / 2,
           width: size,
           height: size,
+          shape: "circle",
         });
 
         controller.addMouseForce({ track: true, strength: 3, radius: 80 });

@@ -1271,7 +1271,9 @@ declare function startScreensaver({ canvas, preset, config, renderer, autoResize
  */
 declare function createTextImage(config: TextImageConfig): HTMLCanvasElement;
 /**
- * Render a heart shape to an offscreen canvas.
+ * Render a plush heart shape to an offscreen canvas.
+ * Uses parametric curve for guaranteed fat, symmetrical lobes.
+ * Layered radial gradients for depth, rim light, and specular highlights.
  */
 declare function createHeartImage(size?: number): HTMLCanvasElement;
 /**
