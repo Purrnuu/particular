@@ -1,6 +1,6 @@
 {
   "name": "particular",
-  "version": "0.2.0",
+  "version": "0.1.0",
   "description": "An opinionated Particle Engine",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -48,9 +48,13 @@
     "example:vanilla": "npm run build:lib && python3 -m http.server 8080",
     "example:react": "npm run build:lib && npm --prefix examples/react install && npm --prefix examples/react run dev",
     "prepublishOnly": "npm run build:lib",
+    "prerelease": "npm run build:lib && npm test && npm run type-check",
+    "release:patch": "npm run prerelease && npm version patch && git push && git push --tags && npm publish && gh release create v$(node -p \"require('./package.json').version\") --generate-notes",
+    "release:minor": "npm run prerelease && npm version minor && git push && git push --tags && npm publish && gh release create v$(node -p \"require('./package.json').version\") --generate-notes",
+    "release:major": "npm run prerelease && npm version major && git push && git push --tags && npm publish && gh release create v$(node -p \"require('./package.json').version\") --generate-notes",
     "clean": "rm -rf dist lib docs"
   },
-  "author": "Niilo Säämänen <niilo@muffinssi.com>",
+  "author": "Niilo Säämänen <purrnuu@gmail.com>",
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0",
@@ -62,10 +66,10 @@
   },
   "peerDependenciesMeta": {
     "react": {
-      "optional": false
+      "optional": true
     },
     "react-dom": {
-      "optional": false
+      "optional": true
     }
   },
   "devDependencies": {
