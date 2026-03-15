@@ -218,6 +218,89 @@ File: `src/particular/utils/explosion.ts`. Pure factory function used by both ma
 - `ExplodeOptions extends ChildExplosionConfig`: adds `destroyParents`
 - `DetonateConfig extends ChildExplosionConfig`: adds `at` (0-1 lifetime fraction)
 
+## Boundary System
+
+File: `src/particular/convenience/boundary.ts`
+
+Creates repulsion boundaries around HTML elements by tiling negative-strength `Attractor` instances along the element perimeter.
+
+### How it works
+
+1. **Tiling**: `rebuild()` computes element rect relative to container (or viewport), insets by `radius * insetFraction`, then places attractors every `radius` pixels along all four edges. Corners are shared between horizontal and vertical edges.
+2. **Inset**: The `inset` fraction (default 0.4) moves repulsors inside the element edge so the repulsion field aligns with the visible edge rather than extending beyond it.
+3. **Resize**: `ResizeObserver` watches both the element and container. On resize, calls `rebuild()` (tiling count may change).
+4. **Scroll**: rAF-throttled scroll listener calls `reposition()` — a lightweight path that just moves existing attractors without creating/destroying them. Uses pre-computed offsets relative to element top-left.
+5. **Cleanup**: `handle.destroy()` disconnects observers, removes scroll listener, and removes all attractors from engine.
+
+### Coordinate conversion
+
+All positions are in engine coords (screen pixels / pixelRatio). Container mode subtracts container rect offset before dividing by pixelRatio.
+
+## Home Position & Spring Physics
+
+Used by image/text particles. When a particle has `homePosition` set, it experiences spring-return forces and idle animations.
+
+### Spring return
+
+In `Particle.update()`, when `homePosition` is set:
+- Force = `(home - position) * springStrength` — pulls particle toward home.
+- Velocity *= `Math.pow(springDamping, dt)` — decays velocity during return.
+- `returnNoise` adds small random velocity perturbations so particles wobble organically instead of traveling in straight lines.
+
+### Idle state
+
+When distance to home < `homeThreshold` AND speed < `velocityThreshold`, particle enters idle mode:
+- **Breathing**: sinusoidal scale oscillation at `breathingSpeed`.
+- **Wiggle**: per-particle random scale pulsing at `wiggleSpeed` (uses per-particle random phase).
+- **Wave**: coordinated scale wave that sweeps across the image based on particle position relative to `homeCenter`, at `waveSpeed` and `waveFrequency`.
+
+### Idle pulse
+
+Periodic random impulse waves keep settled particles alive. Every `idlePulseIntervalMin`–`idlePulseIntervalMax` ticks, particles receive a small velocity impulse (`idlePulseStrength`) with ripple delay based on distance from `homeCenter`.
+
+## Image-to-Particles Pipeline
+
+File: `src/particular/convenience/imageParticles.ts`
+
+### Flow
+
+1. **Load image**: `loadImage()` from `pixelSampler.ts` — handles URL strings, `HTMLImageElement`, and `HTMLCanvasElement`. Sets `crossOrigin: 'anonymous'` for URL strings.
+2. **Smart defaults**: If `x`/`y` omitted, defaults to center of viewport/container. If `width`/`height` omitted, uses `min(80% viewport, 800px)`.
+3. **Sample pixels**: `sampleImagePixels(image, resolution, alphaThreshold)` — draws image to offscreen canvas, reads pixel data, returns grid of `PixelSample` objects with normalized positions, hex colors, and alpha values.
+4. **Grid sizing**: `resolution` = particles along longest axis. Squares use 400 (tighter packing), circles use 200. Particle size auto-calculated from grid spacing with shape-specific scale factors.
+5. **Particle creation**: Each sample becomes a `Particle` with `homePosition` (spring return) and `homeCenter` (for wave/pulse ripple). Triangle particles alternate rotation for tessellation.
+6. **Collector emitter**: A non-emitting `Emitter` (`rate: 0, life: 0`) holds all particles. Added to engine. No emission cycle — particles just exist and update.
+7. **maxCount**: Auto-expanded if needed to hold all image particles.
+
+### Text pipeline
+
+`textToParticles(text, config?)` → `createTextImage({ text, ...textConfig })` → offscreen canvas → `canvasToDataURL()` → `imageToParticles({ image: dataURL, ...config })`. The text is rendered with configurable font, size, weight, and fill (solid color or gradient stops).
+
+## Convenience API Architecture
+
+The convenience layer lives in `src/particular/convenience/` as focused modules composed by the orchestrator (`index.ts`):
+
+- `index.ts` — `createParticles()` orchestrator: auto-creates canvas, applies styles, composes helpers
+- `types.ts` — All interfaces (`CreateParticlesOptions`, `ParticlesController`, etc.)
+- `forces.ts` — `createForces()`: attractor + mouse force management
+- `boundary.ts` — `createBoundaryHelper()`: DOM element repulsion boundaries with resize/scroll sync
+- `effects.ts` — `createEffects()`: explode() + scatter()
+- `imageParticles.ts` — `createImageParticles()`: image/text to particle grids with smart defaults
+- `screensaver.ts` — `startScreensaver()`: continuous ambient emission
+
+Each module exports a factory function that receives shared state (engine, config, container, cleanups) and returns an API slice. The orchestrator spreads them together into the `ParticlesController`.
+
+### DX Defaults (Zero-Config)
+
+- **Renderer**: WebGL by default (all of `createParticles`, `startScreensaver`, `useParticles`, `useScreensaver`)
+- **Canvas**: Auto-created and appended to `container` or `document.body` when omitted. Auto-removed on `destroy()`.
+- **Styles**: `applyCanvasStyles()` called automatically — sets positioning (`fixed` for viewport, `absolute` for container), `pointer-events: none`, z-index. No manual styles needed.
+- **Image/text positioning**: `x`/`y` default to center of viewport/container. `width` defaults to `min(80% viewport, 800px)`.
+- **mouseForce shorthand**: `createParticles({ mouseForce: true })` adds a tracking mouse force with sensible defaults.
+- **textToParticles config**: Optional — `textToParticles('Hello')` works with zero config.
+
+Minimal usage: `createParticles()` gives a fully working engine with WebGL, auto-canvas, and styles applied.
+
 ## Stable Public API
 
-From `src/index.ts`: `Particular`, `Emitter`, `Particle`, `Attractor`, `MouseForce`, `CanvasRenderer`, `WebGLRenderer`, `ParticularWrapper`, `useParticles`, `useScreensaver`, `createParticles`, `startScreensaver`, `presets`, and all public types. Avoid breaking these exports.
+From `src/index.ts`: `Particular`, `Emitter`, `Particle`, `Attractor`, `MouseForce`, `CanvasRenderer`, `WebGLRenderer`, `ParticularWrapper`, `useParticles`, `useScreensaver`, `createParticles`, `startScreensaver`, `presets`, `applyCanvasStyles`, and all public types. Avoid breaking these exports.

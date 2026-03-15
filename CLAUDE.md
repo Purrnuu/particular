@@ -69,10 +69,14 @@ src/PageLayout.stories.tsx       # Page layout demos (boundaries, scrolling, con
 
 ### Utils
 ```
-src/particular/utils/vector.ts       # 2D vector class (angle, magnitude, add, scale)
-src/particular/utils/math.ts         # Clamp, lerp, etc.
-src/particular/utils/genericUtils.ts # Misc helpers
+src/particular/utils/vector.ts           # 2D vector class (angle, magnitude, add, scale)
+src/particular/utils/math.ts             # Clamp, lerp, etc.
+src/particular/utils/genericUtils.ts     # Misc helpers
 src/particular/utils/eventDispatcher.ts  # Simple pub/sub for engine events
+src/particular/utils/color.ts            # HSL palette generation (generateHarmoniousPalette)
+src/particular/utils/pixelSampler.ts     # Image loading + pixel grid sampling for image-to-particles
+src/particular/utils/imageSource.ts      # Text/shape rendering to offscreen canvas (createTextImage, etc.)
+src/particular/utils/explosion.ts        # Shared child particle factory (used by explode + detonate)
 ```
 
 ## Modification Checklists
@@ -104,7 +108,7 @@ src/particular/utils/eventDispatcher.ts  # Simple pub/sub for engine events
 1. types.ts        — add config interface, implement ForceSource interface
 2. components/     — create component file with getForce(position): Vector
 3. particular.ts   — add array + add/remove methods, merge into forces array in updateEmitters()
-4. convenience.ts  — add controller methods (addX, removeX)
+4. convenience/forces.ts (or new helper) — add controller methods (addX, removeX)
 5. index.ts        — export class + config type
 6. standalone.ts   — export if needed for CDN
 7. Story file      — create dedicated story file to demo the feature
@@ -120,6 +124,17 @@ src/particular/utils/eventDispatcher.ts  # Simple pub/sub for engine events
 5. Verify          — check rendering in both canvas and webgl
 ```
 
+### Adding a new convenience helper module
+```
+1. convenience/     — create new module file with factory function: createXxx(engine, mergedConfig, ...) => { methods }
+2. convenience/types.ts — add method signatures to ParticlesController interface
+3. convenience/index.ts — import factory, call it, spread result into returned controller
+4. index.ts        — export any new public types
+5. standalone.ts   — export if needed for CDN
+6. AGENTS.md       — document the new module and its behavior
+7. Verify          — npm run type-check && npm run build:lib
+```
+
 ### Modifying Storybook controls
 ```
 - Read storyArgs.ts header comment for which fields are shared vs story-specific
@@ -127,6 +142,13 @@ src/particular/utils/eventDispatcher.ts  # Simple pub/sub for engine events
 - Story-specific fields: add to the individual story file's local type + argTypes
 - After changes: npm run build (includes storybook build) to verify
 ```
+
+## Documentation
+
+- **`llms.txt`** — LLM-friendly API reference at the project root. Structured for machine consumption: function signatures, all options with types and defaults, config interfaces, copy-paste recipes.
+- **Keep `llms.txt` up to date.** When you add, remove, or change any public API surface (new controller methods, new config fields, new presets, changed defaults, new functions exported from `index.ts`), update `llms.txt` to reflect the change. This is the primary reference external LLMs use to help users integrate the library.
+- `AGENTS.md` covers engine internals. Update when changing internal architecture or adding subsystems.
+- `README.md` is for humans. Update examples when the API changes. Keep examples minimal — they should showcase the zero-config DX.
 
 ## Conventions
 

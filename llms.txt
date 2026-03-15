@@ -1,0 +1,313 @@
+# Particular
+
+> Browser particle engine with Canvas 2D + WebGL2 rendering, React hooks and vanilla JS APIs.
+> Zero-config defaults: WebGL renderer, auto-created canvas, auto-applied styles.
+
+## Install
+
+npm install particular
+
+## Quick Start
+
+### Vanilla — zero config
+```js
+import { createParticles } from "particular";
+const p = createParticles();            // auto-creates canvas, appends to body, WebGL
+p.attachClickBurst(document);           // click anywhere for particles
+// p.destroy() to clean up
+```
+
+### Vanilla — text to particles
+```js
+import { createParticles } from "particular";
+const p = createParticles({ preset: "imageText", mouseForce: true });
+p.textToParticles("Hello");             // auto-centered, 80% viewport width
+```
+
+### Vanilla — image to particles
+```js
+import { createParticles } from "particular";
+const p = createParticles({ preset: "imageShape", mouseForce: { strength: 3, radius: 80 } });
+p.imageToParticles({ image: "/photo.png", width: 500 });
+```
+
+### Vanilla — screensaver
+```js
+import { startScreensaver } from "particular";
+startScreensaver({ preset: "snow" });   // auto-creates canvas, continuous snowfall
+```
+
+### Vanilla — container mode
+```js
+import { createParticles } from "particular";
+const p = createParticles({ container: document.getElementById("hero"), preset: "magic" });
+p.attachClickBurst(document.getElementById("hero"));
+// container must have position: relative
+```
+
+### React — click burst
+```tsx
+import { useParticles } from "particular";
+function App() {
+  const { canvasRef, canvasStyle, burstFromEvent } = useParticles();
+  return (
+    <>
+      <canvas ref={canvasRef} style={canvasStyle} />
+      <button onClick={burstFromEvent}>Burst</button>
+    </>
+  );
+}
+```
+
+### React — screensaver
+```tsx
+import { useScreensaver } from "particular";
+function Snow() {
+  const { canvasRef, canvasStyle } = useScreensaver({ preset: "snow" });
+  return <canvas ref={canvasRef} style={canvasStyle} />;
+}
+```
+
+## API Reference
+
+### createParticles(options?) → ParticlesController
+
+Main entry point. Creates engine, canvas, and returns controller.
+
+Options (all optional):
+- canvas: HTMLCanvasElement          — if omitted, auto-created and appended to container or document.body
+- preset: PresetName                 — default "magic". One of: "magic", "confetti", "fireworks", "fireworksDetonation", "snow", "meteors", "imageText", "imageShape", "images"
+- config: Partial<FullParticularConfig> — override any particle/engine config field
+- renderer: "webgl" | "canvas"      — default "webgl"
+- autoResize: boolean                — default true
+- autoClick: boolean                 — default false. Auto-attach click burst
+- clickTarget: EventTarget           — click target for autoClick
+- container: HTMLElement             — container-aware mode. Canvas sizes to element, coords become relative
+- mouseForce: boolean | MouseForceConfig — true = add tracking mouse force with defaults. Object = custom config
+
+### ParticlesController
+
+Returned by createParticles(). Methods:
+
+#### Emission
+- burst({ x, y, ...config? }) → Emitter           — emit particles at screen coordinates
+- attachClickBurst(target?, overrides?) → cleanup   — auto-burst on click. Returns unsubscribe function
+
+#### Forces
+- addAttractor({ x, y, strength?, radius? }) → Attractor
+- removeAttractor(attractor) → void
+- addRandomAttractors(count, config?) → Attractor[]
+- removeAllAttractors() → void
+- addMouseForce(config?) → MouseForce               — config: { track?, strength?, radius?, damping?, maxSpeed?, falloff? }
+- removeMouseForce(mouseForce) → void
+- addBoundary({ element, strength?, radius?, inset? }) → BoundaryHandle — repulsion boundary around DOM element
+
+#### Effects
+- explode(options?) → void                          — explode all particles into child fragments
+- scatter({ velocity? }?) → void                    — random impulse. Particles with home positions spring back
+
+#### Image/Text
+- imageToParticles(config) → Promise<Emitter>       — see ImageParticlesConfig below
+- textToParticles(text, config?) → Promise<Emitter> — config is optional, auto-centers with smart defaults
+
+#### Properties
+- engine: Particular                                 — the underlying engine instance
+- canvas: HTMLCanvasElement                          — the canvas element (may have been auto-created)
+
+#### Lifecycle
+- destroy() → void                                  — clean up all resources, listeners, and auto-created canvas
+
+### startScreensaver(options?) → ScreensaverController
+
+Continuous ambient particle emission across viewport/container.
+
+Options (all optional):
+- canvas: HTMLCanvasElement          — if omitted, auto-created
+- preset: PresetName                 — default "snow"
+- config: Partial<FullParticularConfig>
+- renderer: "webgl" | "canvas"      — default "webgl"
+- autoResize: boolean                — default true
+- mouseWind: MouseForceConfig | false — gentle mouse wind. false = disable
+- container: HTMLElement
+
+Returns: { engine, controller, destroy() }
+
+### useParticles(options?) → UseParticlesResult (React hook)
+
+Options (all optional):
+- preset: PresetName                 — default "magic"
+- config: Partial<FullParticularConfig>
+- renderer: "webgl" | "canvas"      — default "webgl"
+- autoResize: boolean                — default true
+- autoClick: boolean                 — default false
+- clickTarget: EventTarget
+- backgroundLayer: boolean           — default true. Provides canvasStyle for full-viewport overlay
+- container: HTMLElement
+- mouseForce: boolean | MouseForceConfig
+
+Returns:
+- canvasRef: Ref<HTMLCanvasElement>   — attach to <canvas ref={canvasRef}>
+- canvasStyle: CSSProperties | undefined — attach to <canvas style={canvasStyle}>
+- controller: ParticlesController | null — full controller after mount
+- burst(options) → void
+- burstFromEvent(event, overrides?) → void — pass directly as onClick handler
+- explode(options?) → void
+- scatter(options?) → void
+- imageToParticles(config) → void
+- textToParticles(text, config?) → void
+
+### useScreensaver(options?) → UseScreensaverResult (React hook)
+
+Options (all optional):
+- preset: PresetName                 — default "snow"
+- config: Partial<FullParticularConfig>
+- renderer: "webgl" | "canvas"      — default "webgl"
+- autoResize: boolean                — default true
+- backgroundLayer: boolean           — default true
+- mouseWind: MouseForceConfig | false
+- container: HTMLElement
+
+Returns: { canvasRef, canvasStyle, destroy() }
+
+## Config Types
+
+### ImageParticlesConfig
+- image: string | HTMLImageElement   — REQUIRED. URL, data URI, or element
+- x?: number                        — default: center of viewport/container
+- y?: number                        — default: center of viewport/container
+- width?: number                    — default: min(80% viewport, 800px). Calculated from height if omitted
+- height?: number                   — calculated from width + aspect ratio if omitted
+- resolution?: number               — particles along longest axis. Default: 400 (square), 200 (circle/triangle)
+- alphaThreshold?: number           — skip transparent pixels. Default 0.1
+- particleSize?: number             — auto-calculated from grid if omitted
+- particleLife?: number             — default 99999 (effectively permanent)
+- gravity?: number                  — default 0
+- fadeTime?: number                 — default 40
+- scaleStep?: number                — default: instant (equal to size)
+- shape?: ParticleShape             — default from preset
+- homeConfig?: HomePositionConfig   — spring physics + idle animation config
+
+### MouseForceConfig
+- strength?: number                 — default 1
+- radius?: number                   — default 50
+- damping?: number                  — velocity decay per frame. Default 0.85
+- maxSpeed?: number                 — default 10
+- falloff?: number                  — <1 = broad wind, 1 = linear (default), >1 = localized push
+- track?: EventTarget | boolean     — true = track mouse on window. Element = track on element
+
+### AttractorConfig
+- x: number                        — REQUIRED. Engine coordinates
+- y: number                        — REQUIRED. Engine coordinates
+- strength?: number                 — default 1. Negative = repulsion
+- radius?: number                   — default 150
+- visible?: boolean                 — render the attractor. Default false
+- icon?: string | HTMLImageElement
+- size?: number                     — visual size. Default 12
+- color?: string                    — default "#adb5bd"
+- shape?: ParticleShape
+
+### BoundaryConfig
+- element: HTMLElement              — REQUIRED. DOM element to create boundary around
+- strength?: number                 — default -1.5 (repulsion)
+- radius?: number                   — repulsion distance from edge. Default 10
+- inset?: number                    — 0-1 fraction. Default 0.4
+
+### HomePositionConfig (for image/text particles)
+- springStrength?: number           — default 0.05
+- springDamping?: number            — default 0.9
+- homeThreshold?: number            — idle engage distance. Default 2
+- velocityThreshold?: number        — idle engage speed. Default 0.5
+- wiggleAmplitude?: number          — random scale pulsing (0-1). Default 0
+- breathingAmplitude?: number       — sinusoidal scale oscillation (0-1). Default 0
+- waveAmplitude?: number            — coordinated scale wave (0-1). Default 0
+- returnNoise?: number              — wobble during spring return. Default 0.3
+- idlePulseStrength?: number        — periodic impulse magnitude. Default 2
+- idlePulseIntervalMin?: number     — min ticks between pulses. Default 300
+- idlePulseIntervalMax?: number     — max ticks between pulses. Default 1800
+
+### Key Particle Config Fields
+- shape: "circle" | "rectangle" | "square" | "roundedRectangle" | "triangle" | "star" | "ring" | "sparkle"
+- blendMode: "normal" | "additive" | "multiply" | "screen"
+- rate: number                      — particles per frame. Default 8
+- life: number                      — emitter burst budget. Default 30
+- particleLife: number              — particle lifetime in ticks. Default 100
+- velocity: Vector                  — initial velocity direction + speed
+- spread: number                    — emission cone width in radians
+- sizeMin/sizeMax: number           — particle size range
+- velocityMultiplier: number        — scales velocity randomization. Default 6
+- fadeTime: number                  — fade-out duration in ticks. Default 30
+- gravity: number                   — downward pull. Default 0.15
+- colors: string[]                  — hex color palette. Empty = auto-generated harmonious palette
+- trail: boolean                    — enable trail rendering
+- trailLength: number               — max trail segments
+- glow: boolean                     — enable glow effect
+- glowSize: number                  — glow radius
+- shadow: boolean                   — enable drop shadow
+- detonate: { at: number, childCount?: number, velocity?: number, ... } — auto-explode at lifetime fraction
+
+## Presets
+
+| Name                  | Type    | Description                                          |
+|-----------------------|---------|------------------------------------------------------|
+| "magic"               | Burst   | Soft trailing circles, cool blue palette (default)   |
+| "confetti"            | Burst   | Playful square confetti, muted colors                |
+| "fireworks"           | Burst   | Energetic additive circles, bright bloom             |
+| "fireworksDetonation" | Burst   | Narrow launch, auto-explodes into sub-bursts         |
+| "snow"                | Ambient | Gentle snowfall, continuous                          |
+| "meteors"             | Ambient | Bright diagonal streaks with glowing trails          |
+| "imageText"           | Image   | Tiny square particles for text rendering             |
+| "imageShape"          | Image   | Circle particles with glow for image/icon rendering  |
+| "images"              | Image   | Icon/image burst particles                           |
+
+## Color Palettes
+
+Override colors on any preset: `createParticles({ config: { colors: ["#ff0000", "#00ff00"] } })`
+
+Built-in (via `presets.Colors.xxx`): snow, grayscale, coolBlue, muted, blue, orange, green, meteor, finland, usa.
+Empty colors array = auto-generated harmonious HSL palette per emitter.
+
+## Container Mode
+
+Pass `container: HTMLElement` to any function. The container must have `position: relative`.
+Canvas auto-sizes to container. All coordinates become container-relative.
+Works with `addBoundary()` for DOM element repulsion inside the container.
+
+## Common Patterns
+
+### Click burst on specific element
+```js
+const p = createParticles({ container: myElement });
+p.attachClickBurst(myElement);
+```
+
+### Interactive text with mouse push
+```js
+const p = createParticles({ preset: "imageText", mouseForce: { strength: 3, radius: 80 } });
+p.textToParticles("Hello");
+```
+
+### Particles that avoid DOM elements
+```js
+const p = createParticles({ container: pageContainer, preset: "snow" });
+const handle = p.addBoundary({ element: document.querySelector(".card"), strength: -4, radius: 35 });
+// handle.destroy() to remove
+```
+
+### Fireworks with auto-detonation
+```js
+const p = createParticles({ preset: "fireworksDetonation" });
+p.attachClickBurst(document);
+```
+
+### Custom colors
+```js
+const p = createParticles({ config: { colors: ["#ff6b6b", "#feca57", "#48dbfb"] } });
+```
+
+## Notes
+
+- All positions in controller methods use screen pixels (CSS pixels). Engine divides by pixelRatio internally.
+- Attractor positions use engine coordinates (screen / pixelRatio). Use addAttractor for direct control.
+- Image/text particles have spring return — they bounce back to home positions after being pushed.
+- destroy() cleans up everything: canvas (if auto-created), event listeners, resize observers, RAF loop.
+- TypeScript types are included. All config interfaces are exported.

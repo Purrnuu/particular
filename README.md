@@ -16,10 +16,7 @@ npm install particular
 import { useParticles } from "particular";
 
 function App() {
-  const { canvasRef, canvasStyle, burstFromEvent } = useParticles({
-    preset: "magic",
-    renderer: "webgl",
-  });
+  const { canvasRef, canvasStyle, burstFromEvent } = useParticles();
 
   return (
     <>
@@ -37,27 +34,21 @@ import { useRef, useEffect } from "react";
 import { createParticles } from "particular";
 
 function TextParticles() {
-  const canvasRef = useRef(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const controller = createParticles({
-      canvas: canvasRef.current,
+      container: containerRef.current!,
       preset: "imageText",
-      renderer: "webgl",
-      autoResize: true,
+      mouseForce: { strength: 3, radius: 80 },
     });
 
-    controller.textToParticles("Hello", {
-      x: window.innerWidth / 2,
-      y: window.innerHeight / 2,
-      width: Math.min(window.innerWidth * 0.8, 800),
-    });
-    controller.addMouseForce({ track: true, strength: 3, radius: 80 });
+    controller.textToParticles("Hello");
 
     return () => controller.destroy();
   }, []);
 
-  return <canvas ref={canvasRef} style={{ position: "fixed", inset: 0 }} />;
+  return <div ref={containerRef} style={{ position: "relative", width: "100%", height: "100vh" }} />;
 }
 ```
 
@@ -68,28 +59,24 @@ import { useRef, useEffect } from "react";
 import { createParticles } from "particular";
 
 function ImageParticles() {
-  const canvasRef = useRef(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const controller = createParticles({
-      canvas: canvasRef.current,
+      container: containerRef.current!,
       preset: "imageShape",
-      renderer: "webgl",
-      autoResize: true,
+      mouseForce: { strength: 3, radius: 80 },
     });
 
     controller.imageToParticles({
       image: "/viking.png", // URL, imported asset, or data URI
-      x: window.innerWidth / 2,
-      y: window.innerHeight / 2,
       width: 500,
     });
-    controller.addMouseForce({ track: true, strength: 3, radius: 80 });
 
     return () => controller.destroy();
   }, []);
 
-  return <canvas ref={canvasRef} style={{ position: "fixed", inset: 0 }} />;
+  return <div ref={containerRef} style={{ position: "relative", width: "100%", height: "100vh" }} />;
 }
 ```
 
@@ -99,10 +86,7 @@ function ImageParticles() {
 import { useScreensaver } from "particular";
 
 function Snow() {
-  const { canvasRef, canvasStyle } = useScreensaver({
-    preset: "snow",
-    renderer: "webgl",
-  });
+  const { canvasRef, canvasStyle } = useScreensaver({ preset: "snow" });
 
   return <canvas ref={canvasRef} style={canvasStyle} />;
 }
@@ -111,18 +95,11 @@ function Snow() {
 ### Vanilla — Click Burst
 
 ```html
-<canvas id="particles"></canvas>
 <script src="https://unpkg.com/particular/dist/particular.global.js"></script>
 <script>
   const { createParticles } = window.Particular;
 
-  const particles = createParticles({
-    canvas: document.getElementById("particles"),
-    preset: "magic",
-    renderer: "webgl",
-    autoResize: true,
-  });
-
+  const particles = createParticles({ preset: "magic" });
   particles.attachClickBurst(document);
 </script>
 ```
@@ -130,68 +107,50 @@ function Snow() {
 ### Vanilla — Text to Particles
 
 ```html
-<canvas id="particles" style="position:fixed;inset:0"></canvas>
+<div id="container" style="position:relative;width:100%;height:100vh"></div>
 <script src="https://unpkg.com/particular/dist/particular.global.js"></script>
 <script>
   const { createParticles } = window.Particular;
 
   const controller = createParticles({
-    canvas: document.getElementById("particles"),
+    container: document.getElementById("container"),
     preset: "imageText",
-    renderer: "webgl",
-    autoResize: true,
+    mouseForce: { strength: 3, radius: 80 },
   });
 
-  controller.textToParticles("Hello", {
-    x: window.innerWidth / 2,
-    y: window.innerHeight / 2,
-    width: Math.min(window.innerWidth * 0.8, 800),
-  });
-
-  controller.addMouseForce({ track: true, strength: 3, radius: 80 });
+  controller.textToParticles("Hello");
 </script>
 ```
 
 ### Vanilla — Image to Particles
 
 ```html
-<canvas id="particles" style="position:fixed;inset:0"></canvas>
+<div id="container" style="position:relative;width:100%;height:100vh"></div>
 <script src="https://unpkg.com/particular/dist/particular.global.js"></script>
 <script>
   const { createParticles } = window.Particular;
 
   const controller = createParticles({
-    canvas: document.getElementById("particles"),
+    container: document.getElementById("container"),
     preset: "imageShape",
-    renderer: "webgl",
-    autoResize: true,
+    mouseForce: { strength: 3, radius: 80 },
   });
 
   controller.imageToParticles({
     image: "/viking.png", // URL or data URI
-    x: window.innerWidth / 2,
-    y: window.innerHeight / 2,
     width: 500,
   });
-
-  controller.addMouseForce({ track: true, strength: 3, radius: 80 });
 </script>
 ```
 
 ### Vanilla — Screensaver
 
 ```html
-<canvas id="particles" style="position:fixed;inset:0"></canvas>
 <script src="https://unpkg.com/particular/dist/particular.global.js"></script>
 <script>
   const { startScreensaver } = window.Particular;
 
-  startScreensaver({
-    canvas: document.getElementById("particles"),
-    preset: "snow",
-    renderer: "webgl",
-    autoResize: true,
-  });
+  startScreensaver({ preset: "snow" });
 </script>
 ```
 
@@ -217,14 +176,25 @@ function Snow() {
 | `burst({ x, y })` | Emit a particle burst at screen coordinates |
 | `scatter({ velocity })` | Scatter all particles with random impulse |
 | `explode()` | Explode all particles into child fragments |
-| `imageToParticles({ image, x, y, width })` | Convert an image to an interactive particle grid |
-| `textToParticles(text, { x, y, width })` | Convert text to an interactive particle grid |
+| `imageToParticles({ image })` | Convert an image to an interactive particle grid |
+| `textToParticles(text)` | Convert text to an interactive particle grid |
 | `addMouseForce({ track, strength, radius })` | Add mouse-driven push force |
 | `addAttractor({ x, y, strength, radius })` | Add a gravity attractor point |
+| `addBoundary({ element })` | Create repulsion boundary around a DOM element |
 | `attachClickBurst(target)` | Auto-burst on click events |
 | `destroy()` | Clean up all resources and listeners |
 
 Image/text particles have spring physics — they return to their home positions after being pushed. Press E (in the examples) to scatter them.
+
+## Smart Defaults
+
+The library is designed for zero-config usage:
+
+- **Renderer**: WebGL by default
+- **Canvas**: Auto-created and styled when omitted — no `<canvas>` element or CSS needed
+- **Image/text**: Auto-centered with sensible dimensions when `x`/`y`/`width` are omitted
+- **Mouse force**: `mouseForce: true` shorthand adds tracking with sensible defaults
+- **Styles**: Positioning and `pointer-events: none` applied automatically
 
 ## Container Mode
 
@@ -240,7 +210,6 @@ function HeroSection() {
   const containerRef = useRef<HTMLDivElement>(null);
   const { canvasRef, canvasStyle, burstFromEvent } = useParticles({
     preset: "magic",
-    renderer: "webgl",
     container: containerRef.current!,
   });
 
@@ -256,20 +225,15 @@ function HeroSection() {
 ### Vanilla — Container-Aware
 
 ```html
-<div id="hero" style="position:relative;height:400px;overflow:hidden">
-  <canvas id="particles"></canvas>
-</div>
+<div id="hero" style="position:relative;height:400px;overflow:hidden"></div>
 <script src="https://unpkg.com/particular/dist/particular.global.js"></script>
 <script>
   const { createParticles } = window.Particular;
   const container = document.getElementById("hero");
 
   const particles = createParticles({
-    canvas: document.getElementById("particles"),
     container: container,
     preset: "magic",
-    renderer: "webgl",
-    autoResize: true,
   });
 
   particles.attachClickBurst(container);
