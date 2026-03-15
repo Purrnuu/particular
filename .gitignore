@@ -1,13 +1,16 @@
 # Dependencies
 node_modules/
 
-# Lock files (keep package-lock.json, ignore others)
+# Lock files (library — consumers resolve their own deps)
+package-lock.json
 yarn.lock
 pnpm-lock.yaml
 
 # Build outputs
 lib/
 *.tsbuildinfo
+*.tgz
+.turbo/
 
 # Test coverage
 coverage/
