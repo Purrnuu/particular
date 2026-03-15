@@ -1,8 +1,18 @@
 {
   "name": "@purrnuu/particular",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "An opinionated Particle Engine",
-  "keywords": ["particles", "particle-engine", "webgl", "canvas", "react", "animation", "effects", "confetti", "snow"],
+  "keywords": [
+    "particles",
+    "particle-engine",
+    "webgl",
+    "canvas",
+    "react",
+    "animation",
+    "effects",
+    "confetti",
+    "snow"
+  ],
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
