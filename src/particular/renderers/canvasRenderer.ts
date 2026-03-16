@@ -318,10 +318,12 @@ export default class CanvasRenderer {
     this.context.translate(pixelRounded[0], pixelRounded[1]);
     this.context.rotate(degToRad(particle.rotation));
     
+    // Equilateral triangle centered at centroid (matches WebGL sdEquilateralTriangle SDF)
+    const k = 0.5773502691896258; // 1 / sqrt(3)
     this.context.beginPath();
-    this.context.moveTo(0, -size);
-    this.context.lineTo(size, size);
-    this.context.lineTo(-size, size);
+    this.context.moveTo(0, -size * 2 * k);
+    this.context.lineTo(size, size * k);
+    this.context.lineTo(-size, size * k);
     this.context.closePath();
     this.context.fill();
     

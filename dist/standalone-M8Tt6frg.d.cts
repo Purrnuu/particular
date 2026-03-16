@@ -94,7 +94,13 @@ interface ChildExplosionConfig {
     sizeMax?: number;
     /** Outward velocity magnitude. Default 3. */
     velocity?: number;
-    /** Child gravity. Default 0.05. */
+    /** Velocity spread (0–1). Randomizes speed: velocity × (1 ± spread). Default 0.4. */
+    velocitySpread?: number;
+    /** Friction applied to child particles. Default 0.01. */
+    friction?: number;
+    /** Scale step — how quickly children grow to full size. Lower = slower grow-in. Default 1.5. */
+    scaleStep?: number;
+    /** Child gravity. Default 0.12. */
     gravity?: number;
     /** Child fade time in ticks. Default 15. */
     fadeTime?: number;
@@ -256,6 +262,18 @@ interface ParticleConstructorParams extends ShapeConfig {
     /** Home position spring + idle animation config. */
     homeConfig?: HomePositionConfig;
 }
+type IntroMode = 'scatter' | 'scaleIn' | 'ripple' | 'paint';
+/** Configuration for intro animation when creating image/text particles. */
+interface IntroConfig {
+    /** Animation mode. Default 'scatter'.
+     *  - 'scatter': particles start at random positions and spring to home while scaling in.
+     *  - 'scaleIn': particles fly outward from image center — outer edges form first, filling inward.
+     *  - 'ripple': shockwave from center — particles appear and get pushed outward, overshoot, spring back.
+     *  - 'paint': particles spray from bottom center, staggered left-to-right, painting the image. */
+    mode?: IntroMode;
+    /** Total intro duration in ms (controls stagger for scaleIn/ripple, grow speed for scatter). Default 800. */
+    duration?: number;
+}
 /** Configuration for mapping an image into a grid of colored particles. */
 interface ImageParticlesConfig extends ShapeConfig {
     /** Image source — URL string or HTMLImageElement. */
@@ -284,6 +302,8 @@ interface ImageParticlesConfig extends ShapeConfig {
     scaleStep?: number;
     /** Home position spring + idle animation config. Applied to all generated particles. */
     homeConfig?: HomePositionConfig;
+    /** Intro animation — particles animate in rather than appearing instantly. See IntroConfig. */
+    intro?: IntroConfig;
 }
 interface BurstSettings {
     clientX: number;
@@ -391,6 +411,8 @@ declare class Particle {
     trailSegments: TrailSegment[];
     homePosition: Vector | null;
     homeConfig: Required<HomePositionConfig> | null;
+    /** When false, idle animations (breathing, wiggle, wave, pulse) are suppressed. Spring return still works. */
+    idleEnabled: boolean;
     private breathingPhase;
     /** Per-particle spring multiplier (0.6–1.4) — breaks sync so particles return at different rates. */
     private springMultiplier;
@@ -525,6 +547,15 @@ declare class Particular implements IEventDispatcher {
     destroy(): void;
 }
 
+type ParticleDefaults = Required<Omit<ParticleConfig, 'detonate'>>;
+/** Return type of configureParticular() — the fully-merged config used by helpers. */
+type MergedConfig = Required<Omit<ParticularConfig, 'container'>> & ParticleDefaults & {
+    renderer?: RendererType;
+    container?: HTMLElement;
+};
+declare function configureParticular(configuration?: FullParticularConfig): MergedConfig;
+declare function configureParticle<T extends Partial<ParticleConfig>>(settings?: T, configuration?: ParticleConfig): ParticleDefaults & T;
+
 interface StrokeConfig {
     color: string;
     thickness: number;
@@ -618,7 +649,7 @@ declare class WebGLRenderer {
 
 declare const presetRegistry: {
     readonly confetti: {
-        shape: "square";
+        shape: "rectangle";
         blendMode: "normal";
         rate: number;
         life: number;
@@ -630,6 +661,7 @@ declare const presetRegistry: {
         fadeTime: number;
         gravity: number;
         scaleStep: number;
+        friction: number;
         maxCount: number;
         colors: string[];
     };
@@ -654,11 +686,7 @@ declare const presetRegistry: {
     };
     readonly fireworks: {
         shape: "circle";
-        blendMode: "additive";
-        glow: true;
-        glowSize: number;
-        glowColor: string;
-        glowAlpha: number;
+        blendMode: "normal";
         rate: number;
         life: number;
         velocity: Vector;
@@ -670,15 +698,15 @@ declare const presetRegistry: {
         gravity: number;
         scaleStep: number;
         maxCount: number;
+        trail: true;
+        trailLength: number;
+        trailFade: number;
+        trailShrink: number;
         colors: string[];
     };
     readonly fireworksDetonation: {
         shape: "circle";
         blendMode: "normal";
-        glow: true;
-        glowSize: number;
-        glowColor: string;
-        glowAlpha: number;
         rate: number;
         life: number;
         velocity: Vector;
@@ -695,11 +723,18 @@ declare const presetRegistry: {
             at: number;
             childCount: number;
             velocity: number;
+            velocitySpread: number;
+            friction: number;
+            scaleStep: number;
             childLife: number;
+            sizeMin: number;
+            sizeMax: number;
             fadeTime: number;
-            glow: true;
-            glowSize: number;
             inheritColor: true;
+            trail: true;
+            trailLength: number;
+            trailFade: number;
+            trailShrink: number;
         };
     };
     readonly images: {
@@ -765,7 +800,7 @@ declare const presetRegistry: {
     };
     readonly meteors: {
         shape: "circle";
-        blendMode: "additive";
+        blendMode: "normal";
         glow: true;
         glowSize: number;
         glowColor: string;
@@ -795,12 +830,81 @@ declare const presetRegistry: {
         autoStart: true;
         colors: string[];
     };
+    readonly river: {
+        shape: "circle";
+        blendMode: "normal";
+        glow: true;
+        glowSize: number;
+        glowColor: string;
+        glowAlpha: number;
+        shadow: false;
+        trail: true;
+        trailLength: number;
+        trailFade: number;
+        trailShrink: number;
+        rate: number;
+        life: number;
+        particleLife: number;
+        velocity: Vector;
+        spread: number;
+        sizeMin: number;
+        sizeMax: number;
+        velocityMultiplier: number;
+        fadeTime: number;
+        gravity: number;
+        friction: number;
+        scaleStep: number;
+        maxCount: number;
+        continuous: true;
+        autoStart: true;
+        colors: string[];
+    };
+    readonly fireworksShow: {
+        shape: "triangle";
+        blendMode: "normal";
+        trail: true;
+        trailLength: number;
+        trailFade: number;
+        trailShrink: number;
+        rate: number;
+        life: number;
+        particleLife: number;
+        velocity: Vector;
+        spread: number;
+        sizeMin: number;
+        sizeMax: number;
+        velocityMultiplier: number;
+        fadeTime: number;
+        gravity: number;
+        scaleStep: number;
+        maxCount: number;
+        continuous: true;
+        autoStart: true;
+        colors: string[];
+        detonate: {
+            at: number;
+            childCount: number;
+            velocity: number;
+            velocitySpread: number;
+            friction: number;
+            scaleStep: number;
+            childLife: number;
+            sizeMin: number;
+            sizeMax: number;
+            fadeTime: number;
+            inheritColor: true;
+            trail: true;
+            trailLength: number;
+            trailFade: number;
+            trailShrink: number;
+        };
+    };
 };
 declare const presets: {
     readonly Burst: {
-        /** Polished confetti burst: playful, readable, and balanced */
+        /** Celebratory confetti burst: colorful rectangles fluttering outward and drifting down */
         readonly confetti: {
-            shape: "square";
+            shape: "rectangle";
             blendMode: "normal";
             rate: number;
             life: number;
@@ -812,6 +916,7 @@ declare const presets: {
             fadeTime: number;
             gravity: number;
             scaleStep: number;
+            friction: number;
             maxCount: number;
             colors: string[];
         };
@@ -835,14 +940,10 @@ declare const presets: {
             trailLength: number;
             colors: string[];
         };
-        /** Cinematic fireworks: energetic additive circles with bright bloom */
+        /** Cinematic fireworks: energetic circles with bright bloom */
         readonly fireworks: {
             shape: "circle";
-            blendMode: "additive";
-            glow: true;
-            glowSize: number;
-            glowColor: string;
-            glowAlpha: number;
+            blendMode: "normal";
             rate: number;
             life: number;
             velocity: Vector;
@@ -854,16 +955,16 @@ declare const presets: {
             gravity: number;
             scaleStep: number;
             maxCount: number;
+            trail: true;
+            trailLength: number;
+            trailFade: number;
+            trailShrink: number;
             colors: string[];
         };
         /** Fireworks with timed detonation: narrow upward launch that auto-explodes into colorful sub-bursts */
         readonly fireworksDetonation: {
             shape: "circle";
             blendMode: "normal";
-            glow: true;
-            glowSize: number;
-            glowColor: string;
-            glowAlpha: number;
             rate: number;
             life: number;
             velocity: Vector;
@@ -880,11 +981,18 @@ declare const presets: {
                 at: number;
                 childCount: number;
                 velocity: number;
+                velocitySpread: number;
+                friction: number;
+                scaleStep: number;
                 childLife: number;
+                sizeMin: number;
+                sizeMax: number;
                 fadeTime: number;
-                glow: true;
-                glowSize: number;
                 inheritColor: true;
+                trail: true;
+                trailLength: number;
+                trailFade: number;
+                trailShrink: number;
             };
         };
     };
@@ -961,7 +1069,7 @@ declare const presets: {
         /** Meteors: bright diagonal streaks with glowing trails, accelerating as they fall */
         readonly meteors: {
             shape: "circle";
-            blendMode: "additive";
+            blendMode: "normal";
             glow: true;
             glowSize: number;
             glowColor: string;
@@ -985,6 +1093,77 @@ declare const presets: {
             accelerationSize: number;
             friction: number;
             frictionSize: number;
+            scaleStep: number;
+            maxCount: number;
+            continuous: true;
+            autoStart: true;
+            colors: string[];
+        };
+        /** Fireworks show: gentle rockets launch from the bottom and auto-explode into colorful bursts */
+        readonly fireworksShow: {
+            shape: "triangle";
+            blendMode: "normal";
+            trail: true;
+            trailLength: number;
+            trailFade: number;
+            trailShrink: number;
+            rate: number;
+            life: number;
+            particleLife: number;
+            velocity: Vector;
+            spread: number;
+            sizeMin: number;
+            sizeMax: number;
+            velocityMultiplier: number;
+            fadeTime: number;
+            gravity: number;
+            scaleStep: number;
+            maxCount: number;
+            continuous: true;
+            autoStart: true;
+            colors: string[];
+            detonate: {
+                at: number;
+                childCount: number;
+                velocity: number;
+                velocitySpread: number;
+                friction: number;
+                scaleStep: number;
+                childLife: number;
+                sizeMin: number;
+                sizeMax: number;
+                fadeTime: number;
+                inheritColor: true;
+                trail: true;
+                trailLength: number;
+                trailFade: number;
+                trailShrink: number;
+            };
+        };
+        /** River flow: horizontal stream of water particles, designed for use with attractors */
+        readonly river: {
+            shape: "circle";
+            blendMode: "normal";
+            glow: true;
+            glowSize: number;
+            glowColor: string;
+            glowAlpha: number;
+            shadow: false;
+            trail: true;
+            trailLength: number;
+            trailFade: number;
+            trailShrink: number;
+            rate: number;
+            life: number;
+            particleLife: number;
+            velocity: Vector;
+            spread: number;
+            sizeMin: number;
+            sizeMax: number;
+            velocityMultiplier: number;
+            fadeTime: number;
+            gravity: number;
+            friction: number;
             scaleStep: number;
             maxCount: number;
             continuous: true;
@@ -1033,9 +1212,13 @@ declare const presets: {
         readonly meteor: {
             readonly colors: string[];
         };
+        /** Cyan-to-white water palette */
+        readonly water: {
+            readonly colors: string[];
+        };
     };
     readonly confetti: {
-        shape: "square";
+        shape: "rectangle";
         blendMode: "normal";
         rate: number;
         life: number;
@@ -1047,6 +1230,7 @@ declare const presets: {
         fadeTime: number;
         gravity: number;
         scaleStep: number;
+        friction: number;
         maxCount: number;
         colors: string[];
     };
@@ -1071,11 +1255,7 @@ declare const presets: {
     };
     readonly fireworks: {
         shape: "circle";
-        blendMode: "additive";
-        glow: true;
-        glowSize: number;
-        glowColor: string;
-        glowAlpha: number;
+        blendMode: "normal";
         rate: number;
         life: number;
         velocity: Vector;
@@ -1087,15 +1267,15 @@ declare const presets: {
         gravity: number;
         scaleStep: number;
         maxCount: number;
+        trail: true;
+        trailLength: number;
+        trailFade: number;
+        trailShrink: number;
         colors: string[];
     };
     readonly fireworksDetonation: {
         shape: "circle";
         blendMode: "normal";
-        glow: true;
-        glowSize: number;
-        glowColor: string;
-        glowAlpha: number;
         rate: number;
         life: number;
         velocity: Vector;
@@ -1112,11 +1292,18 @@ declare const presets: {
             at: number;
             childCount: number;
             velocity: number;
+            velocitySpread: number;
+            friction: number;
+            scaleStep: number;
             childLife: number;
+            sizeMin: number;
+            sizeMax: number;
             fadeTime: number;
-            glow: true;
-            glowSize: number;
             inheritColor: true;
+            trail: true;
+            trailLength: number;
+            trailFade: number;
+            trailShrink: number;
         };
     };
     readonly images: {
@@ -1182,7 +1369,7 @@ declare const presets: {
     };
     readonly meteors: {
         shape: "circle";
-        blendMode: "additive";
+        blendMode: "normal";
         glow: true;
         glowSize: number;
         glowColor: string;
@@ -1211,6 +1398,75 @@ declare const presets: {
         continuous: true;
         autoStart: true;
         colors: string[];
+    };
+    readonly river: {
+        shape: "circle";
+        blendMode: "normal";
+        glow: true;
+        glowSize: number;
+        glowColor: string;
+        glowAlpha: number;
+        shadow: false;
+        trail: true;
+        trailLength: number;
+        trailFade: number;
+        trailShrink: number;
+        rate: number;
+        life: number;
+        particleLife: number;
+        velocity: Vector;
+        spread: number;
+        sizeMin: number;
+        sizeMax: number;
+        velocityMultiplier: number;
+        fadeTime: number;
+        gravity: number;
+        friction: number;
+        scaleStep: number;
+        maxCount: number;
+        continuous: true;
+        autoStart: true;
+        colors: string[];
+    };
+    readonly fireworksShow: {
+        shape: "triangle";
+        blendMode: "normal";
+        trail: true;
+        trailLength: number;
+        trailFade: number;
+        trailShrink: number;
+        rate: number;
+        life: number;
+        particleLife: number;
+        velocity: Vector;
+        spread: number;
+        sizeMin: number;
+        sizeMax: number;
+        velocityMultiplier: number;
+        fadeTime: number;
+        gravity: number;
+        scaleStep: number;
+        maxCount: number;
+        continuous: true;
+        autoStart: true;
+        colors: string[];
+        detonate: {
+            at: number;
+            childCount: number;
+            velocity: number;
+            velocitySpread: number;
+            friction: number;
+            scaleStep: number;
+            childLife: number;
+            sizeMin: number;
+            sizeMax: number;
+            fadeTime: number;
+            inheritColor: true;
+            trail: true;
+            trailLength: number;
+            trailFade: number;
+            trailShrink: number;
+        };
     };
 };
 type PresetName = keyof typeof presetRegistry;
@@ -1289,6 +1545,9 @@ interface ParticlesController {
     textToParticles: (text: string, config?: Omit<ImageParticlesConfig, 'image'> & {
         textConfig?: Omit<TextImageConfig, 'text'>;
     }) => Promise<Emitter>;
+    /** Toggle idle animations (breathing, wiggle, wave, pulse) on all particles with home positions.
+     *  Spring return still works when idle is disabled — particles return home but stay still once there. */
+    setIdleEffect: (enabled: boolean) => void;
     destroy: () => void;
 }
 interface ScreensaverOptions {
@@ -1375,4 +1634,4 @@ interface FPSOverlayController {
 }
 declare function showFPSOverlay(options?: FPSOverlayOptions): FPSOverlayController;
 
-export { Attractor as A, type BurstSettings as B, CanvasRenderer as C, type DetonateConfig as D, type ExplodeOptions as E, type FullParticularConfig as F, createParticles as G, type HomePositionConfig as H, type ImageParticlesConfig as I, createTextImage as J, getParticlesBackgroundLayerStyle as K, getParticlesContainerLayerStyle as L, type MouseForceConfig as M, particlesBackgroundLayerStyle as N, particlesContainerLayerStyle as O, type ParticularConfig as P, DEFAULT_Z_INDEX as Q, type RendererType as R, type ScreensaverController as S, type TextImageConfig as T, presets as U, Vector as V, WebGLRenderer as W, showFPSOverlay as X, startScreensaver as Y, type ParticleConfig as a, Particular as b, type PresetName as c, type ParticlesController as d, type BurstOptions as e, type AttractorConfig as f, type BlendMode as g, type BoundaryConfig as h, type BoundaryHandle as i, type ChildExplosionConfig as j, type CreateParticlesOptions as k, Emitter as l, type EmitterConfiguration as m, type FPSOverlayController as n, type FPSOverlayOptions as o, type ForceSource as p, MouseForce as q, Particle as r, type ParticleConstructorParams as s, type ParticleShape as t, type ScreensaverOptions as u, type ShapeConfig as v, type WebGLRendererOptions as w, applyCanvasStyles as x, canvasToDataURL as y, createHeartImage as z };
+export { showFPSOverlay as $, Attractor as A, type BurstSettings as B, CanvasRenderer as C, type DetonateConfig as D, type ExplodeOptions as E, type FullParticularConfig as F, applyCanvasStyles as G, type HomePositionConfig as H, type ImageParticlesConfig as I, canvasToDataURL as J, configureParticle as K, createHeartImage as L, type MouseForceConfig as M, createParticles as N, createTextImage as O, Particular as P, getParticlesBackgroundLayerStyle as Q, type RendererType as R, type ScreensaverController as S, type TextImageConfig as T, getParticlesContainerLayerStyle as U, Vector as V, WebGLRenderer as W, particlesBackgroundLayerStyle as X, particlesContainerLayerStyle as Y, DEFAULT_Z_INDEX as Z, presets as _, type ParticleConfig as a, startScreensaver as a0, type PresetName as b, configureParticular as c, type ParticlesController as d, type BurstOptions as e, type AttractorConfig as f, type BlendMode as g, type BoundaryConfig as h, type BoundaryHandle as i, type ChildExplosionConfig as j, type CreateParticlesOptions as k, Emitter as l, type EmitterConfiguration as m, type FPSOverlayController as n, type FPSOverlayOptions as o, type ForceSource as p, type IntroConfig as q, type IntroMode as r, MouseForce as s, Particle as t, type ParticleConstructorParams as u, type ParticleShape as v, type ParticularConfig as w, type ScreensaverOptions as x, type ShapeConfig as y, type WebGLRendererOptions as z };

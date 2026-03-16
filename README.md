@@ -159,11 +159,13 @@ function Snow() {
 | Name | Type | Description |
 |------|------|-------------|
 | `"magic"` | Burst | Soft trailing circles with cool blue palette |
-| `"confetti"` | Burst | Playful square confetti with muted colors |
-| `"fireworks"` | Burst | Energetic additive circles with bright bloom |
+| `"confetti"` | Burst | Colorful rectangle confetti with muted colors |
+| `"fireworks"` | Burst | Energetic circles with trailing streaks |
 | `"fireworksDetonation"` | Burst | Narrow launch that auto-explodes into sub-bursts |
 | `"snow"` | Ambient | Gentle snowfall drifting across the viewport |
 | `"meteors"` | Ambient | Bright diagonal streaks with glowing trails |
+| `"fireworksShow"` | Ambient | Continuous fireworks — rockets launch and auto-detonate |
+| `"river"` | Ambient | Horizontal water stream, designed for use with attractors |
 | `"imageText"` | Image | Tuned for text rendered as particle grid |
 | `"imageShape"` | Image | Tuned for images/icons rendered as particle grid |
 
@@ -178,6 +180,7 @@ function Snow() {
 | `explode()` | Explode all particles into child fragments |
 | `imageToParticles({ image })` | Convert an image to an interactive particle grid |
 | `textToParticles(text)` | Convert text to an interactive particle grid |
+| `setIdleEffect(enabled)` | Toggle idle animations on image/text particles |
 | `addMouseForce({ track, strength, radius })` | Add mouse-driven push force |
 | `addAttractor({ x, y, strength, radius })` | Add a gravity attractor point |
 | `addBoundary({ element })` | Create repulsion boundary around a DOM element |
@@ -185,6 +188,18 @@ function Snow() {
 | `destroy()` | Clean up all resources and listeners |
 
 Image/text particles have spring physics — they return to their home positions after being pushed. Press E (in the examples) to scatter them.
+
+### Intro Animation
+
+Add `intro` to `imageToParticles()` or `textToParticles()` for animated particle reveals:
+
+```js
+controller.imageToParticles({ image: "/photo.png", intro: {} }); // scatter (default)
+controller.imageToParticles({ image: "/photo.png", intro: { mode: "scaleIn" } }); // edges first, fills inward
+controller.imageToParticles({ image: "/photo.png", intro: { mode: "ripple" } }); // center-out shockwave
+```
+
+Modes: `scatter` (particles fly in from random positions), `scaleIn` (outer edges form first from center, filling inward), `ripple` (shockwave — pushed outward, overshoot, spring back), `paint` (spray from bottom center, left-to-right).
 
 ## Smart Defaults
 

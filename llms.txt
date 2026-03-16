@@ -76,7 +76,7 @@ Main entry point. Creates engine, canvas, and returns controller.
 
 Options (all optional):
 - canvas: HTMLCanvasElement          — if omitted, auto-created and appended to container or document.body
-- preset: PresetName                 — default "magic". One of: "magic", "confetti", "fireworks", "fireworksDetonation", "snow", "meteors", "imageText", "imageShape", "images"
+- preset: PresetName                 — default "magic". One of: "magic", "confetti", "fireworks", "fireworksDetonation", "snow", "meteors", "fireworksShow", "river", "imageText", "imageShape", "images"
 - config: Partial<FullParticularConfig> — override any particle/engine config field
 - renderer: "webgl" | "canvas"      — default "webgl"
 - autoResize: boolean                — default true
@@ -109,6 +109,7 @@ Returned by createParticles(). Methods:
 #### Image/Text
 - imageToParticles(config) → Promise<Emitter>       — see ImageParticlesConfig below
 - textToParticles(text, config?) → Promise<Emitter> — config is optional, auto-centers with smart defaults
+- setIdleEffect(enabled) → void                    — toggle idle animations (breathing, wiggle, wave, pulse) on all home-position particles. Spring return still works when disabled
 
 #### Properties
 - engine: Particular                                 — the underlying engine instance
@@ -186,6 +187,15 @@ Returns: { canvasRef, canvasStyle, destroy() }
 - scaleStep?: number                — default: instant (equal to size)
 - shape?: ParticleShape             — default from preset
 - homeConfig?: HomePositionConfig   — spring physics + idle animation config
+- intro?: IntroConfig              — animated particle reveal. See IntroConfig
+
+### IntroConfig (for image/text particles)
+- mode?: "scatter" | "scaleIn" | "ripple" | "paint" — animation mode. Default "scatter"
+  - "scatter": particles start at random positions, spring to home while scaling in
+  - "scaleIn": particles fly outward from image center — outer edges form first, filling inward to center
+  - "ripple": shockwave from center — particles appear and get pushed outward, overshoot, spring back
+  - "paint": particles spray from bottom center, staggered left-to-right, painting the image
+- duration?: number                — total intro duration in ms. Default 800
 
 ### MouseForceConfig
 - strength?: number                 — default 1
@@ -250,11 +260,13 @@ Returns: { canvasRef, canvasStyle, destroy() }
 | Name                  | Type    | Description                                          |
 |-----------------------|---------|------------------------------------------------------|
 | "magic"               | Burst   | Soft trailing circles, cool blue palette (default)   |
-| "confetti"            | Burst   | Playful square confetti, muted colors                |
-| "fireworks"           | Burst   | Energetic additive circles, bright bloom             |
+| "confetti"            | Burst   | Colorful rectangle confetti, muted colors            |
+| "fireworks"           | Burst   | Energetic circles with trailing streaks              |
 | "fireworksDetonation" | Burst   | Narrow launch, auto-explodes into sub-bursts         |
 | "snow"                | Ambient | Gentle snowfall, continuous                          |
 | "meteors"             | Ambient | Bright diagonal streaks with glowing trails          |
+| "fireworksShow"       | Ambient | Continuous fireworks — rockets launch and detonate   |
+| "river"               | Ambient | Horizontal water stream for use with attractors      |
 | "imageText"           | Image   | Tiny square particles for text rendering             |
 | "imageShape"          | Image   | Circle particles with glow for image/icon rendering  |
 | "images"              | Image   | Icon/image burst particles                           |
@@ -263,7 +275,7 @@ Returns: { canvasRef, canvasStyle, destroy() }
 
 Override colors on any preset: `createParticles({ config: { colors: ["#ff0000", "#00ff00"] } })`
 
-Built-in (via `presets.Colors.xxx`): snow, grayscale, coolBlue, muted, blue, orange, green, meteor, finland, usa.
+Built-in (via `presets.Colors.xxx`): snow, grayscale, coolBlue, muted, blue, orange, green, meteor, water, finland, usa.
 Empty colors array = auto-generated harmonious HSL palette per emitter.
 
 ## Container Mode
@@ -297,6 +309,13 @@ const handle = p.addBoundary({ element: document.querySelector(".card"), strengt
 ```js
 const p = createParticles({ preset: "fireworksDetonation" });
 p.attachClickBurst(document);
+```
+
+### Image with intro animation
+```js
+const p = createParticles({ preset: "imageShape", mouseForce: true });
+p.imageToParticles({ image: "/photo.png", width: 500, intro: {} }); // scatter (default)
+p.imageToParticles({ image: "/photo.png", width: 500, intro: { mode: "ripple" } }); // center-out wave
 ```
 
 ### Custom colors

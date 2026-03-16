@@ -84,9 +84,12 @@ export const defaultMouseForce: Required<Omit<MouseForceConfig, 'track'>> = {
 export const defaultExplosionChild: Required<ChildExplosionConfig> = {
   childCount: 5,
   childLife: 40,
-  sizeMin: 2,
-  sizeMax: 5,
+  sizeMin: 1,
+  sizeMax: 3,
   velocity: 3,
+  velocitySpread: 0.4,
+  friction: 0.01,
+  scaleStep: 1.5,
   gravity: 0.12,
   fadeTime: 15,
   inheritColor: true,
@@ -97,10 +100,10 @@ export const defaultExplosionChild: Required<ChildExplosionConfig> = {
   glowColor: '#ffffff',
   glowAlpha: 0.25,
   shadow: false,
-  trail: false,
+  trail: true,
   trailLength: 3,
-  trailFade: 0.75,
-  trailShrink: 0.55,
+  trailFade: 0.6,
+  trailShrink: 0.65,
 };
 
 export const defaultHomeConfig: Required<HomePositionConfig> = {

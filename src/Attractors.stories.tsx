@@ -3,7 +3,11 @@ import type { Meta, StoryObj } from '@storybook/react';
 
 import { createParticles } from './index';
 import type { ParticlesController, ParticleShape } from './index';
+import Emitter from './particular/components/emitter';
 import Attractor from './particular/components/attractor';
+import { configureParticle } from './particular/core/defaults';
+import { presets } from './particular/presets';
+import Vector from './particular/utils/vector';
 import { particlesBackgroundLayerStyle } from './particular/canvasStyles';
 import { particleArgTypes, defaultParticleStoryArgs, particleStoryArgsToConfig } from './storyArgs';
 import type { ParticleStoryArgs } from './storyArgs';
@@ -36,7 +40,7 @@ const AttractorDemo: React.FC<AttractorStoryArgs> = (props) => {
     const controller = createParticles({
       canvas,
       preset: 'magic',
-      config: { continuous: true, ...particleConfig },
+      config: { continuous: true, trail: false, ...particleConfig },
       renderer,
       autoResize: true,
     });
@@ -231,7 +235,7 @@ const VisibleAttractorDemo: React.FC<AttractorStoryArgs> = (props) => {
     const controller = createParticles({
       canvas,
       preset: 'magic',
-      config: { continuous: true, ...particleConfig },
+      config: { continuous: true, trail: false, ...particleConfig },
       renderer,
       autoResize: true,
     });
@@ -353,7 +357,7 @@ const RandomAttractorsDemo: React.FC<AttractorStoryArgs> = (props) => {
     const controller = createParticles({
       canvas,
       preset: 'magic',
-      config: { continuous: true, ...particleConfig },
+      config: { continuous: true, trail: false, ...particleConfig },
       renderer,
       autoResize: true,
     });
@@ -415,4 +419,100 @@ export const RandomAttractors: Story = {
     radius: 250,
   },
   render: (args) => <RandomAttractorsDemo {...args} />,
+};
+
+/* ─── River Flow ─── */
+
+const RiverDemo: React.FC<{ renderer: 'canvas' | 'webgl' }> = ({ renderer }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const controllerRef = useRef<ParticlesController | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const controller = createParticles({
+      canvas,
+      preset: 'river',
+      renderer,
+      autoResize: true,
+    });
+
+    controllerRef.current = controller;
+
+    const pr = controller.engine.pixelRatio;
+    const viewW = window.innerWidth / pr;
+    const viewH = window.innerHeight / pr;
+
+    // Emitter on the left edge, vertical band covering 40% of viewport
+    const riverConfig = configureParticle(presets.Ambient.river);
+    const emitter = new Emitter({
+      point: new Vector(0, viewH / 2),
+      ...riverConfig,
+      spawnWidth: 0,
+      spawnHeight: viewH * 0.4,
+      icons: [],
+    });
+    controller.engine.addEmitter(emitter);
+    emitter.isEmitting = true;
+    emitter.emit();
+
+    // S-curve attractors guide the flow like a river through a ridge
+    const curve = [
+      { x: 0.20, y: 0.35 },
+      { x: 0.40, y: 0.65 },
+      { x: 0.60, y: 0.35 },
+      { x: 0.80, y: 0.65 },
+    ];
+    for (const pt of curve) {
+      controller.addAttractor({
+        x: viewW * pt.x,
+        y: viewH * pt.y,
+        strength: 0.15,
+        radius: viewW * 0.3,
+      });
+    }
+
+    // Repulsors at top and bottom edges to keep particles in bounds
+    for (let fx = 0.1; fx <= 0.9; fx += 0.2) {
+      controller.addAttractor({ x: viewW * fx, y: viewH * 0.02, strength: -0.3, radius: viewH * 0.15 });
+      controller.addAttractor({ x: viewW * fx, y: viewH * 0.98, strength: -0.3, radius: viewH * 0.15 });
+    }
+
+    return () => {
+      controller.destroy();
+      controllerRef.current = null;
+    };
+  }, [renderer]);
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#0a1628' }}>
+      <canvas ref={canvasRef} style={particlesBackgroundLayerStyle} />
+      <p
+        style={{
+          textAlign: 'center',
+          paddingTop: '90vh',
+          pointerEvents: 'none',
+          userSelect: 'none',
+          opacity: 0.4,
+          color: '#80deea',
+        }}
+      >
+        River flow — particles stream through attractor waypoints
+      </p>
+    </div>
+  );
+};
+
+export const River: StoryObj<{ renderer: 'canvas' | 'webgl' }> = {
+  argTypes: {
+    renderer: {
+      control: 'radio',
+      options: ['canvas', 'webgl'],
+      description: 'Rendering backend',
+      table: { category: 'Rendering' },
+    },
+  },
+  args: { renderer: 'webgl' } as any,
+  render: (args) => <RiverDemo {...(args as unknown as { renderer: 'canvas' | 'webgl' })} />,
 };

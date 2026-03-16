@@ -309,3 +309,87 @@ export const Viking: Story = {
     );
   },
 };
+
+export const IntroScatter: Story = {
+  name: 'Intro — Scatter',
+  render: (args) => {
+    const size = Math.min(window.innerWidth, window.innerHeight) * 0.7;
+    return (
+      <ImageDemo
+        {...args}
+        buildImage={() => ({
+          image: vikingPng,
+          x: window.innerWidth / 2,
+          y: window.innerHeight / 2,
+          width: size,
+          height: size,
+          intro: { mode: 'scatter' },
+        })}
+        background="#1a1a2e"
+      />
+    );
+  },
+};
+
+export const IntroScaleIn: Story = {
+  name: 'Intro — Scale In',
+  render: (args) => {
+    const size = Math.min(window.innerWidth, window.innerHeight) * 0.7;
+    return (
+      <ImageDemo
+        {...args}
+        buildImage={() => ({
+          image: vikingPng,
+          x: window.innerWidth / 2,
+          y: window.innerHeight / 2,
+          width: size,
+          height: size,
+          intro: { mode: 'scaleIn' },
+        })}
+        background="#1a1a2e"
+      />
+    );
+  },
+};
+
+export const IntroRipple: Story = {
+  name: 'Intro — Ripple',
+  render: (args) => {
+    const size = Math.min(window.innerWidth, window.innerHeight) * 0.7;
+    return (
+      <ImageDemo
+        {...args}
+        buildImage={() => ({
+          image: vikingPng,
+          x: window.innerWidth / 2,
+          y: window.innerHeight / 2,
+          width: size,
+          height: size,
+          intro: { mode: 'ripple' },
+        })}
+        background="#1a1a2e"
+      />
+    );
+  },
+};
+
+export const IntroPaint: Story = {
+  name: 'Intro — Paint',
+  render: (args) => {
+    const size = Math.min(window.innerWidth, window.innerHeight) * 0.7;
+    return (
+      <ImageDemo
+        {...args}
+        buildImage={() => ({
+          image: vikingPng,
+          x: window.innerWidth / 2,
+          y: window.innerHeight / 2,
+          width: size,
+          height: size,
+          intro: { mode: 'paint' },
+        })}
+        background="#1a1a2e"
+      />
+    );
+  },
+};

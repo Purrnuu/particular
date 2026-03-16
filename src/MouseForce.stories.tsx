@@ -29,7 +29,7 @@ const MouseForceDemo: React.FC<MouseForceStoryArgs> = (props) => {
     const controller = createParticles({
       canvas,
       preset: 'magic',
-      config: { continuous: true, ...particleConfig },
+      config: { continuous: true, trail: false, ...particleConfig },
       renderer,
       autoResize: true,
     });

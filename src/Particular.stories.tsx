@@ -255,12 +255,14 @@ export const Continuous: Story = {
     renderer: 'webgl',
     continuous: true,
     autoStart: true,
+    trail: false,
   }),
   render: withBaseConfig({
     ...presets.Burst.magic,
     icons: customIcons,
     continuous: true,
     autoStart: true,
+    trail: false,
   }),
 };
 
@@ -276,6 +278,7 @@ export const Performance5000: Story = {
     autoStart: true,
     glow: false,
     shadow: false,
+    trail: false,
   }),
   render: withBaseConfig({
     ...presets.Burst.fireworks,
@@ -286,5 +289,6 @@ export const Performance5000: Story = {
     autoStart: true,
     glow: false,
     shadow: false,
+    trail: false,
   }),
 };

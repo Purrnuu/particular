@@ -190,9 +190,12 @@ var defaultMouseForce = {
 var defaultExplosionChild = {
   childCount: 5,
   childLife: 40,
-  sizeMin: 2,
-  sizeMax: 5,
+  sizeMin: 1,
+  sizeMax: 3,
   velocity: 3,
+  velocitySpread: 0.4,
+  friction: 0.01,
+  scaleStep: 1.5,
   gravity: 0.12,
   fadeTime: 15,
   inheritColor: true,
@@ -203,10 +206,10 @@ var defaultExplosionChild = {
   glowColor: "#ffffff",
   glowAlpha: 0.25,
   shadow: false,
-  trail: false,
+  trail: true,
   trailLength: 3,
-  trailFade: 0.75,
-  trailShrink: 0.55
+  trailFade: 0.6,
+  trailShrink: 0.65
 };
 var defaultHomeConfig = {
   springStrength: 0.05,
@@ -458,6 +461,8 @@ var Particle = class _Particle {
     // Home position — spring return + idle animation
     this.homePosition = null;
     this.homeConfig = null;
+    /** When false, idle animations (breathing, wiggle, wave, pulse) are suppressed. Spring return still works. */
+    this.idleEnabled = true;
     this.breathingPhase = Math.random() * Math.PI * 2;
     /** Per-particle spring multiplier (0.6–1.4) — breaks sync so particles return at different rates. */
     this.springMultiplier = 1;
@@ -554,7 +559,7 @@ var Particle = class _Particle {
         this.velocity.y = 0;
         this.position.x = this.homePosition.x;
         this.position.y = this.homePosition.y;
-        if (this.homeConfig.idlePulseStrength > 0 && this.homeConfig.idlePulseIntervalMin > 0) {
+        if (this.idleEnabled && this.homeConfig.idlePulseStrength > 0 && this.homeConfig.idlePulseIntervalMin > 0) {
           const waveDelay = this.homeDistFromCenter * 0.3;
           if (this.idleTicks >= this.nextPulseAt + waveDelay) {
             const angle = this.homeAngleFromCenter + (Math.random() - 0.5) * 1;
@@ -586,7 +591,7 @@ var Particle = class _Particle {
     this.position.add(this.velocity, dt);
     this.rotation = this.rotation + this.rotationVelocity * dt;
     const baseSize = Math.min(this.factoredSize + this.scaleStep * dt, this.size);
-    if (this.homePosition && this.homeConfig && this.homeConfig.breathingAmplitude > 0) {
+    if (this.idleEnabled && this.homePosition && this.homeConfig && this.homeConfig.breathingAmplitude > 0) {
       this.breathingPhase += this.homeConfig.breathingSpeed * dt;
       this.factoredSize = baseSize * (1 + Math.sin(this.breathingPhase) * this.homeConfig.breathingAmplitude);
     } else {
@@ -670,18 +675,19 @@ function createExplosionChild(parent, config, engine, fallbackColors) {
   const merged = { ...defaultExplosionChild, ...config };
   const size = getRandomInt(merged.sizeMin, merged.sizeMax);
   const angle = Math.random() * Math.PI * 2;
-  const velocity = Vector.fromAngle(angle, merged.velocity);
+  const spread = merged.velocitySpread;
+  const speed = merged.velocity * (1 - spread + Math.random() * spread * 2);
+  const velocity = Vector.fromAngle(angle, speed);
   const colors = merged.inheritColor ? [parent.color] : fallbackColors.length > 0 ? fallbackColors : [parent.color];
   const particle = new Particle({
     point: new Vector(parent.x, parent.y),
     velocity,
     acceleration: new Vector(0, 0),
-    friction: 0,
+    friction: merged.friction,
     size,
     particleLife: merged.childLife,
     gravity: merged.gravity,
-    scaleStep: size,
-    // instant full size
+    scaleStep: merged.scaleStep,
     fadeTime: merged.fadeTime,
     shape: merged.shape !== defaultExplosionChild.shape ? merged.shape : parent.shape,
     blendMode: merged.blendMode !== defaultExplosionChild.blendMode ? merged.blendMode : parent.blendMode,
@@ -1152,10 +1158,11 @@ var CanvasRenderer = class {
     this.context.save();
     this.context.translate(pixelRounded[0], pixelRounded[1]);
     this.context.rotate(degToRad(particle.rotation));
+    const k = 0.5773502691896258;
     this.context.beginPath();
-    this.context.moveTo(0, -size);
-    this.context.lineTo(size, size);
-    this.context.lineTo(-size, size);
+    this.context.moveTo(0, -size * 2 * k);
+    this.context.lineTo(size, size * k);
+    this.context.lineTo(-size, size * k);
     this.context.closePath();
     this.context.fill();
     if (this.stroke) {
@@ -2043,25 +2050,28 @@ var bluePalette = ["#003d99", "#0057d9", "#0077ff", "#1a8cff", "#3da1ff", "#66b8
 var orangePalette = ["#b33600", "#cc4a00", "#e86100", "#f57c00", "#ff9500", "#ffad33"];
 var greenPalette = ["#006b3f", "#008c51", "#00a85e", "#00c46b", "#1edd80", "#4deda0"];
 var mutedPalette = ["#d4a373", "#ccd5ae", "#e9edc9", "#a8dadc", "#b5838d", "#e5989b", "#8d99ae"];
+var fireworksPalette = ["#ff4757", "#ffa502", "#2ed573", "#1e90ff", "#ff6b81", "#eccc68", "#7bed9f", "#70a1ff", "#ffffff"];
 var meteorPalette = ["#ffffff", "#fff4e0", "#ffd699", "#ff9500", "#ff6b00", "#e84d00"];
+var waterPalette = ["#e0f7fa", "#b2ebf2", "#80deea", "#4dd0e1", "#26c6da", "#00acc1", "#ffffff"];
 var finlandPalette = ["#003580", "#002f6c", "#ffffff", "#f8f9fa"];
 var usaPalette = ["#B22234", "#ffffff", "#3C3B6E"];
 var Burst = {
-  /** Polished confetti burst: playful, readable, and balanced */
+  /** Celebratory confetti burst: colorful rectangles fluttering outward and drifting down */
   confetti: {
-    shape: "square",
+    shape: "rectangle",
     blendMode: "normal",
-    rate: 14,
-    life: 34,
-    velocity: Vector.fromAngle(-90, 5),
-    spread: Math.PI * 1,
+    rate: 20,
+    life: 28,
+    velocity: Vector.fromAngle(-90, 7),
+    spread: Math.PI * 0.85,
     sizeMin: 3,
-    sizeMax: 16,
-    velocityMultiplier: 5,
-    fadeTime: 28,
-    gravity: 0.1,
-    scaleStep: 0.85,
-    maxCount: 420,
+    sizeMax: 10,
+    velocityMultiplier: 6,
+    fadeTime: 35,
+    gravity: 0.14,
+    scaleStep: 1.2,
+    friction: 5e-3,
+    maxCount: 500,
     colors: mutedPalette
   },
   /** Signature magical burst: soft white glow + star silhouettes */
@@ -2084,14 +2094,10 @@ var Burst = {
     trailLength: 12,
     colors: coolBluePalette
   },
-  /** Cinematic fireworks: energetic additive circles with bright bloom */
+  /** Cinematic fireworks: energetic circles with bright bloom */
   fireworks: {
     shape: "circle",
-    blendMode: "additive",
-    glow: true,
-    glowSize: 14,
-    glowColor: "#fff7d6",
-    glowAlpha: 0.5,
+    blendMode: "normal",
     rate: 22,
     life: 24,
     velocity: Vector.fromAngle(-90, 8.8),
@@ -2103,16 +2109,16 @@ var Burst = {
     gravity: 0.18,
     scaleStep: 1.15,
     maxCount: 520,
+    trail: true,
+    trailLength: 8,
+    trailFade: 0.35,
+    trailShrink: 0.5,
     colors: mutedPalette
   },
   /** Fireworks with timed detonation: narrow upward launch that auto-explodes into colorful sub-bursts */
   fireworksDetonation: {
     shape: "circle",
     blendMode: "normal",
-    glow: true,
-    glowSize: 14,
-    glowColor: "#fff7d6",
-    glowAlpha: 0.5,
     rate: 22,
     life: 24,
     velocity: Vector.fromAngle(-Math.PI / 2, 8.8),
@@ -2127,13 +2133,20 @@ var Burst = {
     particleLife: 80,
     detonate: {
       at: 0.7,
-      childCount: 12,
-      velocity: 4,
-      childLife: 50,
-      fadeTime: 20,
-      glow: true,
-      glowSize: 8,
-      inheritColor: true
+      childCount: 8,
+      velocity: 5,
+      velocitySpread: 0.6,
+      friction: 0.015,
+      scaleStep: 1,
+      childLife: 45,
+      sizeMin: 1,
+      sizeMax: 4,
+      fadeTime: 18,
+      inheritColor: true,
+      trail: true,
+      trailLength: 4,
+      trailFade: 0.5,
+      trailShrink: 0.65
     }
   }
 };
@@ -2190,7 +2203,7 @@ var Ambient = {
   /** Meteors: bright diagonal streaks with glowing trails, accelerating as they fall */
   meteors: {
     shape: "circle",
-    blendMode: "additive",
+    blendMode: "normal",
     glow: true,
     glowSize: 12,
     glowColor: "#ff8c00",
@@ -2219,6 +2232,77 @@ var Ambient = {
     continuous: true,
     autoStart: true,
     colors: meteorPalette
+  },
+  /** Fireworks show: gentle rockets launch from the bottom and auto-explode into colorful bursts */
+  fireworksShow: {
+    shape: "triangle",
+    blendMode: "normal",
+    trail: true,
+    trailLength: 6,
+    trailFade: 0.3,
+    trailShrink: 0.5,
+    rate: 0.25,
+    life: 999999,
+    particleLife: 120,
+    velocity: Vector.fromAngle(-Math.PI / 2, 7),
+    spread: Math.PI / 6,
+    sizeMin: 2,
+    sizeMax: 4,
+    velocityMultiplier: 3,
+    fadeTime: 15,
+    gravity: 0.05,
+    scaleStep: 1,
+    maxCount: 1200,
+    continuous: true,
+    autoStart: true,
+    colors: fireworksPalette,
+    detonate: {
+      at: 0.65,
+      childCount: 10,
+      velocity: 4,
+      velocitySpread: 0.6,
+      friction: 0.02,
+      scaleStep: 0.8,
+      childLife: 50,
+      sizeMin: 1,
+      sizeMax: 3,
+      fadeTime: 20,
+      inheritColor: true,
+      trail: true,
+      trailLength: 4,
+      trailFade: 0.5,
+      trailShrink: 0.6
+    }
+  },
+  /** River flow: horizontal stream of water particles, designed for use with attractors */
+  river: {
+    shape: "circle",
+    blendMode: "normal",
+    glow: true,
+    glowSize: 6,
+    glowColor: "#80deea",
+    glowAlpha: 0.25,
+    shadow: false,
+    trail: true,
+    trailLength: 6,
+    trailFade: 0.5,
+    trailShrink: 0.4,
+    rate: 4,
+    life: 999999,
+    particleLife: 220,
+    velocity: Vector.fromAngle(0, 1.8),
+    spread: Math.PI / 10,
+    sizeMin: 1,
+    sizeMax: 4,
+    velocityMultiplier: 0,
+    fadeTime: 80,
+    gravity: 0,
+    friction: 0,
+    scaleStep: 1,
+    maxCount: 500,
+    continuous: true,
+    autoStart: true,
+    colors: waterPalette
   }
 };
 var ImageParticles = {
@@ -2261,7 +2345,9 @@ var Colors = {
   /** American flag red, white, blue */
   usa: { colors: usaPalette },
   /** White-hot to deep red meteor palette */
-  meteor: { colors: meteorPalette }
+  meteor: { colors: meteorPalette },
+  /** Cyan-to-white water palette */
+  water: { colors: waterPalette }
 };
 var presetRegistry = {
   confetti: Burst.confetti,
@@ -2272,7 +2358,9 @@ var presetRegistry = {
   imageText: ImageParticles.text,
   imageShape: ImageParticles.shape,
   snow: Ambient.snow,
-  meteors: Ambient.meteors
+  meteors: Ambient.meteors,
+  river: Ambient.river,
+  fireworksShow: Ambient.fireworksShow
 };
 var presets = {
   Burst,
@@ -2289,7 +2377,9 @@ var presets = {
   imageText: ImageParticles.text,
   imageShape: ImageParticles.shape,
   snow: Ambient.snow,
-  meteors: Ambient.meteors
+  meteors: Ambient.meteors,
+  river: Ambient.river,
+  fireworksShow: Ambient.fireworksShow
 };
 function getPreset(name) {
   return presetRegistry[name];
@@ -2959,7 +3049,8 @@ function createImageParticles(engine, mergedConfig, container) {
       trailFade,
       trailShrink,
       imageTint,
-      homeConfig
+      homeConfig,
+      intro
     } = merged;
     const resolution = resolutionOverride ?? (shape === "square" ? 400 : 200);
     const image = await loadImage(imageSrc);
@@ -2989,15 +3080,18 @@ function createImageParticles(engine, mergedConfig, container) {
     const centerY = y / pr;
     const originX = centerX - engineW / 2;
     const originY = centerY - engineH / 2;
+    const sizeForRes = (res, particleShape) => {
+      const cols = aspect >= 1 ? res : Math.max(1, Math.round(res * aspect));
+      const sp = engineW / cols;
+      const scale = particleShape === "square" ? 0.55 : particleShape === "triangle" ? 0.95 : 0.7;
+      return sp * scale;
+    };
+    const imageCenter = new Vector(centerX, centerY);
     const samples = sampleImagePixels(image, resolution, alphaThreshold);
-    const gridCols = aspect >= 1 ? resolution : Math.max(1, Math.round(resolution * aspect));
-    const spacing = engineW / gridCols;
-    const sizeScale = shape === "square" ? 0.55 : 0.7;
-    const size = sizeOverride != null ? sizeOverride / pr : spacing * sizeScale;
+    const size = sizeOverride != null ? sizeOverride / pr : sizeForRes(resolution, shape ?? "square");
     const scaleStep = scaleStepOverride ?? size;
-    const needed = samples.length;
-    if (engine.maxCount < engine.getCount() + needed) {
-      engine.maxCount = engine.getCount() + needed;
+    if (engine.maxCount < engine.getCount() + samples.length) {
+      engine.maxCount = engine.getCount() + samples.length;
     }
     const collectorConfig = configureParticle({}, mergedConfig);
     const collector = new Emitter({
@@ -3008,8 +3102,7 @@ function createImageParticles(engine, mergedConfig, container) {
       icons: []
     });
     collector.isEmitting = false;
-    const imageCenter = new Vector(centerX, centerY);
-    for (const sample2 of samples) {
+    const makeParticle = (sample2, introScaleStep) => {
       const px = originX + sample2.nx * engineW;
       const py = originY + sample2.ny * engineH;
       const homePos = new Vector(px, py);
@@ -3023,7 +3116,7 @@ function createImageParticles(engine, mergedConfig, container) {
         size,
         particleLife,
         gravity,
-        scaleStep,
+        scaleStep: introScaleStep ?? scaleStep,
         fadeTime,
         shape,
         blendMode,
@@ -3050,9 +3143,147 @@ function createImageParticles(engine, mergedConfig, container) {
         particle.rotation = 180;
       }
       particle.init(null, engine);
-      collector.particles.push(particle);
+      return particle;
+    };
+    if (intro) {
+      const mode = intro.mode ?? "scatter";
+      const duration = intro.duration ?? 800;
+      const introScaleStep = size / 15;
+      if (mode === "scatter") {
+        const scatterRadius = Math.max(engineW, engineH) * 0.3;
+        for (const sample2 of samples) {
+          const particle = makeParticle(sample2, introScaleStep);
+          const angle = Math.random() * Math.PI * 2;
+          const dist = Math.random() * scatterRadius;
+          particle.position.x += Math.cos(angle) * dist;
+          particle.position.y += Math.sin(angle) * dist;
+          particle.velocity.x = (Math.random() - 0.5) * 2;
+          particle.velocity.y = (Math.random() - 0.5) * 2;
+          particle.factoredSize = 0;
+          collector.particles.push(particle);
+        }
+        engine.addEmitter(collector);
+      } else if (mode === "scaleIn") {
+        const sorted = [...samples];
+        sorted.sort((a, b) => {
+          const dA = Math.hypot(a.nx - 0.5, a.ny - 0.5);
+          const dB = Math.hypot(b.nx - 0.5, b.ny - 0.5);
+          return dB - dA;
+        });
+        const spread = Math.max(engineW, engineH) * 0.03;
+        const numBatches = 30;
+        const batchMs = duration / numBatches;
+        for (let b = 0; b < numBatches; b++) {
+          const bStart = Math.floor(b * sorted.length / numBatches);
+          const bEnd = Math.floor((b + 1) * sorted.length / numBatches);
+          const createBatch = () => {
+            for (let i = bStart; i < bEnd; i++) {
+              const speedVariance = 0.5 + Math.random() * 1;
+              const particle = makeParticle(sorted[i], introScaleStep * speedVariance);
+              particle.position.x = centerX + (Math.random() - 0.5) * spread;
+              particle.position.y = centerY + (Math.random() - 0.5) * spread;
+              particle.factoredSize = 0;
+              particle.homeConfig.springDamping = 0.75;
+              particle.homeConfig.springStrength = 0.08;
+              particle.homeConfig.returnNoise = 0;
+              const dx = particle.homePosition.x - centerX;
+              const dy = particle.homePosition.y - centerY;
+              const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+              const nudge = dist * 0.03 * (0.8 + Math.random() * 0.4);
+              particle.velocity.x = dx / dist * nudge;
+              particle.velocity.y = dy / dist * nudge;
+              collector.particles.push(particle);
+            }
+            if (b === 0) engine.addEmitter(collector);
+          };
+          if (b === 0) {
+            createBatch();
+          } else {
+            setTimeout(createBatch, b * batchMs);
+          }
+        }
+      } else if (mode === "ripple") {
+        const sorted = [...samples];
+        sorted.sort((a, b) => {
+          const dA = Math.hypot(a.nx - 0.5, a.ny - 0.5);
+          const dB = Math.hypot(b.nx - 0.5, b.ny - 0.5);
+          return dA - dB;
+        });
+        const numBatches = 40;
+        const batchMs = duration / numBatches;
+        for (let b = 0; b < numBatches; b++) {
+          const bStart = Math.floor(b * sorted.length / numBatches);
+          const bEnd = Math.floor((b + 1) * sorted.length / numBatches);
+          const createBatch = () => {
+            for (let i = bStart; i < bEnd; i++) {
+              const s = sorted[i];
+              const speedVariance = 0.4 + Math.random() * 1.2;
+              const particle = makeParticle(s, introScaleStep * speedVariance);
+              particle.factoredSize = 0;
+              const dx = s.nx - 0.5;
+              const dy = s.ny - 0.5;
+              const radialAngle = Math.atan2(dy, dx);
+              const wobble = (Math.random() - 0.5) * 0.7;
+              const pushAngle = radialAngle + wobble;
+              const pushMag = 2.5 + Math.random() * 2.5;
+              particle.velocity.x = Math.cos(pushAngle) * pushMag;
+              particle.velocity.y = Math.sin(pushAngle) * pushMag;
+              collector.particles.push(particle);
+            }
+            if (b === 0) engine.addEmitter(collector);
+          };
+          if (b === 0) {
+            createBatch();
+          } else {
+            setTimeout(createBatch, b * batchMs);
+          }
+        }
+      } else {
+        const sorted = [...samples];
+        sorted.sort((a, b) => a.nx + Math.random() * 0.05 - (b.nx + Math.random() * 0.05));
+        const launchX = centerX;
+        const launchY = originY + engineH;
+        const numBatches = 40;
+        const batchMs = duration / numBatches;
+        for (let b = 0; b < numBatches; b++) {
+          const bStart = Math.floor(b * sorted.length / numBatches);
+          const bEnd = Math.floor((b + 1) * sorted.length / numBatches);
+          const createBatch = () => {
+            for (let i = bStart; i < bEnd; i++) {
+              const speedVariance = 0.5 + Math.random() * 1;
+              const particle = makeParticle(sorted[i], introScaleStep * speedVariance);
+              particle.position.x = launchX;
+              particle.position.y = launchY;
+              particle.factoredSize = 0;
+              particle.homeConfig.springDamping = 0.75;
+              particle.homeConfig.springStrength = 0.08;
+              particle.homeConfig.returnNoise = 0;
+              const dx = particle.homePosition.x - launchX;
+              const dy = particle.homePosition.y - launchY;
+              const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+              const aimAngle = Math.atan2(dy, dx);
+              const wobble = (Math.random() - 0.5) * 0.3;
+              const speed = dist * 0.03 * (0.9 + Math.random() * 0.2);
+              particle.velocity.x = Math.cos(aimAngle + wobble) * speed;
+              particle.velocity.y = Math.sin(aimAngle + wobble) * speed;
+              collector.particles.push(particle);
+            }
+            if (b === 0) engine.addEmitter(collector);
+          };
+          if (b === 0) {
+            createBatch();
+          } else {
+            setTimeout(createBatch, b * batchMs);
+          }
+        }
+      }
+    } else {
+      for (const sample2 of samples) {
+        const particle = makeParticle(sample2);
+        collector.particles.push(particle);
+      }
+      engine.addEmitter(collector);
     }
-    engine.addEmitter(collector);
     return collector;
   };
   const textToParticles = async (text, config) => {
@@ -3063,7 +3294,14 @@ function createImageParticles(engine, mergedConfig, container) {
       image: canvasToDataURL(textCanvas)
     });
   };
-  return { imageToParticles, textToParticles };
+  const setIdleEffect = (enabled) => {
+    for (const particle of engine.getAllParticles()) {
+      if (particle.homePosition) {
+        particle.idleEnabled = enabled;
+      }
+    }
+  };
+  return { imageToParticles, textToParticles, setIdleEffect };
 }
 
 // src/particular/convenience/index.ts
@@ -3451,6 +3689,7 @@ exports.Vector = Vector;
 exports.WebGLRenderer = WebGLRenderer;
 exports.applyCanvasStyles = applyCanvasStyles;
 exports.canvasToDataURL = canvasToDataURL;
+exports.configureParticle = configureParticle;
 exports.createHeartImage = createHeartImage;
 exports.createParticles = createParticles;
 exports.createTextImage = createTextImage;

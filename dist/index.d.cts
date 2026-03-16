@@ -1,14 +1,6 @@
-import { F as FullParticularConfig, P as ParticularConfig, a as ParticleConfig, R as RendererType, b as Particular, B as BurstSettings, c as PresetName, M as MouseForceConfig, d as ParticlesController, e as BurstOptions, E as ExplodeOptions, I as ImageParticlesConfig, T as TextImageConfig } from './standalone-DH5hIgiu.cjs';
-export { A as Attractor, f as AttractorConfig, g as BlendMode, h as BoundaryConfig, i as BoundaryHandle, C as CanvasRenderer, j as ChildExplosionConfig, k as CreateParticlesOptions, D as DetonateConfig, l as Emitter, m as EmitterConfiguration, n as FPSOverlayController, o as FPSOverlayOptions, p as ForceSource, H as HomePositionConfig, q as MouseForce, r as Particle, s as ParticleConstructorParams, t as ParticleShape, S as ScreensaverController, u as ScreensaverOptions, v as ShapeConfig, V as Vector, W as WebGLRenderer, w as WebGLRendererOptions, x as applyCanvasStyles, y as canvasToDataURL, z as createHeartImage, G as createParticles, J as createTextImage, K as getParticlesBackgroundLayerStyle, L as getParticlesContainerLayerStyle, N as particlesBackgroundLayerStyle, O as particlesContainerLayerStyle, Q as particlesDefaultZIndex, U as presets, X as showFPSOverlay, Y as startScreensaver } from './standalone-DH5hIgiu.cjs';
+import { P as Particular, c as configureParticular, F as FullParticularConfig, a as ParticleConfig, B as BurstSettings, b as PresetName, R as RendererType, M as MouseForceConfig, d as ParticlesController, e as BurstOptions, E as ExplodeOptions, I as ImageParticlesConfig, T as TextImageConfig } from './standalone-M8Tt6frg.cjs';
+export { A as Attractor, f as AttractorConfig, g as BlendMode, h as BoundaryConfig, i as BoundaryHandle, C as CanvasRenderer, j as ChildExplosionConfig, k as CreateParticlesOptions, D as DetonateConfig, l as Emitter, m as EmitterConfiguration, n as FPSOverlayController, o as FPSOverlayOptions, p as ForceSource, H as HomePositionConfig, q as IntroConfig, r as IntroMode, s as MouseForce, t as Particle, u as ParticleConstructorParams, v as ParticleShape, w as ParticularConfig, S as ScreensaverController, x as ScreensaverOptions, y as ShapeConfig, V as Vector, W as WebGLRenderer, z as WebGLRendererOptions, G as applyCanvasStyles, J as canvasToDataURL, K as configureParticle, L as createHeartImage, N as createParticles, O as createTextImage, Q as getParticlesBackgroundLayerStyle, U as getParticlesContainerLayerStyle, X as particlesBackgroundLayerStyle, Y as particlesContainerLayerStyle, Z as particlesDefaultZIndex, _ as presets, $ as showFPSOverlay, a0 as startScreensaver } from './standalone-M8Tt6frg.cjs';
 import React, { ComponentType, MutableRefObject, CSSProperties, MouseEvent as MouseEvent$1 } from 'react';
-
-type ParticleDefaults = Required<Omit<ParticleConfig, 'detonate'>>;
-/** Return type of configureParticular() — the fully-merged config used by helpers. */
-type MergedConfig = Required<Omit<ParticularConfig, 'container'>> & ParticleDefaults & {
-    renderer?: RendererType;
-    container?: HTMLElement;
-};
-declare function configureParticular(configuration?: FullParticularConfig): MergedConfig;
 
 interface CanvasWrapperState {
     width: number;
@@ -166,4 +158,4 @@ interface UseScreensaverResult {
  */
 declare function useScreensaver({ preset, config, renderer, autoResize, backgroundLayer, mouseWind, container, }?: UseScreensaverOptions): UseScreensaverResult;
 
-export { BurstOptions, BurstSettings, ExplodeOptions, FullParticularConfig, ImageParticlesConfig, MouseForceConfig, ParticleConfig, ParticlesController, Particular, ParticularConfig, particularWrapper as ParticularWrapper, PresetName, RendererType, TextImageConfig, type UseParticlesOptions, type UseParticlesResult, type UseScreensaverOptions, type UseScreensaverResult, useParticles, useScreensaver, withParticles };
+export { BurstOptions, BurstSettings, ExplodeOptions, FullParticularConfig, ImageParticlesConfig, MouseForceConfig, ParticleConfig, ParticlesController, Particular, particularWrapper as ParticularWrapper, PresetName, RendererType, TextImageConfig, type UseParticlesOptions, type UseParticlesResult, type UseScreensaverOptions, type UseScreensaverResult, useParticles, useScreensaver, withParticles };

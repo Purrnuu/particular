@@ -22,6 +22,7 @@ export {
 } from './particular/canvasStyles';
 export { createParticles } from './particular/convenience';
 export { startScreensaver } from './particular/convenience/screensaver';
+export { configureParticle } from './particular/core/defaults';
 export { createTextImage, createHeartImage, canvasToDataURL } from './particular/utils/imageSource';
 export { useParticles, useScreensaver } from './particular/useParticles';
 export { showFPSOverlay } from './particular/devFPSOverlay';
@@ -48,6 +49,8 @@ export type {
   HomePositionConfig,
   TextImageConfig,
   BoundaryConfig,
+  IntroConfig,
+  IntroMode,
 } from './particular/types';
 export type { PresetName } from './particular/presets';
 export type {

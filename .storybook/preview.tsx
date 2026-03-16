@@ -41,6 +41,15 @@ function FPSOverlayGate({ children }: { children: React.ReactNode }) {
 
 const preview: Preview = {
   parameters: {
+    options: {
+      storySort: {
+        order: [
+          'Showcase',
+          'Particular',
+          ['Burst', 'Screensaver', 'Image to Particles', 'Explosion', 'Attractors', 'MouseForce', 'Page Layout'],
+        ],
+      },
+    },
     controls: {
       matchers: {
         color: /(background|color)$/i,
