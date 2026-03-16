@@ -3175,7 +3175,8 @@ function createImageParticles(engine, mergedConfig, container, cleanups) {
           const idx = engine.emitters.indexOf(collector);
           if (idx !== -1) engine.emitters.splice(idx, 1);
           collector.particles.length = 0;
-          imageToParticles({ ...config, intro: void 0, autoCenter: false }).then((newCollector) => {
+          const { x: _x, y: _y, width: _w, height: _h, ...restConfig } = config;
+          imageToParticles({ ...restConfig, intro: void 0, autoCenter: false }).then((newCollector) => {
             collector.particles.push(...newCollector.particles);
             const newIdx = engine.emitters.indexOf(newCollector);
             if (newIdx !== -1) engine.emitters.splice(newIdx, 1);

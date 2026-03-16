@@ -369,8 +369,10 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
           if (idx !== -1) engine.emitters.splice(idx, 1);
           collector.particles.length = 0;
 
-          // Re-run without intro and without another resize observer
-          imageToParticles({ ...config, intro: undefined, autoCenter: false }).then((newCollector) => {
+          // Re-run without intro, without autoCenter, and without fixed position/size
+          // so smart defaults recalculate from the new viewport dimensions
+          const { x: _x, y: _y, width: _w, height: _h, ...restConfig } = config;
+          imageToParticles({ ...restConfig, intro: undefined, autoCenter: false }).then((newCollector) => {
             // Move particles into the original collector so external references stay valid
             collector.particles.push(...newCollector.particles);
             const newIdx = engine.emitters.indexOf(newCollector);
