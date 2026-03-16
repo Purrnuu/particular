@@ -61,16 +61,14 @@ export default class Particular implements IEventDispatcher {
 
   onResize(): void {
     if (this.container) {
-      this.width = this.container.clientWidth;
-      this.height = this.container.clientHeight;
+      const height = (this.height = this.container.clientHeight);
+      const width = (this.width = this.container.clientWidth);
+      this.dispatchEvent(Particular.RESIZE, { width, height });
     } else {
-      this.width = window.innerWidth;
-      this.height = window.innerHeight;
+      const height = (this.height = window.innerHeight);
+      const width = (this.width = window.innerWidth);
+      this.dispatchEvent(Particular.RESIZE, { width, height });
     }
-    // Canvas buffer dimensions must be in physical pixels for sharp rendering
-    const bufferWidth = this.width * this.pixelRatio;
-    const bufferHeight = this.height * this.pixelRatio;
-    this.dispatchEvent(Particular.RESIZE, { width: bufferWidth, height: bufferHeight });
   }
 
   addRenderer(renderer: Renderer): void {
@@ -79,10 +77,7 @@ export default class Particular implements IEventDispatcher {
     this.start();
     // Ensure new renderer gets current dimensions (RESIZE may have fired before it was added)
     if (this.width > 0 && this.height > 0) {
-      this.dispatchEvent(Particular.RESIZE, {
-        width: this.width * this.pixelRatio,
-        height: this.height * this.pixelRatio,
-      });
+      this.dispatchEvent(Particular.RESIZE, { width: this.width, height: this.height });
     }
   }
 
