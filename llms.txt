@@ -188,7 +188,7 @@ Returns: { canvasRef, canvasStyle, destroy() }
 - shape?: ParticleShape             — default from preset
 - homeConfig?: HomePositionConfig   — spring physics + idle animation config
 - intro?: IntroConfig              — animated particle reveal. See IntroConfig
-- autoCenter?: boolean             — keep particles horizontally centered on resize. Default true
+- autoCenter?: boolean             — re-create particles on resize to stay centered and scaled. Default true
 
 ### IntroConfig (for image/text particles)
 - mode?: "scatter" | "scaleIn" | "ripple" | "paint" — animation mode. Default "scatter"

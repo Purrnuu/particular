@@ -351,32 +351,42 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
       engine.addEmitter(collector);
     }
 
-    // Auto-center: shift home positions horizontally when container/viewport resizes
+    // Auto-center: re-run the effect on resize so particles re-center and re-scale
     const autoCenter = config.autoCenter ?? true;
     if (autoCenter) {
-      let lastCenterX = centerX;
+      let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+      let lastWidth = getViewportSize().w;
 
       const onResize = () => {
-        const viewport = getViewportSize();
-        const newCenterX = viewport.w / 2 / pr;
-        const dx = newCenterX - lastCenterX;
-        if (Math.abs(dx) < 0.5) return;
-        lastCenterX = newCenterX;
-        for (const particle of collector.particles) {
-          if (particle.homePosition) {
-            particle.homePosition.x += dx;
-            particle.position.x += dx;
-          }
-        }
+        const newWidth = getViewportSize().w;
+        if (newWidth === lastWidth) return;
+        lastWidth = newWidth;
+
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          // Remove old particles
+          const idx = engine.emitters.indexOf(collector);
+          if (idx !== -1) engine.emitters.splice(idx, 1);
+          collector.particles.length = 0;
+
+          // Re-run without intro and without another resize observer
+          imageToParticles({ ...config, intro: undefined, autoCenter: false }).then((newCollector) => {
+            // Move particles into the original collector so external references stay valid
+            collector.particles.push(...newCollector.particles);
+            const newIdx = engine.emitters.indexOf(newCollector);
+            if (newIdx !== -1) engine.emitters.splice(newIdx, 1);
+            engine.addEmitter(collector);
+          });
+        }, 200);
       };
 
       if (container) {
         const ro = new ResizeObserver(onResize);
         ro.observe(container);
-        cleanups?.push(() => ro.disconnect());
+        cleanups?.push(() => { ro.disconnect(); if (debounceTimer) clearTimeout(debounceTimer); });
       } else {
         window.addEventListener('resize', onResize);
-        cleanups?.push(() => window.removeEventListener('resize', onResize));
+        cleanups?.push(() => { window.removeEventListener('resize', onResize); if (debounceTimer) clearTimeout(debounceTimer); });
       }
     }
 

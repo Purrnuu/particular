@@ -3305,27 +3305,38 @@ function createImageParticles(engine, mergedConfig, container, cleanups) {
     }
     const autoCenter = config.autoCenter ?? true;
     if (autoCenter) {
-      let lastCenterX = centerX;
+      let debounceTimer = null;
+      let lastWidth = getViewportSize().w;
       const onResize = () => {
-        const viewport2 = getViewportSize();
-        const newCenterX = viewport2.w / 2 / pr;
-        const dx = newCenterX - lastCenterX;
-        if (Math.abs(dx) < 0.5) return;
-        lastCenterX = newCenterX;
-        for (const particle of collector.particles) {
-          if (particle.homePosition) {
-            particle.homePosition.x += dx;
-            particle.position.x += dx;
-          }
-        }
+        const newWidth = getViewportSize().w;
+        if (newWidth === lastWidth) return;
+        lastWidth = newWidth;
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          const idx = engine.emitters.indexOf(collector);
+          if (idx !== -1) engine.emitters.splice(idx, 1);
+          collector.particles.length = 0;
+          imageToParticles({ ...config, intro: void 0, autoCenter: false }).then((newCollector) => {
+            collector.particles.push(...newCollector.particles);
+            const newIdx = engine.emitters.indexOf(newCollector);
+            if (newIdx !== -1) engine.emitters.splice(newIdx, 1);
+            engine.addEmitter(collector);
+          });
+        }, 200);
       };
       if (container) {
         const ro = new ResizeObserver(onResize);
         ro.observe(container);
-        cleanups?.push(() => ro.disconnect());
+        cleanups?.push(() => {
+          ro.disconnect();
+          if (debounceTimer) clearTimeout(debounceTimer);
+        });
       } else {
         window.addEventListener("resize", onResize);
-        cleanups?.push(() => window.removeEventListener("resize", onResize));
+        cleanups?.push(() => {
+          window.removeEventListener("resize", onResize);
+          if (debounceTimer) clearTimeout(debounceTimer);
+        });
       }
     }
     return collector;
