@@ -3165,13 +3165,13 @@ function createImageParticles(engine, mergedConfig, container, cleanups) {
     const autoCenter = config.autoCenter ?? true;
     if (autoCenter) {
       let debounceTimer = null;
-      const initialViewport = getViewportSize();
+      const initialW = window.innerWidth;
+      const initialH = window.innerHeight;
       const onResize = () => {
         if (debounceTimer) clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
-          const newViewport = getViewportSize();
-          const scaleX = newViewport.w / initialViewport.w;
-          const scaleY = newViewport.h / initialViewport.h;
+          const scaleX = window.innerWidth / initialW;
+          const scaleY = window.innerHeight / initialH;
           if (Math.abs(scaleX - 1) < 0.01 && Math.abs(scaleY - 1) < 0.01) return;
           const idx = engine.emitters.indexOf(collector);
           if (idx !== -1) engine.emitters.splice(idx, 1);

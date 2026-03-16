@@ -114,8 +114,8 @@ Directional force from mouse velocity (brushing/sweeping), unlike attractors (ra
 
 MouseForce can own its own mouse event listener via `startTracking`/`stopTracking`:
 
-- `startTracking(target, pixelRatio)` — attaches a `mousemove` listener on `target`, auto-converts coordinates via `pixelRatio`, calls `updatePosition` internally.
-- `stopTracking()` — removes the listener. Idempotent (safe to call when not tracking).
+- `startTracking(target, pixelRatio)` — attaches `mousemove`, `touchmove`, and `touchstart` listeners on `target`, auto-converts coordinates via `pixelRatio`, calls `updatePosition` internally. Touch events use `e.touches[0]` coordinates with `{ passive: true }`.
+- `stopTracking()` — removes all listeners (mouse + touch). Idempotent (safe to call when not tracking).
 - `destroy()` — calls `stopTracking()`. Called automatically by the engine's `destroy()` utility.
 - `isTracking` (getter) — returns `true` when a listener is active.
 
@@ -182,7 +182,7 @@ alphaScale = life * trailFade
 
 `startScreensaver()` creates a `createParticles` instance with a single emitter at top-center, `spawnWidth` = viewport width, continuous mode. Adds a gentle `MouseForce` with `track: true` (strength 0.12) for drift — mouse tracking is config-driven, not manually wired. On resize, updates emitter `spawnWidth` and `point.x`.
 
-The `mouseWind` option (`MouseForceConfig | false`) controls the mouse wind effect. Omit or pass a partial config to merge over defaults (`strength: 0.12, radius: 250, damping: 0.92, maxSpeed: 8, falloff: 0.3`). Pass `false` to disable mouse wind entirely (no listener, no force). The `useScreensaver` hook also accepts `mouseWind` and passes it through.
+The `mouseWind` option (`MouseForceConfig | false`) controls the mouse wind effect. Omit or pass a partial config to merge over defaults (`strength: 0.12, radius: 100, damping: 0.92, maxSpeed: 8, falloff: 0.3`). Pass `false` to disable mouse wind entirely (no listener, no force). The `useScreensaver` hook also accepts `mouseWind` and passes it through.
 
 ## Explosion & Detonation
 

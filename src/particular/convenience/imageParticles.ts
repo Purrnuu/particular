@@ -355,14 +355,16 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
     const autoCenter = config.autoCenter ?? true;
     if (autoCenter) {
       let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-      const initialViewport = getViewportSize();
+      // Use visible viewport for scale ratios — positions are relative to the
+      // visible screen, not the full scrollable container height.
+      const initialW = window.innerWidth;
+      const initialH = window.innerHeight;
 
       const onResize = () => {
         if (debounceTimer) clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
-          const newViewport = getViewportSize();
-          const scaleX = newViewport.w / initialViewport.w;
-          const scaleY = newViewport.h / initialViewport.h;
+          const scaleX = window.innerWidth / initialW;
+          const scaleY = window.innerHeight / initialH;
           if (Math.abs(scaleX - 1) < 0.01 && Math.abs(scaleY - 1) < 0.01) return;
 
           // Remove old particles

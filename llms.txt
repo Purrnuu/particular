@@ -204,7 +204,7 @@ Returns: { canvasRef, canvasStyle, destroy() }
 - damping?: number                  — velocity decay per frame. Default 0.85
 - maxSpeed?: number                 — default 10
 - falloff?: number                  — <1 = broad wind, 1 = linear (default), >1 = localized push
-- track?: EventTarget | boolean     — true = track mouse on window. Element = track on element
+- track?: EventTarget | boolean     — true = track mouse/touch on window. Element = track on element. Supports both mouse and touch input
 
 ### AttractorConfig
 - x: number                        — REQUIRED. Engine coordinates
@@ -229,8 +229,12 @@ Returns: { canvasRef, canvasStyle, destroy() }
 - homeThreshold?: number            — idle engage distance. Default 2
 - velocityThreshold?: number        — idle engage speed. Default 0.5
 - wiggleAmplitude?: number          — random scale pulsing (0-1). Default 0
+- wiggleSpeed?: number              — wiggle animation speed. Default 0.05
 - breathingAmplitude?: number       — sinusoidal scale oscillation (0-1). Default 0
+- breathingSpeed?: number           — breathing animation speed. Default 0.02
 - waveAmplitude?: number            — coordinated scale wave (0-1). Default 0
+- waveSpeed?: number                — wave propagation speed. Default 0.03
+- waveFrequency?: number            — wave spatial frequency. Default 0.05
 - returnNoise?: number              — wobble during spring return. Default 0.3
 - idlePulseStrength?: number        — periodic impulse magnitude. Default 2
 - idlePulseIntervalMin?: number     — min ticks between pulses. Default 300
