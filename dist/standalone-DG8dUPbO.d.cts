@@ -304,6 +304,8 @@ interface ImageParticlesConfig extends ShapeConfig {
     homeConfig?: HomePositionConfig;
     /** Intro animation — particles animate in rather than appearing instantly. See IntroConfig. */
     intro?: IntroConfig;
+    /** Keep particles horizontally centered when container/viewport resizes. Default true. */
+    autoCenter?: boolean;
 }
 interface BurstSettings {
     clientX: number;

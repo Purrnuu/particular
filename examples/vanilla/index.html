@@ -256,24 +256,7 @@
         });
 
         textController.addMouseForce({ track: true, strength: 3, radius: 80 });
-
-        // Keep text centered on resize
-        const textPr = textController.engine.pixelRatio;
-        let lastTextCenterX = w / 2 / textPr;
-        const textRo = new ResizeObserver(() => {
-          const newCenterX = container.clientWidth / 2 / textPr;
-          const dx = newCenterX - lastTextCenterX;
-          if (Math.abs(dx) < 0.5) return;
-          lastTextCenterX = newCenterX;
-          for (const p of textController.engine.getAllParticles()) {
-            if (p.homePosition) {
-              p.homePosition.x += dx;
-              p.position.x += dx;
-            }
-          }
-        });
-        textRo.observe(container);
-        cleanups.push(() => { textRo.disconnect(); textController.destroy(); });
+        cleanups.push(() => textController.destroy());
 
         // River — flows between features and CTA
         const riverController = createParticles({

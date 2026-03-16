@@ -190,9 +190,6 @@ const WelcomeDemo: React.FC = () => {
     const w = container.clientWidth;
     const heroH = window.innerHeight;
 
-    const pr = controller.engine.pixelRatio;
-    const initialCenterX = w / 2 / pr;
-
     controller.textToParticles('Particular', {
       x: w / 2,
       y: heroH * 0.38,
@@ -206,24 +203,7 @@ const WelcomeDemo: React.FC = () => {
       radius: 80,
     });
 
-    // Keep text centered on resize by shifting all home positions
-    let lastCenterX = initialCenterX;
-    const ro = new ResizeObserver(() => {
-      const newCenterX = container.clientWidth / 2 / pr;
-      const dx = newCenterX - lastCenterX;
-      if (Math.abs(dx) < 0.5) return;
-      lastCenterX = newCenterX;
-      for (const particle of controller.engine.getAllParticles()) {
-        if (particle.homePosition) {
-          particle.homePosition.x += dx;
-          particle.position.x += dx;
-        }
-      }
-    });
-    ro.observe(container);
-
     return () => {
-      ro.disconnect();
       controller.destroy();
       textControllerRef.current = null;
     };

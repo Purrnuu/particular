@@ -14,7 +14,7 @@ import type { PixelSample } from '../utils/pixelSampler';
  * Samples an image (or rendered text) into a grid of colored particles with
  * spring-return home positions and idle animations.
  */
-export function createImageParticles(engine: Particular, mergedConfig: MergedConfig, container?: HTMLElement) {
+export function createImageParticles(engine: Particular, mergedConfig: MergedConfig, container?: HTMLElement, cleanups?: Array<() => void>) {
   /** Resolve viewport/container dimensions for smart defaults. */
   const getViewportSize = () => {
     if (container) {
@@ -349,6 +349,35 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
         collector.particles.push(particle);
       }
       engine.addEmitter(collector);
+    }
+
+    // Auto-center: shift home positions horizontally when container/viewport resizes
+    const autoCenter = config.autoCenter ?? true;
+    if (autoCenter) {
+      let lastCenterX = centerX;
+
+      const onResize = () => {
+        const viewport = getViewportSize();
+        const newCenterX = viewport.w / 2 / pr;
+        const dx = newCenterX - lastCenterX;
+        if (Math.abs(dx) < 0.5) return;
+        lastCenterX = newCenterX;
+        for (const particle of collector.particles) {
+          if (particle.homePosition) {
+            particle.homePosition.x += dx;
+            particle.position.x += dx;
+          }
+        }
+      };
+
+      if (container) {
+        const ro = new ResizeObserver(onResize);
+        ro.observe(container);
+        cleanups?.push(() => ro.disconnect());
+      } else {
+        window.addEventListener('resize', onResize);
+        cleanups?.push(() => window.removeEventListener('resize', onResize));
+      }
     }
 
     return collector;

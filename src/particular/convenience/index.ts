@@ -168,7 +168,7 @@ export function createParticles({
   const forces = createForces(engine, container, cleanups);
   const boundary = createBoundaryHelper(engine, container, cleanups);
   const effects = createEffects(engine, mergedConfig);
-  const imageApi = createImageParticles(engine, mergedConfig, container);
+  const imageApi = createImageParticles(engine, mergedConfig, container, cleanups);
 
   // ── Mouse force shorthand ──
 

@@ -3033,7 +3033,7 @@ function canvasToDataURL(canvas) {
 }
 
 // src/particular/convenience/imageParticles.ts
-function createImageParticles(engine, mergedConfig, container) {
+function createImageParticles(engine, mergedConfig, container, cleanups) {
   const getViewportSize = () => {
     if (container) {
       return { w: container.clientWidth, h: container.clientHeight };
@@ -3303,6 +3303,31 @@ function createImageParticles(engine, mergedConfig, container) {
       }
       engine.addEmitter(collector);
     }
+    const autoCenter = config.autoCenter ?? true;
+    if (autoCenter) {
+      let lastCenterX = centerX;
+      const onResize = () => {
+        const viewport2 = getViewportSize();
+        const newCenterX = viewport2.w / 2 / pr;
+        const dx = newCenterX - lastCenterX;
+        if (Math.abs(dx) < 0.5) return;
+        lastCenterX = newCenterX;
+        for (const particle of collector.particles) {
+          if (particle.homePosition) {
+            particle.homePosition.x += dx;
+            particle.position.x += dx;
+          }
+        }
+      };
+      if (container) {
+        const ro = new ResizeObserver(onResize);
+        ro.observe(container);
+        cleanups?.push(() => ro.disconnect());
+      } else {
+        window.addEventListener("resize", onResize);
+        cleanups?.push(() => window.removeEventListener("resize", onResize));
+      }
+    }
     return collector;
   };
   const textToParticles = async (text, config) => {
@@ -3419,7 +3444,7 @@ function createParticles({
   const forces = createForces(engine, container, cleanups);
   const boundary = createBoundaryHelper(engine, container, cleanups);
   const effects = createEffects(engine, mergedConfig);
-  const imageApi = createImageParticles(engine, mergedConfig, container);
+  const imageApi = createImageParticles(engine, mergedConfig, container, cleanups);
   if (mouseForce) {
     const mouseConfig = mouseForce === true ? { track: true } : { track: true, ...mouseForce };
     forces.addMouseForce(mouseConfig);
