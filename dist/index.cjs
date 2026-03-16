@@ -2050,6 +2050,7 @@ var bluePalette = ["#003d99", "#0057d9", "#0077ff", "#1a8cff", "#3da1ff", "#66b8
 var orangePalette = ["#b33600", "#cc4a00", "#e86100", "#f57c00", "#ff9500", "#ffad33"];
 var greenPalette = ["#006b3f", "#008c51", "#00a85e", "#00c46b", "#1edd80", "#4deda0"];
 var mutedPalette = ["#d4a373", "#ccd5ae", "#e9edc9", "#a8dadc", "#b5838d", "#e5989b", "#8d99ae"];
+var fireworksPalette = ["#ff4757", "#ffa502", "#2ed573", "#1e90ff", "#ff6b81", "#eccc68", "#7bed9f", "#70a1ff", "#ffffff"];
 var meteorPalette = ["#ffffff", "#fff4e0", "#ffd699", "#ff9500", "#ff6b00", "#e84d00"];
 var waterPalette = ["#e0f7fa", "#b2ebf2", "#80deea", "#4dd0e1", "#26c6da", "#00acc1", "#ffffff"];
 var finlandPalette = ["#003580", "#002f6c", "#ffffff", "#f8f9fa"];
@@ -2232,6 +2233,47 @@ var Ambient = {
     autoStart: true,
     colors: meteorPalette
   },
+  /** Fireworks show: gentle rockets launch from the bottom and auto-explode into colorful bursts */
+  fireworksShow: {
+    shape: "triangle",
+    blendMode: "normal",
+    trail: true,
+    trailLength: 6,
+    trailFade: 0.3,
+    trailShrink: 0.5,
+    rate: 0.25,
+    life: 999999,
+    particleLife: 120,
+    velocity: Vector.fromAngle(-Math.PI / 2, 7),
+    spread: Math.PI / 6,
+    sizeMin: 2,
+    sizeMax: 4,
+    velocityMultiplier: 3,
+    fadeTime: 15,
+    gravity: 0.05,
+    scaleStep: 1,
+    maxCount: 1200,
+    continuous: true,
+    autoStart: true,
+    colors: fireworksPalette,
+    detonate: {
+      at: 0.65,
+      childCount: 10,
+      velocity: 4,
+      velocitySpread: 0.6,
+      friction: 0.02,
+      scaleStep: 0.8,
+      childLife: 50,
+      sizeMin: 1,
+      sizeMax: 3,
+      fadeTime: 20,
+      inheritColor: true,
+      trail: true,
+      trailLength: 4,
+      trailFade: 0.5,
+      trailShrink: 0.6
+    }
+  },
   /** River flow: horizontal stream of water particles, designed for use with attractors */
   river: {
     shape: "circle",
@@ -2317,7 +2359,8 @@ var presetRegistry = {
   imageShape: ImageParticles.shape,
   snow: Ambient.snow,
   meteors: Ambient.meteors,
-  river: Ambient.river
+  river: Ambient.river,
+  fireworksShow: Ambient.fireworksShow
 };
 var presets = {
   Burst,
@@ -2335,7 +2378,8 @@ var presets = {
   imageShape: ImageParticles.shape,
   snow: Ambient.snow,
   meteors: Ambient.meteors,
-  river: Ambient.river
+  river: Ambient.river,
+  fireworksShow: Ambient.fireworksShow
 };
 function getPreset(name) {
   return presetRegistry[name];

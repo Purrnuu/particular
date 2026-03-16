@@ -76,7 +76,7 @@ Main entry point. Creates engine, canvas, and returns controller.
 
 Options (all optional):
 - canvas: HTMLCanvasElement          — if omitted, auto-created and appended to container or document.body
-- preset: PresetName                 — default "magic". One of: "magic", "confetti", "fireworks", "fireworksDetonation", "snow", "meteors", "imageText", "imageShape", "images"
+- preset: PresetName                 — default "magic". One of: "magic", "confetti", "fireworks", "fireworksDetonation", "snow", "meteors", "fireworksShow", "river", "imageText", "imageShape", "images"
 - config: Partial<FullParticularConfig> — override any particle/engine config field
 - renderer: "webgl" | "canvas"      — default "webgl"
 - autoResize: boolean                — default true
@@ -260,11 +260,13 @@ Returns: { canvasRef, canvasStyle, destroy() }
 | Name                  | Type    | Description                                          |
 |-----------------------|---------|------------------------------------------------------|
 | "magic"               | Burst   | Soft trailing circles, cool blue palette (default)   |
-| "confetti"            | Burst   | Playful square confetti, muted colors                |
-| "fireworks"           | Burst   | Energetic additive circles, bright bloom             |
+| "confetti"            | Burst   | Colorful rectangle confetti, muted colors            |
+| "fireworks"           | Burst   | Energetic circles with trailing streaks              |
 | "fireworksDetonation" | Burst   | Narrow launch, auto-explodes into sub-bursts         |
 | "snow"                | Ambient | Gentle snowfall, continuous                          |
 | "meteors"             | Ambient | Bright diagonal streaks with glowing trails          |
+| "fireworksShow"       | Ambient | Continuous fireworks — rockets launch and detonate   |
+| "river"               | Ambient | Horizontal water stream for use with attractors      |
 | "imageText"           | Image   | Tiny square particles for text rendering             |
 | "imageShape"          | Image   | Circle particles with glow for image/icon rendering  |
 | "images"              | Image   | Icon/image burst particles                           |
@@ -273,7 +275,7 @@ Returns: { canvasRef, canvasStyle, destroy() }
 
 Override colors on any preset: `createParticles({ config: { colors: ["#ff0000", "#00ff00"] } })`
 
-Built-in (via `presets.Colors.xxx`): snow, grayscale, coolBlue, muted, blue, orange, green, meteor, finland, usa.
+Built-in (via `presets.Colors.xxx`): snow, grayscale, coolBlue, muted, blue, orange, green, meteor, water, finland, usa.
 Empty colors array = auto-generated harmonious HSL palette per emitter.
 
 ## Container Mode

@@ -850,6 +850,46 @@ declare const presetRegistry: {
         autoStart: true;
         colors: string[];
     };
+    readonly fireworksShow: {
+        shape: "triangle";
+        blendMode: "normal";
+        trail: true;
+        trailLength: number;
+        trailFade: number;
+        trailShrink: number;
+        rate: number;
+        life: number;
+        particleLife: number;
+        velocity: Vector;
+        spread: number;
+        sizeMin: number;
+        sizeMax: number;
+        velocityMultiplier: number;
+        fadeTime: number;
+        gravity: number;
+        scaleStep: number;
+        maxCount: number;
+        continuous: true;
+        autoStart: true;
+        colors: string[];
+        detonate: {
+            at: number;
+            childCount: number;
+            velocity: number;
+            velocitySpread: number;
+            friction: number;
+            scaleStep: number;
+            childLife: number;
+            sizeMin: number;
+            sizeMax: number;
+            fadeTime: number;
+            inheritColor: true;
+            trail: true;
+            trailLength: number;
+            trailFade: number;
+            trailShrink: number;
+        };
+    };
 };
 declare const presets: {
     readonly Burst: {
@@ -1049,6 +1089,47 @@ declare const presets: {
             continuous: true;
             autoStart: true;
             colors: string[];
+        };
+        /** Fireworks show: gentle rockets launch from the bottom and auto-explode into colorful bursts */
+        readonly fireworksShow: {
+            shape: "triangle";
+            blendMode: "normal";
+            trail: true;
+            trailLength: number;
+            trailFade: number;
+            trailShrink: number;
+            rate: number;
+            life: number;
+            particleLife: number;
+            velocity: Vector;
+            spread: number;
+            sizeMin: number;
+            sizeMax: number;
+            velocityMultiplier: number;
+            fadeTime: number;
+            gravity: number;
+            scaleStep: number;
+            maxCount: number;
+            continuous: true;
+            autoStart: true;
+            colors: string[];
+            detonate: {
+                at: number;
+                childCount: number;
+                velocity: number;
+                velocitySpread: number;
+                friction: number;
+                scaleStep: number;
+                childLife: number;
+                sizeMin: number;
+                sizeMax: number;
+                fadeTime: number;
+                inheritColor: true;
+                trail: true;
+                trailLength: number;
+                trailFade: number;
+                trailShrink: number;
+            };
         };
         /** River flow: horizontal stream of water particles, designed for use with attractors */
         readonly river: {
@@ -1337,6 +1418,46 @@ declare const presets: {
         continuous: true;
         autoStart: true;
         colors: string[];
+    };
+    readonly fireworksShow: {
+        shape: "triangle";
+        blendMode: "normal";
+        trail: true;
+        trailLength: number;
+        trailFade: number;
+        trailShrink: number;
+        rate: number;
+        life: number;
+        particleLife: number;
+        velocity: Vector;
+        spread: number;
+        sizeMin: number;
+        sizeMax: number;
+        velocityMultiplier: number;
+        fadeTime: number;
+        gravity: number;
+        scaleStep: number;
+        maxCount: number;
+        continuous: true;
+        autoStart: true;
+        colors: string[];
+        detonate: {
+            at: number;
+            childCount: number;
+            velocity: number;
+            velocitySpread: number;
+            friction: number;
+            scaleStep: number;
+            childLife: number;
+            sizeMin: number;
+            sizeMax: number;
+            fadeTime: number;
+            inheritColor: true;
+            trail: true;
+            trailLength: number;
+            trailFade: number;
+            trailShrink: number;
+        };
     };
 };
 type PresetName = keyof typeof presetRegistry;

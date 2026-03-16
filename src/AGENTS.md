@@ -155,13 +155,17 @@ Usage: `{ ...presets.Burst.confetti, ...presets.Colors.finland }` to override co
 
 Curated and intentionally limited. Polish over quantity.
 
-- `presets.Burst.confetti` — balanced celebration (square, muted colors)
+- `presets.Burst.confetti` — colorful rectangle confetti (muted colors, friction for flutter)
 - `presets.Burst.magic` — signature look (circle, coolBlue, trails)
-- `presets.Burst.fireworks` — energetic bloom (circle, additive, glow)
-- `presets.Images.showcase` — tuned for icon/image particles
+- `presets.Burst.fireworks` — energetic circles with trailing streaks (normal blend)
+- `presets.Burst.fireworksDetonation` — narrow upward launch that auto-detonates into colorful sub-bursts at 70% lifetime
 - `presets.Ambient.snow` — gentle snowfall (continuous, low rate, long life)
 - `presets.Ambient.meteors` — bright diagonal streaks with glowing trails, accelerating as they fall
-- `presets.Burst.fireworksDetonation` — narrow upward launch that auto-detonates into colorful sub-bursts at 70% lifetime
+- `presets.Ambient.fireworksShow` — continuous fireworks screensaver: triangle rockets launch from bottom, auto-detonate into trailing circle bursts (vivid palette)
+- `presets.Ambient.river` — horizontal water stream with cyan glow and short trails, designed for use with attractors (water palette)
+- `presets.Images.showcase` — tuned for icon/image particles
+- `presets.ImageParticles.text` — high-fidelity text as tiny square particles
+- `presets.ImageParticles.shape` — shape/icon as circle particles with soft glow
 
 ## Trail System
 
@@ -214,7 +218,7 @@ File: `src/particular/utils/explosion.ts`. Pure factory function used by both ma
 
 ### Config Types
 
-- `ChildExplosionConfig`: shared base (childCount, childLife, sizeMin/Max, velocity, gravity, fadeTime, inheritColor, shape/blendMode overrides, glow/shadow/trail)
+- `ChildExplosionConfig`: shared base (childCount, childLife, sizeMin/Max, velocity, velocitySpread, friction, scaleStep, gravity, fadeTime, inheritColor, shape/blendMode overrides, glow/shadow/trail)
 - `ExplodeOptions extends ChildExplosionConfig`: adds `destroyParents`
 - `DetonateConfig extends ChildExplosionConfig`: adds `at` (0-1 lifetime fraction)
 

@@ -1,9 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 
-import { startScreensaver, presets } from './index';
+import { createParticles, startScreensaver, presets } from './index';
 import type { ScreensaverController, MouseForceConfig } from './index';
-import { defaultParticle, defaultMouseWind } from './particular/core/defaults';
+import Emitter from './particular/components/emitter';
+import { configureParticle, defaultParticle, defaultMouseWind } from './particular/core/defaults';
+import Vector from './particular/utils/vector';
 import { particlesBackgroundLayerStyle } from './particular/canvasStyles';
 import { particleArgTypes, particleStoryArgsToConfig, resolveColorPalette } from './storyArgs';
 import type { ParticleStoryArgs } from './storyArgs';
@@ -213,4 +215,73 @@ export const Meteors: Story = {
     fadeTime: meteor.fadeTime,
     maxCount: meteor.maxCount,
   },
+};
+
+/* ─── Fireworks Show ─── */
+
+const FireworksShowDemo: React.FC<{ renderer: 'canvas' | 'webgl' }> = ({ renderer }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const controller = createParticles({
+      canvas,
+      preset: 'fireworksShow',
+      renderer,
+      autoResize: true,
+    });
+
+    const pr = controller.engine.pixelRatio;
+    const viewW = window.innerWidth / pr;
+    const viewH = window.innerHeight / pr;
+
+    // Emitter at the bottom edge, wide horizontal spawn band
+    const fwConfig = configureParticle(presets.Ambient.fireworksShow);
+    const emitter = new Emitter({
+      point: new Vector(viewW / 2, viewH),
+      ...fwConfig,
+      spawnWidth: viewW * 0.8,
+      spawnHeight: 0,
+      icons: [],
+    });
+    controller.engine.addEmitter(emitter);
+    emitter.isEmitting = true;
+    emitter.emit();
+
+    return () => controller.destroy();
+  }, [renderer]);
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#0a0a1a' }}>
+      <canvas ref={canvasRef} style={particlesBackgroundLayerStyle} />
+      <h1
+        style={{
+          textAlign: 'center',
+          paddingTop: '45vh',
+          pointerEvents: 'none',
+          userSelect: 'none',
+          color: 'rgba(255, 255, 255, 0.15)',
+          fontWeight: 300,
+          letterSpacing: '0.1em',
+        }}
+      >
+        FIREWORKS SHOW
+      </h1>
+    </div>
+  );
+};
+
+export const FireworksShow: StoryObj<{ renderer: 'canvas' | 'webgl' }> = {
+  argTypes: {
+    renderer: {
+      control: 'radio',
+      options: ['canvas', 'webgl'],
+      description: 'Rendering backend',
+      table: { category: 'Rendering' },
+    },
+  },
+  args: { renderer: 'webgl' } as any,
+  render: (args) => <FireworksShowDemo {...(args as unknown as { renderer: 'canvas' | 'webgl' })} />,
 };
