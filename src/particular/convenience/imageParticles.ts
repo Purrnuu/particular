@@ -351,29 +351,39 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
       engine.addEmitter(collector);
     }
 
-    // Auto-center: re-run the effect on resize so particles re-center and re-scale
+    // Auto-center: re-run the effect on resize, scaling position/size proportionally
     const autoCenter = config.autoCenter ?? true;
     if (autoCenter) {
       let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-      let lastWidth = getViewportSize().w;
+      const initialViewport = getViewportSize();
 
       const onResize = () => {
-        const newWidth = getViewportSize().w;
-        if (newWidth === lastWidth) return;
-        lastWidth = newWidth;
-
         if (debounceTimer) clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
+          const newViewport = getViewportSize();
+          const scaleX = newViewport.w / initialViewport.w;
+          const scaleY = newViewport.h / initialViewport.h;
+          if (Math.abs(scaleX - 1) < 0.01 && Math.abs(scaleY - 1) < 0.01) return;
+
           // Remove old particles
           const idx = engine.emitters.indexOf(collector);
           if (idx !== -1) engine.emitters.splice(idx, 1);
           collector.particles.length = 0;
 
-          // Re-run without intro/autoCenter, dropping x/width/height so horizontal
-          // centering and scaling recalculate. Keep y so vertical position stays fixed.
-          const { x: _x, width: _w, height: _h, ...restConfig } = config;
-          imageToParticles({ ...restConfig, intro: undefined, autoCenter: false }).then((newCollector) => {
-            // Move particles into the original collector so external references stay valid
+          // Re-run with scaled position/size, no intro, no recursive autoCenter
+          const scaledConfig: ImageParticlesConfig = {
+            ...config,
+            intro: undefined,
+            autoCenter: false,
+          };
+          // Scale x/y proportionally if they were provided
+          if (config.x != null) scaledConfig.x = config.x * scaleX;
+          if (config.y != null) scaledConfig.y = config.y * scaleY;
+          // Drop width/height so smart defaults recalculate from new viewport
+          delete scaledConfig.width;
+          delete scaledConfig.height;
+
+          imageToParticles(scaledConfig).then((newCollector) => {
             collector.particles.push(...newCollector.particles);
             const newIdx = engine.emitters.indexOf(newCollector);
             if (newIdx !== -1) engine.emitters.splice(newIdx, 1);

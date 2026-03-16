@@ -3167,18 +3167,27 @@ function createImageParticles(engine, mergedConfig, container, cleanups) {
     const autoCenter = config.autoCenter ?? true;
     if (autoCenter) {
       let debounceTimer = null;
-      let lastWidth = getViewportSize().w;
+      const initialViewport = getViewportSize();
       const onResize = () => {
-        const newWidth = getViewportSize().w;
-        if (newWidth === lastWidth) return;
-        lastWidth = newWidth;
         if (debounceTimer) clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
+          const newViewport = getViewportSize();
+          const scaleX = newViewport.w / initialViewport.w;
+          const scaleY = newViewport.h / initialViewport.h;
+          if (Math.abs(scaleX - 1) < 0.01 && Math.abs(scaleY - 1) < 0.01) return;
           const idx = engine.emitters.indexOf(collector);
           if (idx !== -1) engine.emitters.splice(idx, 1);
           collector.particles.length = 0;
-          const { x: _x, width: _w, height: _h, ...restConfig } = config;
-          imageToParticles({ ...restConfig, intro: void 0, autoCenter: false }).then((newCollector) => {
+          const scaledConfig = {
+            ...config,
+            intro: void 0,
+            autoCenter: false
+          };
+          if (config.x != null) scaledConfig.x = config.x * scaleX;
+          if (config.y != null) scaledConfig.y = config.y * scaleY;
+          delete scaledConfig.width;
+          delete scaledConfig.height;
+          imageToParticles(scaledConfig).then((newCollector) => {
             collector.particles.push(...newCollector.particles);
             const newIdx = engine.emitters.indexOf(newCollector);
             if (newIdx !== -1) engine.emitters.splice(newIdx, 1);
