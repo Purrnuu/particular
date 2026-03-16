@@ -36,7 +36,7 @@ const AttractorDemo: React.FC<AttractorStoryArgs> = (props) => {
     const controller = createParticles({
       canvas,
       preset: 'magic',
-      config: { continuous: true, ...particleConfig },
+      config: { continuous: true, trail: false, ...particleConfig },
       renderer,
       autoResize: true,
     });
@@ -231,7 +231,7 @@ const VisibleAttractorDemo: React.FC<AttractorStoryArgs> = (props) => {
     const controller = createParticles({
       canvas,
       preset: 'magic',
-      config: { continuous: true, ...particleConfig },
+      config: { continuous: true, trail: false, ...particleConfig },
       renderer,
       autoResize: true,
     });
@@ -353,7 +353,7 @@ const RandomAttractorsDemo: React.FC<AttractorStoryArgs> = (props) => {
     const controller = createParticles({
       canvas,
       preset: 'magic',
-      config: { continuous: true, ...particleConfig },
+      config: { continuous: true, trail: false, ...particleConfig },
       renderer,
       autoResize: true,
     });

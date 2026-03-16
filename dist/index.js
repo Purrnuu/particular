@@ -2085,14 +2085,10 @@ var Burst = {
     trailLength: 12,
     colors: coolBluePalette
   },
-  /** Cinematic fireworks: energetic additive circles with bright bloom */
+  /** Cinematic fireworks: energetic circles with bright bloom */
   fireworks: {
     shape: "circle",
-    blendMode: "additive",
-    glow: true,
-    glowSize: 14,
-    glowColor: "#fff7d6",
-    glowAlpha: 0.5,
+    blendMode: "normal",
     rate: 22,
     life: 24,
     velocity: Vector.fromAngle(-90, 8.8),
@@ -2104,6 +2100,10 @@ var Burst = {
     gravity: 0.18,
     scaleStep: 1.15,
     maxCount: 520,
+    trail: true,
+    trailLength: 8,
+    trailFade: 0.35,
+    trailShrink: 0.5,
     colors: mutedPalette
   },
   /** Fireworks with timed detonation: narrow upward launch that auto-explodes into colorful sub-bursts */
@@ -2194,7 +2194,7 @@ var Ambient = {
   /** Meteors: bright diagonal streaks with glowing trails, accelerating as they fall */
   meteors: {
     shape: "circle",
-    blendMode: "additive",
+    blendMode: "normal",
     glow: true,
     glowSize: 12,
     glowColor: "#ff8c00",

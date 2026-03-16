@@ -676,11 +676,7 @@ declare const presetRegistry: {
     };
     readonly fireworks: {
         shape: "circle";
-        blendMode: "additive";
-        glow: true;
-        glowSize: number;
-        glowColor: string;
-        glowAlpha: number;
+        blendMode: "normal";
         rate: number;
         life: number;
         velocity: Vector;
@@ -692,6 +688,10 @@ declare const presetRegistry: {
         gravity: number;
         scaleStep: number;
         maxCount: number;
+        trail: true;
+        trailLength: number;
+        trailFade: number;
+        trailShrink: number;
         colors: string[];
     };
     readonly fireworksDetonation: {
@@ -790,7 +790,7 @@ declare const presetRegistry: {
     };
     readonly meteors: {
         shape: "circle";
-        blendMode: "additive";
+        blendMode: "normal";
         glow: true;
         glowSize: number;
         glowColor: string;
@@ -860,14 +860,10 @@ declare const presets: {
             trailLength: number;
             colors: string[];
         };
-        /** Cinematic fireworks: energetic additive circles with bright bloom */
+        /** Cinematic fireworks: energetic circles with bright bloom */
         readonly fireworks: {
             shape: "circle";
-            blendMode: "additive";
-            glow: true;
-            glowSize: number;
-            glowColor: string;
-            glowAlpha: number;
+            blendMode: "normal";
             rate: number;
             life: number;
             velocity: Vector;
@@ -879,6 +875,10 @@ declare const presets: {
             gravity: number;
             scaleStep: number;
             maxCount: number;
+            trail: true;
+            trailLength: number;
+            trailFade: number;
+            trailShrink: number;
             colors: string[];
         };
         /** Fireworks with timed detonation: narrow upward launch that auto-explodes into colorful sub-bursts */
@@ -989,7 +989,7 @@ declare const presets: {
         /** Meteors: bright diagonal streaks with glowing trails, accelerating as they fall */
         readonly meteors: {
             shape: "circle";
-            blendMode: "additive";
+            blendMode: "normal";
             glow: true;
             glowSize: number;
             glowColor: string;
@@ -1099,11 +1099,7 @@ declare const presets: {
     };
     readonly fireworks: {
         shape: "circle";
-        blendMode: "additive";
-        glow: true;
-        glowSize: number;
-        glowColor: string;
-        glowAlpha: number;
+        blendMode: "normal";
         rate: number;
         life: number;
         velocity: Vector;
@@ -1115,6 +1111,10 @@ declare const presets: {
         gravity: number;
         scaleStep: number;
         maxCount: number;
+        trail: true;
+        trailLength: number;
+        trailFade: number;
+        trailShrink: number;
         colors: string[];
     };
     readonly fireworksDetonation: {
@@ -1213,7 +1213,7 @@ declare const presets: {
     };
     readonly meteors: {
         shape: "circle";
-        blendMode: "additive";
+        blendMode: "normal";
         glow: true;
         glowSize: number;
         glowColor: string;
