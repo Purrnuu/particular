@@ -491,6 +491,7 @@ declare class MouseForce implements ForceSource {
     maxSpeed: number;
     falloff: number;
     private _trackListener;
+    private _touchListener;
     private _trackTarget;
     private _pixelRatio;
     private _container;

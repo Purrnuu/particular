@@ -2513,6 +2513,7 @@ var Attractor = class {
 var MouseForce = class {
   constructor(config = {}) {
     this._trackListener = null;
+    this._touchListener = null;
     this._trackTarget = null;
     this._pixelRatio = 1;
     this._container = null;
@@ -2532,9 +2533,9 @@ var MouseForce = class {
     this.stopTracking();
     this._pixelRatio = pixelRatio;
     this._container = container ?? null;
-    this._trackListener = (e) => {
-      let x = e.clientX;
-      let y = e.clientY;
+    const handleCoords = (clientX, clientY) => {
+      let x = clientX;
+      let y = clientY;
       if (this._container) {
         const rect = this._container.getBoundingClientRect();
         x -= rect.left;
@@ -2542,15 +2543,33 @@ var MouseForce = class {
       }
       this.updatePosition(x / this._pixelRatio, y / this._pixelRatio);
     };
+    this._trackListener = (e) => {
+      handleCoords(e.clientX, e.clientY);
+    };
+    this._touchListener = (e) => {
+      const touch = e.touches[0];
+      if (touch) {
+        handleCoords(touch.clientX, touch.clientY);
+      }
+    };
     this._trackTarget = target;
     target.addEventListener("mousemove", this._trackListener);
+    target.addEventListener("touchmove", this._touchListener, { passive: true });
+    target.addEventListener("touchstart", this._touchListener, { passive: true });
   }
   stopTracking() {
-    if (this._trackTarget && this._trackListener) {
-      this._trackTarget.removeEventListener("mousemove", this._trackListener);
+    if (this._trackTarget) {
+      if (this._trackListener) {
+        this._trackTarget.removeEventListener("mousemove", this._trackListener);
+      }
+      if (this._touchListener) {
+        this._trackTarget.removeEventListener("touchmove", this._touchListener);
+        this._trackTarget.removeEventListener("touchstart", this._touchListener);
+      }
     }
     this._trackTarget = null;
     this._trackListener = null;
+    this._touchListener = null;
   }
   destroy() {
     this.stopTracking();

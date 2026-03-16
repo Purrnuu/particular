@@ -24,7 +24,7 @@
       /* Showcase styles */
       .showcase-wrap { position: relative; min-height: 100vh; background: linear-gradient(180deg, #070b14 0%, #0a1628 30%, #0d1b2a 60%, #0a0a1a 100%); }
       .showcase-wrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
-      .showcase-hero { height: 100vh; position: relative; z-index: 1; text-align: center; pointer-events: none; user-select: none; }
+      .showcase-hero { height: 100vh; height: 100dvh; position: relative; z-index: 1; text-align: center; pointer-events: none; user-select: none; }
       .showcase-sub { padding-top: 58vh; }
       .showcase-sub p { font-size: 1.1rem; line-height: 1.6; color: rgba(255,255,255,0.45); max-width: 520px; margin: 0 auto 20px; }
       .showcase-sub .hint-text { color: rgba(255,255,255,0.2); font-size: 0.8rem; }
@@ -64,6 +64,19 @@
       .showcase-steps .step .body { font-size: 0.82rem; line-height: 1.5; color: rgba(255,255,255,0.55); }
       .showcase-footer { padding: 100px 24px; text-align: center; position: relative; z-index: 1; }
       .showcase-footer p { color: rgba(255,255,255,0.15); font-size: 0.85rem; }
+
+      /* Responsive */
+      @media (max-width: 768px) {
+        .showcase-grid { grid-template-columns: repeat(2, 1fr); }
+        .showcase-section h2, .showcase-cta h2 { font-size: 1.4rem; }
+        .showcase-sub p { font-size: 0.95rem; }
+        nav button { font-size: 0.75rem; padding: 5px 10px; }
+      }
+      @media (max-width: 480px) {
+        .showcase-grid { grid-template-columns: 1fr; }
+        .showcase-section h2, .showcase-cta h2 { font-size: 1.2rem; }
+        .showcase-sub p { font-size: 0.85rem; }
+      }
     </style>
   </head>
   <body>
@@ -96,7 +109,7 @@
         <section class="showcase-hero">
           <div class="showcase-sub">
             <p>A particle engine for the modern web.<br/>Beautiful defaults, zero config, endless possibilities.</p>
-            <p class="hint-text">Move mouse to push · Press E to scatter</p>
+            <p class="hint-text">Touch or move mouse to push particles</p>
           </div>
           <div class="showcase-scroll-hint">Scroll down</div>
         </section>
@@ -377,7 +390,7 @@
           autoResize: true,
         });
         controller.attachClickBurst(document);
-        hint.innerHTML = '<h2>Click anywhere</h2><p>Magic preset — click to create particle bursts</p>';
+        hint.innerHTML = '<h2>Tap anywhere</h2><p>Magic preset — tap or click to create particle bursts</p>';
         canvas.style.pointerEvents = "";
         return () => controller.destroy();
       }
@@ -390,7 +403,7 @@
           renderer: "webgl",
           autoResize: true,
         });
-        hint.innerHTML = '<h2>Snowfall</h2><p>Ambient screensaver — move your mouse to push snowflakes</p>';
+        hint.innerHTML = '<h2>Snowfall</h2><p>Ambient screensaver — drag to push snowflakes</p>';
         canvas.style.pointerEvents = "";
         return () => screensaver.destroy();
       }
@@ -412,7 +425,7 @@
 
         controller.addMouseForce({ track: true, strength: 3, radius: 80 });
 
-        hint.innerHTML = '<h2>&nbsp;</h2><p>Move mouse to push particles · Press E to scatter</p>';
+        hint.innerHTML = '<h2>&nbsp;</h2><p>Touch or move mouse to push particles</p>';
         canvas.style.pointerEvents = "";
 
         const onKey = (e) => {
@@ -443,7 +456,7 @@
 
         controller.addMouseForce({ track: true, strength: 3, radius: 80 });
 
-        hint.innerHTML = '<h2>&nbsp;</h2><p>Move mouse to push particles · Press E to scatter</p>';
+        hint.innerHTML = '<h2>&nbsp;</h2><p>Touch or move mouse to push particles</p>';
         canvas.style.pointerEvents = "";
 
         const onKey = (e) => {

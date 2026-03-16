@@ -54,9 +54,48 @@ const subtleSnowColors = ['#555566', '#606070', '#6a6a7a', '#757585', '#808090']
 
 const mutedRiverColors = ['#3a4a4f', '#455558', '#4f6065', '#5a6b70', '#647578'];
 
+/* ─── Responsive CSS (injected once) — inline styles can't do media queries ─── */
+
+const RESPONSIVE_CSS = `
+.showcase-features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  pointer-events: none;
+}
+.showcase-hero-section {
+  height: 100vh;
+  height: 100dvh;
+}
+.showcase-section-heading {
+  font-size: 1.8rem;
+}
+@media (max-width: 768px) {
+  .showcase-features-grid { grid-template-columns: repeat(2, 1fr); }
+  .showcase-section-heading { font-size: 1.4rem; }
+}
+@media (max-width: 480px) {
+  .showcase-features-grid { grid-template-columns: 1fr; }
+  .showcase-section-heading { font-size: 1.2rem; }
+}
+`;
+
+function useInjectStyles(css: string) {
+  useEffect(() => {
+    const id = 'showcase-responsive-styles';
+    if (document.getElementById(id)) return;
+    const style = document.createElement('style');
+    style.id = id;
+    style.textContent = css;
+    document.head.appendChild(style);
+    return () => { style.remove(); };
+  }, [css]);
+}
+
 /* ─── Welcome: text particles hero + snow + river + scroll fireworks ─── */
 
 const WelcomeDemo: React.FC = () => {
+  useInjectStyles(RESPONSIVE_CSS);
   const containerRef = useRef<HTMLDivElement>(null);
   const snowCanvasRef = useRef<HTMLCanvasElement>(null);
   const textCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -367,8 +406,8 @@ const WelcomeDemo: React.FC = () => {
 
       {/* Hero — text particles render at ~38% viewport height, subtitle sits below */}
       <section
+        className="showcase-hero-section"
         style={{
-          height: '100vh',
           position: 'relative',
           zIndex: 1,
           textAlign: 'center',
@@ -389,7 +428,7 @@ const WelcomeDemo: React.FC = () => {
             Beautiful defaults, zero config, endless possibilities.
           </p>
           <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.8rem' }}>
-            Move mouse to push &middot; Press E to scatter
+            Touch or move mouse to push particles
           </p>
         </div>
         <div style={{ position: 'absolute', bottom: 40, left: 0, right: 0, color: 'rgba(255,255,255,0.25)', fontSize: '0.85rem' }}>
@@ -400,12 +439,12 @@ const WelcomeDemo: React.FC = () => {
       {/* Features grid */}
       <section style={{ padding: '80px 24px', maxWidth: 900, margin: '0 auto', position: 'relative', zIndex: 1 }}>
         <div style={{ textAlign: 'center', marginBottom: 48 }}>
-          <h2 style={sectionHeadingStyle}>Why Particular?</h2>
+          <h2 className="showcase-section-heading" style={sectionHeadingStyle}>Why Particular?</h2>
           <p style={{ ...sectionSubStyle, margin: '0 auto' }}>
             Everything you need for production-quality particle effects.
           </p>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, pointerEvents: 'none' }}>
+        <div className="showcase-features-grid">
           {features.map((feat, i) => (
             <div key={i} ref={setCardRef(cardIndex++)} style={{ ...cardStyle, textAlign: 'center' }}>
               <div style={{ fontSize: '2rem', marginBottom: 10 }}>{feat.icon}</div>
@@ -433,7 +472,7 @@ const WelcomeDemo: React.FC = () => {
             maxWidth: 700,
           }}
         >
-          <h2 style={{ ...sectionHeadingStyle, fontSize: '1.5rem' }}>
+          <h2 className="showcase-section-heading" style={{ ...sectionHeadingStyle, fontSize: '1.5rem' }}>
             Ready to add particles to your project?
           </h2>
           <p style={{ ...sectionSubStyle, margin: '0 auto 24px' }}>
@@ -459,7 +498,7 @@ const WelcomeDemo: React.FC = () => {
       {/* How it works */}
       <section style={{ padding: '80px 24px', maxWidth: 700, margin: '0 auto', position: 'relative', zIndex: 1 }}>
         <div style={{ textAlign: 'center', marginBottom: 48 }}>
-          <h2 style={sectionHeadingStyle}>Three Steps</h2>
+          <h2 className="showcase-section-heading" style={sectionHeadingStyle}>Three Steps</h2>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20, pointerEvents: 'none' }}>
           {steps.map((step, i) => (

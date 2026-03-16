@@ -12,6 +12,7 @@ export default class MouseForce implements ForceSource {
   falloff: number;
 
   private _trackListener: ((e: MouseEvent) => void) | null = null;
+  private _touchListener: ((e: TouchEvent) => void) | null = null;
   private _trackTarget: EventTarget | null = null;
   private _pixelRatio = 1;
   private _container: HTMLElement | null = null;
@@ -35,9 +36,10 @@ export default class MouseForce implements ForceSource {
     this.stopTracking();
     this._pixelRatio = pixelRatio;
     this._container = container ?? null;
-    this._trackListener = (e: MouseEvent) => {
-      let x = e.clientX;
-      let y = e.clientY;
+
+    const handleCoords = (clientX: number, clientY: number) => {
+      let x = clientX;
+      let y = clientY;
       if (this._container) {
         const rect = this._container.getBoundingClientRect();
         x -= rect.left;
@@ -45,16 +47,37 @@ export default class MouseForce implements ForceSource {
       }
       this.updatePosition(x / this._pixelRatio, y / this._pixelRatio);
     };
+
+    this._trackListener = (e: MouseEvent) => {
+      handleCoords(e.clientX, e.clientY);
+    };
+
+    this._touchListener = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      if (touch) {
+        handleCoords(touch.clientX, touch.clientY);
+      }
+    };
+
     this._trackTarget = target;
     target.addEventListener('mousemove', this._trackListener as EventListener);
+    target.addEventListener('touchmove', this._touchListener as EventListener, { passive: true });
+    target.addEventListener('touchstart', this._touchListener as EventListener, { passive: true });
   }
 
   stopTracking(): void {
-    if (this._trackTarget && this._trackListener) {
-      this._trackTarget.removeEventListener('mousemove', this._trackListener as EventListener);
+    if (this._trackTarget) {
+      if (this._trackListener) {
+        this._trackTarget.removeEventListener('mousemove', this._trackListener as EventListener);
+      }
+      if (this._touchListener) {
+        this._trackTarget.removeEventListener('touchmove', this._touchListener as EventListener);
+        this._trackTarget.removeEventListener('touchstart', this._touchListener as EventListener);
+      }
     }
     this._trackTarget = null;
     this._trackListener = null;
+    this._touchListener = null;
   }
 
   destroy(): void {
