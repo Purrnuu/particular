@@ -234,7 +234,25 @@ function ShowcaseDemo() {
 
     controller.addMouseForce({ track: true, strength: 3, radius: 80 });
 
+    // Keep text centered on resize
+    const pr = controller.engine.pixelRatio;
+    let lastCenterX = w / 2 / pr;
+    const ro = new ResizeObserver(() => {
+      const newCenterX = container.clientWidth / 2 / pr;
+      const dx = newCenterX - lastCenterX;
+      if (Math.abs(dx) < 0.5) return;
+      lastCenterX = newCenterX;
+      for (const p of controller.engine.getAllParticles()) {
+        if (p.homePosition) {
+          p.homePosition.x += dx;
+          p.position.x += dx;
+        }
+      }
+    });
+    ro.observe(container);
+
     return () => {
+      ro.disconnect();
       controller.destroy();
       textControllerRef.current = null;
     };
