@@ -1,7 +1,7 @@
 # Project TODO
 
 - [x] Add support for Image to Particles mapping
-- [ ] Make burst presets pretty
+- [x] Make burst presets pretty
 - [ ] Support 3d objects
 - [x] Toggleable idle effect for image particles — enable/disable breathing, wiggle, wave, and pulse animations at runtime via controller method or config flag
 - [x] Better looking explosion effects — improve child particle visuals (color variation, velocity spread, shapes, glow) for more cinematic explode() results

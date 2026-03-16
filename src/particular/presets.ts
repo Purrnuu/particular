@@ -22,21 +22,22 @@ const usaPalette: string[] = ['#B22234', '#ffffff', '#3C3B6E'];
  * Combine with custom options: ParticularWrapper({ ...presets.Burst.magic, rate: 20 })(MyComponent)
  */
 const Burst = {
-  /** Polished confetti burst: playful, readable, and balanced */
+  /** Celebratory confetti burst: colorful rectangles fluttering outward and drifting down */
   confetti: {
-    shape: 'square' as const,
+    shape: 'rectangle' as const,
     blendMode: 'normal' as const,
-    rate: 14,
-    life: 34,
-    velocity: Vector.fromAngle(-90, 5),
-    spread: Math.PI * 1.0,
+    rate: 20,
+    life: 28,
+    velocity: Vector.fromAngle(-90, 7),
+    spread: Math.PI * 0.85,
     sizeMin: 3,
-    sizeMax: 16,
-    velocityMultiplier: 5,
-    fadeTime: 28,
-    gravity: 0.1,
-    scaleStep: 0.85,
-    maxCount: 420,
+    sizeMax: 10,
+    velocityMultiplier: 6,
+    fadeTime: 35,
+    gravity: 0.14,
+    scaleStep: 1.2,
+    friction: 0.005,
+    maxCount: 500,
     colors: mutedPalette,
   } satisfies FullParticularConfig,
 

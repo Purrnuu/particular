@@ -640,7 +640,7 @@ declare class WebGLRenderer {
 
 declare const presetRegistry: {
     readonly confetti: {
-        shape: "square";
+        shape: "rectangle";
         blendMode: "normal";
         rate: number;
         life: number;
@@ -652,6 +652,7 @@ declare const presetRegistry: {
         fadeTime: number;
         gravity: number;
         scaleStep: number;
+        friction: number;
         maxCount: number;
         colors: string[];
     };
@@ -823,9 +824,9 @@ declare const presetRegistry: {
 };
 declare const presets: {
     readonly Burst: {
-        /** Polished confetti burst: playful, readable, and balanced */
+        /** Celebratory confetti burst: colorful rectangles fluttering outward and drifting down */
         readonly confetti: {
-            shape: "square";
+            shape: "rectangle";
             blendMode: "normal";
             rate: number;
             life: number;
@@ -837,6 +838,7 @@ declare const presets: {
             fadeTime: number;
             gravity: number;
             scaleStep: number;
+            friction: number;
             maxCount: number;
             colors: string[];
         };
@@ -1063,7 +1065,7 @@ declare const presets: {
         };
     };
     readonly confetti: {
-        shape: "square";
+        shape: "rectangle";
         blendMode: "normal";
         rate: number;
         life: number;
@@ -1075,6 +1077,7 @@ declare const presets: {
         fadeTime: number;
         gravity: number;
         scaleStep: number;
+        friction: number;
         maxCount: number;
         colors: string[];
     };
