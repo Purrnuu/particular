@@ -106,9 +106,10 @@ Returned by createParticles(). Methods:
 - explode(options?) → void                          — explode all particles into child fragments
 - scatter({ velocity? }?) → void                    — random impulse. Particles with home positions spring back
 
-#### Image/Text
+#### Image/Text/Element
 - imageToParticles(config) → Promise<Emitter>       — see ImageParticlesConfig below
 - textToParticles(text, config?) → Promise<Emitter> — config is optional, auto-centers with smart defaults
+- elementToParticles(element, config?) → Promise<Emitter> — capture any HTML element and replace with particles. See ElementParticlesConfig
 - setIdleEffect(enabled) → void                    — toggle idle animations (breathing, wiggle, wave, pulse) on all home-position particles. Spring return still works when disabled
 
 #### Properties
@@ -189,6 +190,12 @@ Returns: { canvasRef, canvasStyle, destroy() }
 - homeConfig?: HomePositionConfig   — spring physics + idle animation config
 - intro?: IntroConfig              — animated particle reveal. See IntroConfig
 - autoCenter?: boolean             — re-create particles on resize to stay centered and scaled. Default true
+
+### ElementParticlesConfig
+Extends ImageParticlesConfig (minus `image`). Position and size auto-derived from element's bounding rect.
+- hideElement?: boolean             — hide the original element after capture. Default true
+- restoreElement?: boolean          — restore element visibility on destroy(). Default true
+- All ImageParticlesConfig fields except `image` (x, y, width, height, resolution, shape, intro, homeConfig, etc.)
 
 ### IntroConfig (for image/text particles)
 - mode?: "scatter" | "scaleIn" | "ripple" | "paint" — animation mode. Default "scatter"
@@ -321,6 +328,14 @@ p.attachClickBurst(document);
 const p = createParticles({ preset: "imageShape", mouseForce: true });
 p.imageToParticles({ image: "/photo.png", width: 500, intro: {} }); // scatter (default)
 p.imageToParticles({ image: "/photo.png", width: 500, intro: { mode: "ripple" } }); // center-out wave
+```
+
+### Dissolve an HTML element into particles
+```js
+const p = createParticles({ container: document.getElementById("app"), preset: "imageShape", mouseForce: true });
+const heading = document.querySelector("h1");
+p.elementToParticles(heading, { intro: { mode: "ripple" } });
+// Element is hidden, particles appear in its place. Restored on p.destroy().
 ```
 
 ### Custom colors

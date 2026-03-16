@@ -237,6 +237,12 @@ var defaultImageParticles = {
   shadow: false,
   glow: false
 };
+var defaultElementParticles = {
+  resolution: 300,
+  shape: "triangle",
+  hideElement: true,
+  restoreElement: true
+};
 var defaultMouseWind = {
   strength: 0.12,
   radius: 100,
@@ -3032,6 +3038,285 @@ function canvasToDataURL(canvas) {
   return canvas.toDataURL("image/png");
 }
 
+// src/particular/utils/elementCapture.ts
+function parseLinearGradient(value) {
+  const match = value.match(/linear-gradient\((.+)\)/);
+  if (!match) return null;
+  const inner = match[1];
+  const parts = [];
+  let depth = 0;
+  let current = "";
+  for (const ch of inner) {
+    if (ch === "(") depth++;
+    else if (ch === ")") depth--;
+    else if (ch === "," && depth === 0) {
+      parts.push(current.trim());
+      current = "";
+      continue;
+    }
+    current += ch;
+  }
+  parts.push(current.trim());
+  if (parts.length < 2) return null;
+  let angle = 180;
+  let startIndex = 0;
+  const first = parts[0];
+  const degMatch = first.match(/^([\d.]+)deg$/);
+  if (degMatch) {
+    angle = parseFloat(degMatch[1]);
+    startIndex = 1;
+  } else if (first.startsWith("to ")) {
+    const dir = first.replace("to ", "");
+    const dirMap = {
+      top: 0,
+      right: 90,
+      bottom: 180,
+      left: 270,
+      "top right": 45,
+      "right top": 45,
+      "bottom right": 135,
+      "right bottom": 135,
+      "bottom left": 225,
+      "left bottom": 225,
+      "top left": 315,
+      "left top": 315
+    };
+    angle = dirMap[dir] ?? 180;
+    startIndex = 1;
+  }
+  const stops = [];
+  const colorParts = parts.slice(startIndex);
+  for (let i = 0; i < colorParts.length; i++) {
+    const part = colorParts[i];
+    const pctMatch = part.match(/^(.+?)\s+([\d.]+)%\s*$/);
+    if (pctMatch) {
+      stops.push({ offset: parseFloat(pctMatch[2]) / 100, color: pctMatch[1] });
+    } else {
+      stops.push({ offset: i / (colorParts.length - 1), color: part });
+    }
+  }
+  return { angle, stops };
+}
+function applyGradient(ctx, grad, x, y, w, h) {
+  const rad = (grad.angle - 90) * (Math.PI / 180);
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  const len = Math.abs(w * Math.cos(rad)) + Math.abs(h * Math.sin(rad));
+  const dx = Math.cos(rad) * len / 2;
+  const dy = Math.sin(rad) * len / 2;
+  const canvasGrad = ctx.createLinearGradient(cx - dx, cy - dy, cx + dx, cy + dy);
+  for (const stop of grad.stops) {
+    canvasGrad.addColorStop(stop.offset, stop.color);
+  }
+  ctx.fillStyle = canvasGrad;
+}
+function roundedRectPath(ctx, x, y, w, h, radii) {
+  const [tl, tr, br, bl] = radii;
+  ctx.beginPath();
+  ctx.moveTo(x + tl, y);
+  ctx.lineTo(x + w - tr, y);
+  if (tr) ctx.arcTo(x + w, y, x + w, y + tr, tr);
+  else ctx.lineTo(x + w, y);
+  ctx.lineTo(x + w, y + h - br);
+  if (br) ctx.arcTo(x + w, y + h, x + w - br, y + h, br);
+  else ctx.lineTo(x + w, y + h);
+  ctx.lineTo(x + bl, y + h);
+  if (bl) ctx.arcTo(x, y + h, x, y + h - bl, bl);
+  else ctx.lineTo(x, y + h);
+  ctx.lineTo(x, y + tl);
+  if (tl) ctx.arcTo(x, y, x + tl, y, tl);
+  else ctx.lineTo(x, y);
+  ctx.closePath();
+}
+function parseBorderRadii(style, w, h) {
+  const parse = (v) => {
+    if (v.endsWith("%")) return Math.min(w, h) * parseFloat(v) / 100;
+    return parseFloat(v) || 0;
+  };
+  return [
+    parse(style.borderTopLeftRadius),
+    parse(style.borderTopRightRadius),
+    parse(style.borderBottomRightRadius),
+    parse(style.borderBottomLeftRadius)
+  ];
+}
+function isTransparent(color) {
+  if (color === "transparent" || color === "rgba(0, 0, 0, 0)") return true;
+  const m = color.match(/rgba?\(.+?,\s*([\d.]+)\s*\)$/);
+  if (m && parseFloat(m[1]) === 0) return true;
+  return false;
+}
+function renderNode(ctx, node, rootLeft, rootTop) {
+  const rect = node.getBoundingClientRect();
+  const style = window.getComputedStyle(node);
+  if (style.display === "none" || style.visibility === "hidden") return;
+  const x = rect.left - rootLeft;
+  const y = rect.top - rootTop;
+  const w = rect.width;
+  const h = rect.height;
+  if (w <= 0 || h <= 0) return;
+  const opacity = parseFloat(style.opacity) || 1;
+  if (opacity < 0.01) return;
+  ctx.save();
+  if (opacity < 1) ctx.globalAlpha *= opacity;
+  const radii = parseBorderRadii(style, w, h);
+  const hasRadius = radii.some((r) => r > 0);
+  if (hasRadius) {
+    roundedRectPath(ctx, x, y, w, h, radii);
+    ctx.save();
+    ctx.clip();
+  }
+  const boxShadow = style.boxShadow;
+  if (boxShadow && boxShadow !== "none") {
+    const sm = boxShadow.match(/(rgba?\([^)]+\)|#\w+|[a-z]+)\s+([-\d.]+)px\s+([-\d.]+)px\s+([-\d.]+)px/);
+    if (sm) {
+      ctx.save();
+      ctx.shadowColor = sm[1];
+      ctx.shadowOffsetX = parseFloat(sm[2]);
+      ctx.shadowOffsetY = parseFloat(sm[3]);
+      ctx.shadowBlur = parseFloat(sm[4]);
+      roundedRectPath(ctx, x, y, w, h, radii);
+      ctx.fillStyle = "rgba(0,0,0,1)";
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+  const bgColor = style.backgroundColor;
+  const bgImage = style.backgroundImage;
+  const bgClipVal = style.webkitBackgroundClip || style["background-clip"];
+  const isBgClipText = bgClipVal === "text";
+  if (bgImage && bgImage !== "none" && !isBgClipText) {
+    const grad = parseLinearGradient(bgImage);
+    if (grad) {
+      applyGradient(ctx, grad, x, y, w, h);
+      ctx.fillRect(x, y, w, h);
+    }
+  }
+  if (bgColor && !isTransparent(bgColor)) {
+    if (!bgImage || bgImage === "none" || isBgClipText) {
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(x, y, w, h);
+    } else {
+      ctx.save();
+      ctx.globalCompositeOperation = "destination-over";
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(x, y, w, h);
+      ctx.restore();
+    }
+  }
+  const drawBorderSide = (width, color, bStyle, fx, fy, fw, fh) => {
+    const bw = parseFloat(width);
+    if (bw <= 0 || bStyle === "none" || isTransparent(color)) return;
+    ctx.fillStyle = color;
+    ctx.fillRect(fx, fy, fw, fh);
+  };
+  drawBorderSide(
+    style.borderTopWidth,
+    style.borderTopColor,
+    style.borderTopStyle,
+    x,
+    y,
+    w,
+    parseFloat(style.borderTopWidth)
+  );
+  drawBorderSide(
+    style.borderBottomWidth,
+    style.borderBottomColor,
+    style.borderBottomStyle,
+    x,
+    y + h - parseFloat(style.borderBottomWidth),
+    w,
+    parseFloat(style.borderBottomWidth)
+  );
+  drawBorderSide(
+    style.borderLeftWidth,
+    style.borderLeftColor,
+    style.borderLeftStyle,
+    x,
+    y,
+    parseFloat(style.borderLeftWidth),
+    h
+  );
+  drawBorderSide(
+    style.borderRightWidth,
+    style.borderRightColor,
+    style.borderRightStyle,
+    x + w - parseFloat(style.borderRightWidth),
+    y,
+    parseFloat(style.borderRightWidth),
+    h
+  );
+  const textColor = style.color;
+  const font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+  const isGradientText = isBgClipText && bgImage && bgImage !== "none";
+  for (const child of node.childNodes) {
+    if (child.nodeType !== Node.TEXT_NODE) continue;
+    const text = child.textContent;
+    if (!text || !text.trim()) continue;
+    const range = document.createRange();
+    range.selectNodeContents(child);
+    const lineRects = range.getClientRects();
+    ctx.font = font;
+    ctx.textBaseline = "top";
+    const textLen = child.textContent.length;
+    let charIdx = 0;
+    for (const lr of lineRects) {
+      const tx = lr.left - rootLeft;
+      const ty = lr.top - rootTop;
+      let lineText = "";
+      const charRange = document.createRange();
+      while (charIdx < textLen) {
+        charRange.setStart(child, charIdx);
+        charRange.setEnd(child, Math.min(charIdx + 1, textLen));
+        const charRect = charRange.getBoundingClientRect();
+        const charMidY = charRect.top + charRect.height / 2;
+        if (charMidY >= lr.top - 1 && charMidY <= lr.bottom + 1) {
+          lineText += child.textContent[charIdx];
+          charIdx++;
+        } else {
+          break;
+        }
+      }
+      if (!lineText.trim()) continue;
+      if (isGradientText) {
+        const grad = parseLinearGradient(bgImage);
+        if (grad) {
+          ctx.save();
+          applyGradient(ctx, grad, x, y, w, h);
+          ctx.fillText(lineText, tx, ty);
+          ctx.restore();
+        }
+      } else {
+        ctx.fillStyle = textColor;
+        ctx.fillText(lineText, tx, ty);
+      }
+    }
+  }
+  for (const child of node.children) {
+    if (child instanceof HTMLElement) {
+      renderNode(ctx, child, rootLeft, rootTop);
+    }
+  }
+  if (hasRadius) ctx.restore();
+  ctx.restore();
+}
+function captureElement(element) {
+  const rect = element.getBoundingClientRect();
+  const width = Math.ceil(rect.width);
+  const height = Math.ceil(rect.height);
+  if (width === 0 || height === 0) {
+    throw new Error("elementToParticles: element has zero dimensions");
+  }
+  const dpr = window.devicePixelRatio || 1;
+  const canvas = document.createElement("canvas");
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
+  renderNode(ctx, element, rect.left, rect.top);
+  return canvas;
+}
+
 // src/particular/convenience/imageParticles.ts
 function createImageParticles(engine, mergedConfig, container, cleanups) {
   const getViewportSize = () => {
@@ -3359,6 +3644,35 @@ function createImageParticles(engine, mergedConfig, container, cleanups) {
       image: canvasToDataURL(textCanvas)
     });
   };
+  const elementToParticles = async (element, config) => {
+    const merged = { ...defaultElementParticles, ...config };
+    const { hideElement, restoreElement, ...imageConfig } = merged;
+    const capturedCanvas = captureElement(element);
+    const dataURL = canvasToDataURL(capturedCanvas);
+    const rect = element.getBoundingClientRect();
+    const containerRect = container?.getBoundingClientRect();
+    const x = imageConfig.x ?? rect.left + rect.width / 2 - (containerRect?.left ?? 0);
+    const y = imageConfig.y ?? rect.top + rect.height / 2 - (containerRect?.top ?? 0);
+    const width = imageConfig.width ?? rect.width;
+    const height = imageConfig.height ?? rect.height;
+    const emitter = await imageToParticles({
+      ...imageConfig,
+      image: dataURL,
+      x,
+      y,
+      width,
+      height
+    });
+    if (hideElement) {
+      element.style.visibility = "hidden";
+    }
+    if (restoreElement && hideElement) {
+      cleanups?.push(() => {
+        element.style.visibility = "";
+      });
+    }
+    return emitter;
+  };
   const setIdleEffect = (enabled) => {
     for (const particle of engine.getAllParticles()) {
       if (particle.homePosition) {
@@ -3366,7 +3680,7 @@ function createImageParticles(engine, mergedConfig, container, cleanups) {
       }
     }
   };
-  return { imageToParticles, textToParticles, setIdleEffect };
+  return { imageToParticles, textToParticles, elementToParticles, setIdleEffect };
 }
 
 // src/particular/convenience/index.ts
@@ -3626,6 +3940,12 @@ function useParticles({
     },
     []
   );
+  const elementToParticles = React.useCallback(
+    (element, config2) => {
+      controllerRef.current?.elementToParticles(element, config2);
+    },
+    []
+  );
   return {
     canvasRef,
     canvasStyle,
@@ -3635,7 +3955,8 @@ function useParticles({
     explode,
     scatter,
     imageToParticles,
-    textToParticles
+    textToParticles,
+    elementToParticles
   };
 }
 function useScreensaver({

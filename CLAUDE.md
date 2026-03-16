@@ -88,13 +88,14 @@ src/particular/devFPSOverlay.ts             # Debug FPS counter overlay
 
 ### Storybook
 ```
-src/storyArgs.ts                 # Shared particle controls (type, argTypes, defaults, converter)
-src/Particular.stories.tsx       # Burst presets, shapes, effects, performance
-src/Explosion.stories.tsx        # Manual explode + timed firework detonation demos
-src/Attractors.stories.tsx       # Attractor physics demos
-src/MouseForce.stories.tsx       # Mouse-velocity directional force demos
-src/Screensaver.stories.tsx      # Ambient screensaver demos (snow, etc.)
-src/PageLayout.stories.tsx       # Page layout demos (boundaries, scrolling, container mode)
+src/storyArgs.ts                         # Shared particle controls (type, argTypes, defaults, converter)
+src/Particular.stories.tsx               # Burst presets, shapes, effects, performance
+src/Explosion.stories.tsx                # Manual explode + timed firework detonation demos
+src/Attractors.stories.tsx               # Attractor physics demos
+src/MouseForce.stories.tsx               # Mouse-velocity directional force demos
+src/Screensaver.stories.tsx              # Ambient screensaver demos (snow, etc.)
+src/PageLayout.stories.tsx               # Page layout demos (boundaries, scrolling, container mode)
+src/ElementToParticles.stories.tsx       # HTML element dissolve into particles demos
 ```
 
 ### Utils
@@ -107,6 +108,7 @@ src/particular/utils/color.ts            # HSL palette generation (generateHarmo
 src/particular/utils/pixelSampler.ts     # Image loading + pixel grid sampling for image-to-particles
 src/particular/utils/imageSource.ts      # Text/shape rendering to offscreen canvas (createTextImage, etc.)
 src/particular/utils/explosion.ts        # Shared child particle factory (used by explode + detonate)
+src/particular/utils/elementCapture.ts   # Manual Canvas 2D element capture for elementToParticles (reads computed styles)
 ```
 
 ## Modification Checklists
@@ -191,6 +193,23 @@ src/particular/utils/explosion.ts        # Shared child particle factory (used b
 - The interface to the library should be simple, human readable, amazing for agents like Claude to modify, and easy without configuration.
 - Validate both renderers when changing visual behavior.
 - **Defaults must be beautiful.** Presets and defaults are the primary way library users experience effects. All tuning (colors, physics, timing, child config) belongs in presets and `defaults.ts`, not in story files. Stories should demonstrate features using presets with minimal or no inline config overrides. If a story needs many tweaks to look good, those tweaks should be promoted into a preset or default. This ensures `createParticles({ preset: 'fireworksDetonation' })` gives users a polished result without requiring them to hand-tune parameters.
+- **All defaults live in `defaults.ts`.** Every feature must define its default values in `src/particular/core/defaults.ts` as a named exported constant (e.g. `defaultElementParticles`, `defaultImageParticles`). Convenience methods merge user config over these defaults. Never hardcode magic numbers in convenience methods, stories, or examples. If you find yourself writing `?? someValue` inline, that value belongs in a defaults object.
+- **The engine does the heavy lifting, not the stories.** Stories exist only to showcase features with minimal setup. All behavior, smart defaults, physics tuning, and config merging must live in the library (defaults.ts, convenience modules, components). If a story has more than trivial config, ask: "Should this logic be in the library instead?"
+
+## Pre-Commit Checklist
+
+Before committing to git, always verify:
+
+```
+1. npm run type-check     # No type errors
+2. npm test               # All tests pass
+3. npm run build          # Both lib and storybook build successfully
+4. Documentation check:
+   - llms.txt       — Does it reflect any new/changed public API, config fields, or defaults?
+   - CLAUDE.md      — Is the file map current? Any new files or checklists needed?
+   - src/AGENTS.md  — Does it cover any new internals, pipelines, or architecture changes?
+5. defaults.ts            — Are all new defaults defined here (not inline in convenience methods or stories)?
+```
 
 ## Key Pitfalls
 

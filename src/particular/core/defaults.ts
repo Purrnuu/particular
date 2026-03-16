@@ -9,6 +9,7 @@ import type {
   ChildExplosionConfig,
   HomePositionConfig,
   ImageParticlesConfig,
+  ElementParticlesConfig,
 } from '../types';
 
 export const defaultParticular: Required<Omit<ParticularConfig, 'container'>> = {
@@ -133,6 +134,14 @@ export const defaultImageParticles: Partial<ImageParticlesConfig> = {
   shape: 'square',
   shadow: false,
   glow: false,
+};
+
+/** Default element-to-particles config — balanced resolution for text/UI fidelity without being too heavy. */
+export const defaultElementParticles: Partial<ElementParticlesConfig> = {
+  resolution: 300,
+  shape: 'triangle',
+  hideElement: true,
+  restoreElement: true,
 };
 
 /** Screensaver mouse-wind defaults — softer, broader than base mouse force. */

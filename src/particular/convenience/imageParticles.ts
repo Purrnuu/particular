@@ -1,11 +1,12 @@
 import Emitter from '../components/emitter';
 import Particle from '../components/particle';
 import type Particular from '../core/particular';
-import { configureParticle, defaultImageParticles, type MergedConfig } from '../core/defaults';
+import { configureParticle, defaultImageParticles, defaultElementParticles, type MergedConfig } from '../core/defaults';
 import Vector from '../utils/vector';
 import { loadImage, sampleImagePixels } from '../utils/pixelSampler';
 import { createTextImage, canvasToDataURL } from '../utils/imageSource';
-import type { ImageParticlesConfig, TextImageConfig, IntroMode } from '../types';
+import { captureElement } from '../utils/elementCapture';
+import type { ImageParticlesConfig, TextImageConfig, ElementParticlesConfig, IntroMode } from '../types';
 import type { PixelSample } from '../utils/pixelSampler';
 
 /**
@@ -419,6 +420,48 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
     });
   };
 
+  /** Capture any HTML element and replace it with particles at the same position. */
+  const elementToParticles = async (
+    element: HTMLElement,
+    config?: ElementParticlesConfig,
+  ): Promise<Emitter> => {
+    const merged = { ...defaultElementParticles, ...config };
+    const { hideElement, restoreElement, ...imageConfig } = merged;
+
+    // Capture the element's visual appearance via manual canvas rendering
+    const capturedCanvas = captureElement(element);
+    const dataURL = canvasToDataURL(capturedCanvas);
+
+    // Derive position and size from the element's bounding rect
+    const rect = element.getBoundingClientRect();
+    const containerRect = container?.getBoundingClientRect();
+    const x = imageConfig.x ?? (rect.left + rect.width / 2 - (containerRect?.left ?? 0));
+    const y = imageConfig.y ?? (rect.top + rect.height / 2 - (containerRect?.top ?? 0));
+    const width = imageConfig.width ?? rect.width;
+    const height = imageConfig.height ?? rect.height;
+
+    const emitter = await imageToParticles({
+      ...imageConfig,
+      image: dataURL,
+      x,
+      y,
+      width,
+      height,
+    });
+
+    // Hide the original element so particles replace it visually
+    if (hideElement) {
+      element.style.visibility = 'hidden';
+    }
+
+    // Register cleanup to restore the element when the engine is destroyed
+    if (restoreElement && hideElement) {
+      cleanups?.push(() => { element.style.visibility = ''; });
+    }
+
+    return emitter;
+  };
+
   /** Toggle idle animations (breathing, wiggle, wave, pulse) on all particles with home positions. */
   const setIdleEffect = (enabled: boolean): void => {
     for (const particle of engine.getAllParticles()) {
@@ -428,5 +471,5 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
     }
   };
 
-  return { imageToParticles, textToParticles, setIdleEffect };
+  return { imageToParticles, textToParticles, elementToParticles, setIdleEffect };
 }

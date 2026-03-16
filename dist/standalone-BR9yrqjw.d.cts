@@ -307,6 +307,12 @@ interface ImageParticlesConfig extends ShapeConfig {
     /** Keep particles horizontally centered when container/viewport resizes. Default true. */
     autoCenter?: boolean;
 }
+interface ElementParticlesConfig extends Omit<ImageParticlesConfig, 'image'> {
+    /** Hide the original element after capture. Default true. */
+    hideElement?: boolean;
+    /** Restore the original element when destroy() is called. Default true. */
+    restoreElement?: boolean;
+}
 interface BurstSettings {
     clientX: number;
     clientY: number;
@@ -1548,6 +1554,10 @@ interface ParticlesController {
     textToParticles: (text: string, config?: Omit<ImageParticlesConfig, 'image'> & {
         textConfig?: Omit<TextImageConfig, 'text'>;
     }) => Promise<Emitter>;
+    /** Capture any HTML element and replace it with particles at the same position.
+     *  Uses SVG foreignObject to screenshot the element — no external libraries needed.
+     *  The original element is hidden by default and restored on destroy(). */
+    elementToParticles: (element: HTMLElement, config?: ElementParticlesConfig) => Promise<Emitter>;
     /** Toggle idle animations (breathing, wiggle, wave, pulse) on all particles with home positions.
      *  Spring return still works when idle is disabled — particles return home but stay still once there. */
     setIdleEffect: (enabled: boolean) => void;
@@ -1580,7 +1590,7 @@ interface ScreensaverController {
  *   - Emission: burst, attachClickBurst
  *   - Forces:   addAttractor, addMouseForce, addBoundary, …
  *   - Effects:  explode, scatter
- *   - Image:    imageToParticles, textToParticles
+ *   - Image:    imageToParticles, textToParticles, elementToParticles
  *
  * Each group is implemented in its own module (forces.ts, boundary.ts,
  * effects.ts, imageParticles.ts) for readability and maintainability.
@@ -1637,4 +1647,4 @@ interface FPSOverlayController {
 }
 declare function showFPSOverlay(options?: FPSOverlayOptions): FPSOverlayController;
 
-export { showFPSOverlay as $, Attractor as A, type BurstSettings as B, CanvasRenderer as C, type DetonateConfig as D, type ExplodeOptions as E, type FullParticularConfig as F, applyCanvasStyles as G, type HomePositionConfig as H, type ImageParticlesConfig as I, canvasToDataURL as J, configureParticle as K, createHeartImage as L, type MouseForceConfig as M, createParticles as N, createTextImage as O, Particular as P, getParticlesBackgroundLayerStyle as Q, type RendererType as R, type ScreensaverController as S, type TextImageConfig as T, getParticlesContainerLayerStyle as U, Vector as V, WebGLRenderer as W, particlesBackgroundLayerStyle as X, particlesContainerLayerStyle as Y, DEFAULT_Z_INDEX as Z, presets as _, type ParticleConfig as a, startScreensaver as a0, type PresetName as b, configureParticular as c, type ParticlesController as d, type BurstOptions as e, type AttractorConfig as f, type BlendMode as g, type BoundaryConfig as h, type BoundaryHandle as i, type ChildExplosionConfig as j, type CreateParticlesOptions as k, Emitter as l, type EmitterConfiguration as m, type FPSOverlayController as n, type FPSOverlayOptions as o, type ForceSource as p, type IntroConfig as q, type IntroMode as r, MouseForce as s, Particle as t, type ParticleConstructorParams as u, type ParticleShape as v, type ParticularConfig as w, type ScreensaverOptions as x, type ShapeConfig as y, type WebGLRendererOptions as z };
+export { presets as $, Attractor as A, type BurstSettings as B, CanvasRenderer as C, type DetonateConfig as D, type ExplodeOptions as E, type FullParticularConfig as F, type WebGLRendererOptions as G, type HomePositionConfig as H, type ImageParticlesConfig as I, applyCanvasStyles as J, canvasToDataURL as K, configureParticle as L, type MouseForceConfig as M, createHeartImage as N, createParticles as O, Particular as P, createTextImage as Q, type RendererType as R, type ScreensaverController as S, type TextImageConfig as T, getParticlesBackgroundLayerStyle as U, Vector as V, WebGLRenderer as W, getParticlesContainerLayerStyle as X, particlesBackgroundLayerStyle as Y, particlesContainerLayerStyle as Z, DEFAULT_Z_INDEX as _, type ParticleConfig as a, showFPSOverlay as a0, startScreensaver as a1, type PresetName as b, configureParticular as c, type ParticlesController as d, type BurstOptions as e, type ElementParticlesConfig as f, type AttractorConfig as g, type BlendMode as h, type BoundaryConfig as i, type BoundaryHandle as j, type ChildExplosionConfig as k, type CreateParticlesOptions as l, Emitter as m, type EmitterConfiguration as n, type FPSOverlayController as o, type FPSOverlayOptions as p, type ForceSource as q, type IntroConfig as r, type IntroMode as s, MouseForce as t, Particle as u, type ParticleConstructorParams as v, type ParticleShape as w, type ParticularConfig as x, type ScreensaverOptions as y, type ShapeConfig as z };

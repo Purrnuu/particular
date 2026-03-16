@@ -6,7 +6,7 @@
  *   - Emission: burst, attachClickBurst
  *   - Forces:   addAttractor, addMouseForce, addBoundary, …
  *   - Effects:  explode, scatter
- *   - Image:    imageToParticles, textToParticles
+ *   - Image:    imageToParticles, textToParticles, elementToParticles
  *
  * Each group is implemented in its own module (forces.ts, boundary.ts,
  * effects.ts, imageParticles.ts) for readability and maintainability.

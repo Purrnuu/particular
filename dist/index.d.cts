@@ -1,5 +1,5 @@
-import { P as Particular, c as configureParticular, F as FullParticularConfig, a as ParticleConfig, B as BurstSettings, b as PresetName, R as RendererType, M as MouseForceConfig, d as ParticlesController, e as BurstOptions, E as ExplodeOptions, I as ImageParticlesConfig, T as TextImageConfig } from './standalone-DG8dUPbO.cjs';
-export { A as Attractor, f as AttractorConfig, g as BlendMode, h as BoundaryConfig, i as BoundaryHandle, C as CanvasRenderer, j as ChildExplosionConfig, k as CreateParticlesOptions, D as DetonateConfig, l as Emitter, m as EmitterConfiguration, n as FPSOverlayController, o as FPSOverlayOptions, p as ForceSource, H as HomePositionConfig, q as IntroConfig, r as IntroMode, s as MouseForce, t as Particle, u as ParticleConstructorParams, v as ParticleShape, w as ParticularConfig, S as ScreensaverController, x as ScreensaverOptions, y as ShapeConfig, V as Vector, W as WebGLRenderer, z as WebGLRendererOptions, G as applyCanvasStyles, J as canvasToDataURL, K as configureParticle, L as createHeartImage, N as createParticles, O as createTextImage, Q as getParticlesBackgroundLayerStyle, U as getParticlesContainerLayerStyle, X as particlesBackgroundLayerStyle, Y as particlesContainerLayerStyle, Z as particlesDefaultZIndex, _ as presets, $ as showFPSOverlay, a0 as startScreensaver } from './standalone-DG8dUPbO.cjs';
+import { P as Particular, c as configureParticular, F as FullParticularConfig, a as ParticleConfig, B as BurstSettings, b as PresetName, R as RendererType, M as MouseForceConfig, d as ParticlesController, e as BurstOptions, E as ExplodeOptions, I as ImageParticlesConfig, T as TextImageConfig, f as ElementParticlesConfig } from './standalone-BR9yrqjw.cjs';
+export { A as Attractor, g as AttractorConfig, h as BlendMode, i as BoundaryConfig, j as BoundaryHandle, C as CanvasRenderer, k as ChildExplosionConfig, l as CreateParticlesOptions, D as DetonateConfig, m as Emitter, n as EmitterConfiguration, o as FPSOverlayController, p as FPSOverlayOptions, q as ForceSource, H as HomePositionConfig, r as IntroConfig, s as IntroMode, t as MouseForce, u as Particle, v as ParticleConstructorParams, w as ParticleShape, x as ParticularConfig, S as ScreensaverController, y as ScreensaverOptions, z as ShapeConfig, V as Vector, W as WebGLRenderer, G as WebGLRendererOptions, J as applyCanvasStyles, K as canvasToDataURL, L as configureParticle, N as createHeartImage, O as createParticles, Q as createTextImage, U as getParticlesBackgroundLayerStyle, X as getParticlesContainerLayerStyle, Y as particlesBackgroundLayerStyle, Z as particlesContainerLayerStyle, _ as particlesDefaultZIndex, $ as presets, a0 as showFPSOverlay, a1 as startScreensaver } from './standalone-BR9yrqjw.cjs';
 import React, { ComponentType, MutableRefObject, CSSProperties, MouseEvent as MouseEvent$1 } from 'react';
 
 interface CanvasWrapperState {
@@ -119,6 +119,7 @@ interface UseParticlesResult {
     textToParticles: (text: string, config?: Omit<ImageParticlesConfig, 'image'> & {
         textConfig?: Omit<TextImageConfig, 'text'>;
     }) => void;
+    elementToParticles: (element: HTMLElement, config?: ElementParticlesConfig) => void;
 }
 /**
  * Hooks-first API for React apps.
@@ -158,4 +159,4 @@ interface UseScreensaverResult {
  */
 declare function useScreensaver({ preset, config, renderer, autoResize, backgroundLayer, mouseWind, container, }?: UseScreensaverOptions): UseScreensaverResult;
 
-export { BurstOptions, BurstSettings, ExplodeOptions, FullParticularConfig, ImageParticlesConfig, MouseForceConfig, ParticleConfig, ParticlesController, Particular, particularWrapper as ParticularWrapper, PresetName, RendererType, TextImageConfig, type UseParticlesOptions, type UseParticlesResult, type UseScreensaverOptions, type UseScreensaverResult, useParticles, useScreensaver, withParticles };
+export { BurstOptions, BurstSettings, ElementParticlesConfig, ExplodeOptions, FullParticularConfig, ImageParticlesConfig, MouseForceConfig, ParticleConfig, ParticlesController, Particular, particularWrapper as ParticularWrapper, PresetName, RendererType, TextImageConfig, type UseParticlesOptions, type UseParticlesResult, type UseScreensaverOptions, type UseScreensaverResult, useParticles, useScreensaver, withParticles };

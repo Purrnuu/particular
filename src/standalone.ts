@@ -38,6 +38,7 @@ export type {
   ExplodeOptions,
   DetonateConfig,
   ImageParticlesConfig,
+  ElementParticlesConfig,
   HomePositionConfig,
   TextImageConfig,
   BoundaryConfig,

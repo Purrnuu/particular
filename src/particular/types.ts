@@ -292,6 +292,13 @@ export interface ImageParticlesConfig extends ShapeConfig {
   autoCenter?: boolean;
 }
 
+export interface ElementParticlesConfig extends Omit<ImageParticlesConfig, 'image'> {
+  /** Hide the original element after capture. Default true. */
+  hideElement?: boolean;
+  /** Restore the original element when destroy() is called. Default true. */
+  restoreElement?: boolean;
+}
+
 export interface BurstSettings {
   clientX: number;
   clientY: number;

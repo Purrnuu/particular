@@ -308,6 +308,32 @@ Config: `IntroConfig { mode?: 'scatter' | 'scaleIn' | 'ripple' | 'paint', durati
 
 `textToParticles(text, config?)` → `createTextImage({ text, ...textConfig })` → offscreen canvas → `canvasToDataURL()` → `imageToParticles({ image: dataURL, ...config })`. The text is rendered with configurable font, size, weight, and fill (solid color or gradient stops).
 
+### Element capture pipeline
+
+`elementToParticles(element, config?)` captures any HTML element's visual appearance and replaces it with particles:
+
+1. **Capture**: `captureElement()` (in `utils/elementCapture.ts`) walks the element's DOM tree, reads `getComputedStyle()` for each node, and manually draws backgrounds, borders, and text onto an offscreen Canvas 2D at device pixel ratio. This avoids SVG foreignObject which taints the canvas and blocks pixel extraction.
+2. **Position**: Derives `x`, `y`, `width`, `height` from the element's `getBoundingClientRect()`, subtracting the container rect in container mode.
+3. **Render**: Converts the canvas to a data URL via `canvasToDataURL()` and passes it to `imageToParticles()`.
+4. **Hide**: Sets `element.style.visibility = 'hidden'` (default). Registers a cleanup to restore visibility on `destroy()`.
+
+Config type: `ElementParticlesConfig extends Omit<ImageParticlesConfig, 'image'>` with `hideElement` (default true) and `restoreElement` (default true).
+
+**Supported CSS properties in capture**:
+- Background colors (solid and linear-gradient)
+- Gradient text (`-webkit-background-clip: text`)
+- Text rendering with computed font, weight, size, color
+- Borders (all four sides, colors)
+- Border radius (per-corner)
+- Box shadow (first shadow, basic parsing)
+- Opacity
+
+**Known limitations**:
+- External/inline images (e.g. `<img>` tags, `background-image: url(...)`) are not rendered.
+- CSS pseudo-elements (`::before`, `::after`) don't appear (no DOM nodes to read).
+- Complex layouts (flexbox alignment, transforms, clip-path) may not position perfectly.
+- Multi-line text draws as a single fillText call at the first line rect position.
+
 ## Convenience API Architecture
 
 The convenience layer lives in `src/particular/convenience/` as focused modules composed by the orchestrator (`index.ts`):
@@ -317,7 +343,7 @@ The convenience layer lives in `src/particular/convenience/` as focused modules 
 - `forces.ts` — `createForces()`: attractor + mouse force management
 - `boundary.ts` — `createBoundaryHelper()`: DOM element repulsion boundaries with resize/scroll sync
 - `effects.ts` — `createEffects()`: explode() + scatter()
-- `imageParticles.ts` — `createImageParticles()`: image/text to particle grids with smart defaults
+- `imageParticles.ts` — `createImageParticles()`: image/text/element to particle grids with smart defaults
 - `screensaver.ts` — `startScreensaver()`: continuous ambient emission
 
 Each module exports a factory function that receives shared state (engine, config, container, cleanups) and returns an API slice. The orchestrator spreads them together into the `ParticlesController`.
@@ -330,6 +356,9 @@ Each module exports a factory function that receives shared state (engine, confi
 - **Image/text positioning**: `x`/`y` default to center of viewport/container. `width` defaults to `min(80% viewport, 800px)`.
 - **mouseForce shorthand**: `createParticles({ mouseForce: true })` adds a tracking mouse force with sensible defaults.
 - **textToParticles config**: Optional — `textToParticles('Hello')` works with zero config.
+- **elementToParticles**: `elementToParticles(el)` works with zero config — position, size, and image derived from the element automatically.
+
+**Defaults pattern**: Every feature's defaults live in `src/particular/core/defaults.ts` as named exports (`defaultImageParticles`, `defaultElementParticles`, `defaultMouseWind`, etc.). Convenience methods merge user config over these: `{ ...defaultXxx, ...userConfig }`. Never hardcode default values inline in convenience methods or stories.
 
 Minimal usage: `createParticles()` gives a fully working engine with WebGL, auto-canvas, and styles applied.
 

@@ -9,7 +9,7 @@ import {
 import { startScreensaver } from './convenience/screensaver';
 import type { ScreensaverController } from './convenience/types';
 import { getParticlesBackgroundLayerStyle, getParticlesContainerLayerStyle } from './canvasStyles';
-import type { FullParticularConfig, MouseForceConfig, RendererType, ExplodeOptions, ImageParticlesConfig, TextImageConfig } from './types';
+import type { FullParticularConfig, MouseForceConfig, RendererType, ExplodeOptions, ImageParticlesConfig, TextImageConfig, ElementParticlesConfig } from './types';
 import type { PresetName } from './presets';
 
 export interface UseParticlesOptions {
@@ -47,6 +47,7 @@ export interface UseParticlesResult {
     text: string,
     config?: Omit<ImageParticlesConfig, 'image'> & { textConfig?: Omit<TextImageConfig, 'text'> },
   ) => void;
+  elementToParticles: (element: HTMLElement, config?: ElementParticlesConfig) => void;
 }
 
 /**
@@ -146,6 +147,13 @@ export function useParticles({
     [],
   );
 
+  const elementToParticles = useCallback(
+    (element: HTMLElement, config?: ElementParticlesConfig) => {
+      controllerRef.current?.elementToParticles(element, config);
+    },
+    [],
+  );
+
   return {
     canvasRef,
     canvasStyle,
@@ -156,6 +164,7 @@ export function useParticles({
     scatter,
     imageToParticles,
     textToParticles,
+    elementToParticles,
   };
 }
 
