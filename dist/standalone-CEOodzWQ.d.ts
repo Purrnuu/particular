@@ -94,7 +94,13 @@ interface ChildExplosionConfig {
     sizeMax?: number;
     /** Outward velocity magnitude. Default 3. */
     velocity?: number;
-    /** Child gravity. Default 0.05. */
+    /** Velocity spread (0–1). Randomizes speed: velocity × (1 ± spread). Default 0.4. */
+    velocitySpread?: number;
+    /** Friction applied to child particles. Default 0.01. */
+    friction?: number;
+    /** Scale step — how quickly children grow to full size. Lower = slower grow-in. Default 1.5. */
+    scaleStep?: number;
+    /** Child gravity. Default 0.12. */
     gravity?: number;
     /** Child fade time in ticks. Default 15. */
     fadeTime?: number;
@@ -691,10 +697,6 @@ declare const presetRegistry: {
     readonly fireworksDetonation: {
         shape: "circle";
         blendMode: "normal";
-        glow: true;
-        glowSize: number;
-        glowColor: string;
-        glowAlpha: number;
         rate: number;
         life: number;
         velocity: Vector;
@@ -711,11 +713,18 @@ declare const presetRegistry: {
             at: number;
             childCount: number;
             velocity: number;
+            velocitySpread: number;
+            friction: number;
+            scaleStep: number;
             childLife: number;
+            sizeMin: number;
+            sizeMax: number;
             fadeTime: number;
-            glow: true;
-            glowSize: number;
             inheritColor: true;
+            trail: true;
+            trailLength: number;
+            trailFade: number;
+            trailShrink: number;
         };
     };
     readonly images: {
@@ -876,10 +885,6 @@ declare const presets: {
         readonly fireworksDetonation: {
             shape: "circle";
             blendMode: "normal";
-            glow: true;
-            glowSize: number;
-            glowColor: string;
-            glowAlpha: number;
             rate: number;
             life: number;
             velocity: Vector;
@@ -896,11 +901,18 @@ declare const presets: {
                 at: number;
                 childCount: number;
                 velocity: number;
+                velocitySpread: number;
+                friction: number;
+                scaleStep: number;
                 childLife: number;
+                sizeMin: number;
+                sizeMax: number;
                 fadeTime: number;
-                glow: true;
-                glowSize: number;
                 inheritColor: true;
+                trail: true;
+                trailLength: number;
+                trailFade: number;
+                trailShrink: number;
             };
         };
     };
@@ -1108,10 +1120,6 @@ declare const presets: {
     readonly fireworksDetonation: {
         shape: "circle";
         blendMode: "normal";
-        glow: true;
-        glowSize: number;
-        glowColor: string;
-        glowAlpha: number;
         rate: number;
         life: number;
         velocity: Vector;
@@ -1128,11 +1136,18 @@ declare const presets: {
             at: number;
             childCount: number;
             velocity: number;
+            velocitySpread: number;
+            friction: number;
+            scaleStep: number;
             childLife: number;
+            sizeMin: number;
+            sizeMax: number;
             fadeTime: number;
-            glow: true;
-            glowSize: number;
             inheritColor: true;
+            trail: true;
+            trailLength: number;
+            trailFade: number;
+            trailShrink: number;
         };
     };
     readonly images: {

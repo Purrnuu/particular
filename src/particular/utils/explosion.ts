@@ -26,7 +26,10 @@ export function createExplosionChild(
   const merged = { ...defaultExplosionChild, ...config };
   const size = getRandomInt(merged.sizeMin, merged.sizeMax);
   const angle = Math.random() * Math.PI * 2;
-  const velocity = Vector.fromAngle(angle, merged.velocity);
+  // Velocity spread: randomize magnitude around base velocity
+  const spread = merged.velocitySpread;
+  const speed = merged.velocity * (1 - spread + Math.random() * spread * 2);
+  const velocity = Vector.fromAngle(angle, speed);
 
   const colors = merged.inheritColor
     ? [parent.color]
@@ -38,11 +41,11 @@ export function createExplosionChild(
     point: new Vector(parent.x, parent.y),
     velocity,
     acceleration: new Vector(0, 0),
-    friction: 0,
+    friction: merged.friction,
     size,
     particleLife: merged.childLife,
     gravity: merged.gravity,
-    scaleStep: size, // instant full size
+    scaleStep: merged.scaleStep,
     fadeTime: merged.fadeTime,
     shape: merged.shape !== defaultExplosionChild.shape ? merged.shape : (parent.shape as any),
     blendMode: merged.blendMode !== defaultExplosionChild.blendMode ? merged.blendMode : (parent.blendMode as any),

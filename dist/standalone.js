@@ -181,9 +181,12 @@ var defaultMouseForce = {
 var defaultExplosionChild = {
   childCount: 5,
   childLife: 40,
-  sizeMin: 2,
-  sizeMax: 5,
+  sizeMin: 1,
+  sizeMax: 3,
   velocity: 3,
+  velocitySpread: 0.4,
+  friction: 0.01,
+  scaleStep: 1.5,
   gravity: 0.12,
   fadeTime: 15,
   inheritColor: true,
@@ -194,10 +197,10 @@ var defaultExplosionChild = {
   glowColor: "#ffffff",
   glowAlpha: 0.25,
   shadow: false,
-  trail: false,
+  trail: true,
   trailLength: 3,
-  trailFade: 0.75,
-  trailShrink: 0.55
+  trailFade: 0.6,
+  trailShrink: 0.65
 };
 var defaultHomeConfig = {
   springStrength: 0.05,
@@ -663,18 +666,19 @@ function createExplosionChild(parent, config, engine, fallbackColors) {
   const merged = { ...defaultExplosionChild, ...config };
   const size = getRandomInt(merged.sizeMin, merged.sizeMax);
   const angle = Math.random() * Math.PI * 2;
-  const velocity = Vector.fromAngle(angle, merged.velocity);
+  const spread = merged.velocitySpread;
+  const speed = merged.velocity * (1 - spread + Math.random() * spread * 2);
+  const velocity = Vector.fromAngle(angle, speed);
   const colors = merged.inheritColor ? [parent.color] : fallbackColors.length > 0 ? fallbackColors : [parent.color];
   const particle = new Particle({
     point: new Vector(parent.x, parent.y),
     velocity,
     acceleration: new Vector(0, 0),
-    friction: 0,
+    friction: merged.friction,
     size,
     particleLife: merged.childLife,
     gravity: merged.gravity,
-    scaleStep: size,
-    // instant full size
+    scaleStep: merged.scaleStep,
     fadeTime: merged.fadeTime,
     shape: merged.shape !== defaultExplosionChild.shape ? merged.shape : parent.shape,
     blendMode: merged.blendMode !== defaultExplosionChild.blendMode ? merged.blendMode : parent.blendMode,
@@ -2137,10 +2141,6 @@ var Burst = {
   fireworksDetonation: {
     shape: "circle",
     blendMode: "normal",
-    glow: true,
-    glowSize: 14,
-    glowColor: "#fff7d6",
-    glowAlpha: 0.5,
     rate: 22,
     life: 24,
     velocity: Vector.fromAngle(-Math.PI / 2, 8.8),
@@ -2155,13 +2155,20 @@ var Burst = {
     particleLife: 80,
     detonate: {
       at: 0.7,
-      childCount: 12,
-      velocity: 4,
-      childLife: 50,
-      fadeTime: 20,
-      glow: true,
-      glowSize: 8,
-      inheritColor: true
+      childCount: 8,
+      velocity: 5,
+      velocitySpread: 0.6,
+      friction: 0.015,
+      scaleStep: 1,
+      childLife: 45,
+      sizeMin: 1,
+      sizeMax: 4,
+      fadeTime: 18,
+      inheritColor: true,
+      trail: true,
+      trailLength: 4,
+      trailFade: 0.5,
+      trailShrink: 0.65
     }
   }
 };
