@@ -48,7 +48,7 @@ interface ShapeConfig {
     glowSize?: number;
     /** Glow color as hex string. Default '#ffffff'. */
     glowColor?: string;
-    /** Glow opacity (0–1). Default 0.35. */
+    /** Glow opacity (0–1). Default 0.25. */
     glowAlpha?: number;
     trail?: boolean;
     trailLength?: number;
@@ -58,15 +58,15 @@ interface ShapeConfig {
     imageTint?: boolean;
     /** Enable drop shadow. */
     shadow?: boolean;
-    /** Shadow blur radius in pixels. Default 8. */
+    /** Shadow blur radius in pixels. Default 9. */
     shadowBlur?: number;
-    /** Shadow horizontal offset in pixels. Default 4. */
+    /** Shadow horizontal offset in pixels. Default 3. */
     shadowOffsetX?: number;
-    /** Shadow vertical offset in pixels. Default 4. */
+    /** Shadow vertical offset in pixels. Default 3. */
     shadowOffsetY?: number;
-    /** Shadow color as hex string. Default '#000000'. */
+    /** Shadow color as hex string. Default '#333333'. */
     shadowColor?: string;
-    /** Shadow opacity (0–1). Default 0.5. */
+    /** Shadow opacity (0–1). Default 0.15. */
     shadowAlpha?: number;
 }
 interface ParticularConfig {
@@ -187,9 +187,9 @@ interface EmitterConfiguration extends ParticleConfig {
 }
 /** Configuration for home-position spring return and idle animation. */
 interface HomePositionConfig {
-    /** Spring stiffness — how strongly particles are pulled back to home. Default 0.02. */
+    /** Spring stiffness — how strongly particles are pulled back to home. Default 0.05. */
     springStrength?: number;
-    /** Spring damping — velocity decay when spring is active (0–1). Applied as Math.pow(damping, dt). Default 0.92. */
+    /** Spring damping — velocity decay when spring is active (0–1). Applied as Math.pow(damping, dt). Default 0.9. */
     springDamping?: number;
     /** Distance threshold (engine units) below which idle animation engages. Default 2. */
     homeThreshold?: number;
@@ -214,7 +214,7 @@ interface HomePositionConfig {
     /** Wave spatial frequency — how many wave cycles fit across the image. Default 0.15. */
     waveFrequency?: number;
     /** Random velocity perturbation during spring return (engine units per tick). Adds organic wobble
-     *  so particles don't travel in straight lines back to home. Default 0.15. 0 = straight-line return. */
+     *  so particles don't travel in straight lines back to home. Default 0.3. 0 = straight-line return. */
     returnNoise?: number;
     /** Idle pulse: velocity magnitude of random twitches when settled. 0 = off. Default 2.
      *  Particles periodically receive a small impulse and spring back, keeping the image alive. */
@@ -1555,7 +1555,7 @@ interface ParticlesController {
         textConfig?: Omit<TextImageConfig, 'text'>;
     }) => Promise<Emitter>;
     /** Capture any HTML element and replace it with particles at the same position.
-     *  Uses SVG foreignObject to screenshot the element — no external libraries needed.
+     *  Uses manual Canvas 2D rendering (reads computed styles) — no external libraries needed.
      *  The original element is hidden by default and restored on destroy(). */
     elementToParticles: (element: HTMLElement, config?: ElementParticlesConfig) => Promise<Emitter>;
     /** Toggle idle animations (breathing, wiggle, wave, pulse) on all particles with home positions.

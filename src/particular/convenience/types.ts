@@ -80,7 +80,7 @@ export interface ParticlesController {
     config?: Omit<ImageParticlesConfig, 'image'> & { textConfig?: Omit<TextImageConfig, 'text'> },
   ) => Promise<Emitter>;
   /** Capture any HTML element and replace it with particles at the same position.
-   *  Uses SVG foreignObject to screenshot the element — no external libraries needed.
+   *  Uses manual Canvas 2D rendering (reads computed styles) — no external libraries needed.
    *  The original element is hidden by default and restored on destroy(). */
   elementToParticles: (element: HTMLElement, config?: ElementParticlesConfig) => Promise<Emitter>;
   /** Toggle idle animations (breathing, wiggle, wave, pulse) on all particles with home positions.

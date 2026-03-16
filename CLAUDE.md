@@ -95,7 +95,9 @@ src/Attractors.stories.tsx               # Attractor physics demos
 src/MouseForce.stories.tsx               # Mouse-velocity directional force demos
 src/Screensaver.stories.tsx              # Ambient screensaver demos (snow, etc.)
 src/PageLayout.stories.tsx               # Page layout demos (boundaries, scrolling, container mode)
+src/ImageParticles.stories.tsx           # Image/text to particles demos (resolution, shapes, intro anims)
 src/ElementToParticles.stories.tsx       # HTML element dissolve into particles demos
+src/Showcase.stories.tsx                 # Combined showcase demos
 ```
 
 ### Utils
