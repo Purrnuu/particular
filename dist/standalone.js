@@ -306,21 +306,25 @@ var _Particular = class _Particular {
   }
   onResize() {
     if (this.container) {
-      const height = this.height = this.container.clientHeight;
-      const width = this.width = this.container.clientWidth;
-      this.dispatchEvent(_Particular.RESIZE, { width, height });
+      this.width = this.container.clientWidth;
+      this.height = this.container.clientHeight;
     } else {
-      const height = this.height = window.innerHeight;
-      const width = this.width = window.innerWidth;
-      this.dispatchEvent(_Particular.RESIZE, { width, height });
+      this.width = window.innerWidth;
+      this.height = window.innerHeight;
     }
+    const bufferWidth = this.width * this.pixelRatio;
+    const bufferHeight = this.height * this.pixelRatio;
+    this.dispatchEvent(_Particular.RESIZE, { width: bufferWidth, height: bufferHeight });
   }
   addRenderer(renderer) {
     this.renderers.push(renderer);
     renderer.init(this, this.pixelRatio);
     this.start();
     if (this.width > 0 && this.height > 0) {
-      this.dispatchEvent(_Particular.RESIZE, { width: this.width, height: this.height });
+      this.dispatchEvent(_Particular.RESIZE, {
+        width: this.width * this.pixelRatio,
+        height: this.height * this.pixelRatio
+      });
     }
   }
   addEmitter(emitter) {
