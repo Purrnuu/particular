@@ -3689,6 +3689,7 @@ exports.Vector = Vector;
 exports.WebGLRenderer = WebGLRenderer;
 exports.applyCanvasStyles = applyCanvasStyles;
 exports.canvasToDataURL = canvasToDataURL;
+exports.configureParticle = configureParticle;
 exports.createHeartImage = createHeartImage;
 exports.createParticles = createParticles;
 exports.createTextImage = createTextImage;

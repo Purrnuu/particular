@@ -547,6 +547,15 @@ declare class Particular implements IEventDispatcher {
     destroy(): void;
 }
 
+type ParticleDefaults = Required<Omit<ParticleConfig, 'detonate'>>;
+/** Return type of configureParticular() — the fully-merged config used by helpers. */
+type MergedConfig = Required<Omit<ParticularConfig, 'container'>> & ParticleDefaults & {
+    renderer?: RendererType;
+    container?: HTMLElement;
+};
+declare function configureParticular(configuration?: FullParticularConfig): MergedConfig;
+declare function configureParticle<T extends Partial<ParticleConfig>>(settings?: T, configuration?: ParticleConfig): ParticleDefaults & T;
+
 interface StrokeConfig {
     color: string;
     thickness: number;
@@ -1625,4 +1634,4 @@ interface FPSOverlayController {
 }
 declare function showFPSOverlay(options?: FPSOverlayOptions): FPSOverlayController;
 
-export { Attractor as A, type BurstSettings as B, CanvasRenderer as C, type DetonateConfig as D, type ExplodeOptions as E, type FullParticularConfig as F, canvasToDataURL as G, type HomePositionConfig as H, type ImageParticlesConfig as I, createHeartImage as J, createParticles as K, createTextImage as L, type MouseForceConfig as M, getParticlesBackgroundLayerStyle as N, getParticlesContainerLayerStyle as O, type ParticularConfig as P, particlesBackgroundLayerStyle as Q, type RendererType as R, type ScreensaverController as S, type TextImageConfig as T, particlesContainerLayerStyle as U, Vector as V, WebGLRenderer as W, DEFAULT_Z_INDEX as X, presets as Y, showFPSOverlay as Z, startScreensaver as _, type ParticleConfig as a, Particular as b, type PresetName as c, type ParticlesController as d, type BurstOptions as e, type AttractorConfig as f, type BlendMode as g, type BoundaryConfig as h, type BoundaryHandle as i, type ChildExplosionConfig as j, type CreateParticlesOptions as k, Emitter as l, type EmitterConfiguration as m, type FPSOverlayController as n, type FPSOverlayOptions as o, type ForceSource as p, type IntroConfig as q, type IntroMode as r, MouseForce as s, Particle as t, type ParticleConstructorParams as u, type ParticleShape as v, type ScreensaverOptions as w, type ShapeConfig as x, type WebGLRendererOptions as y, applyCanvasStyles as z };
+export { showFPSOverlay as $, Attractor as A, type BurstSettings as B, CanvasRenderer as C, type DetonateConfig as D, type ExplodeOptions as E, type FullParticularConfig as F, applyCanvasStyles as G, type HomePositionConfig as H, type ImageParticlesConfig as I, canvasToDataURL as J, configureParticle as K, createHeartImage as L, type MouseForceConfig as M, createParticles as N, createTextImage as O, Particular as P, getParticlesBackgroundLayerStyle as Q, type RendererType as R, type ScreensaverController as S, type TextImageConfig as T, getParticlesContainerLayerStyle as U, Vector as V, WebGLRenderer as W, particlesBackgroundLayerStyle as X, particlesContainerLayerStyle as Y, DEFAULT_Z_INDEX as Z, presets as _, type ParticleConfig as a, startScreensaver as a0, type PresetName as b, configureParticular as c, type ParticlesController as d, type BurstOptions as e, type AttractorConfig as f, type BlendMode as g, type BoundaryConfig as h, type BoundaryHandle as i, type ChildExplosionConfig as j, type CreateParticlesOptions as k, Emitter as l, type EmitterConfiguration as m, type FPSOverlayController as n, type FPSOverlayOptions as o, type ForceSource as p, type IntroConfig as q, type IntroMode as r, MouseForce as s, Particle as t, type ParticleConstructorParams as u, type ParticleShape as v, type ParticularConfig as w, type ScreensaverOptions as x, type ShapeConfig as y, type WebGLRendererOptions as z };

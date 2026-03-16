@@ -17,6 +17,7 @@ export {
 } from './particular/canvasStyles';
 export { createParticles } from './particular/convenience';
 export { startScreensaver } from './particular/convenience/screensaver';
+export { configureParticle } from './particular/core/defaults';
 export { createTextImage, createHeartImage, canvasToDataURL } from './particular/utils/imageSource';
 export { showFPSOverlay } from './particular/devFPSOverlay';
 

@@ -3672,6 +3672,6 @@ function showFPSOverlay(options = {}) {
   };
 }
 
-export { Attractor, CanvasRenderer, Emitter, MouseForce, Particle, Particular, ParticularWrapper_default as ParticularWrapper, Vector, WebGLRenderer, applyCanvasStyles, canvasToDataURL, createHeartImage, createParticles, createTextImage, getParticlesBackgroundLayerStyle, getParticlesContainerLayerStyle, particlesBackgroundLayerStyle, particlesContainerLayerStyle, DEFAULT_Z_INDEX as particlesDefaultZIndex, presets, showFPSOverlay, startScreensaver, useParticles, useScreensaver, withParticles };
+export { Attractor, CanvasRenderer, Emitter, MouseForce, Particle, Particular, ParticularWrapper_default as ParticularWrapper, Vector, WebGLRenderer, applyCanvasStyles, canvasToDataURL, configureParticle, createHeartImage, createParticles, createTextImage, getParticlesBackgroundLayerStyle, getParticlesContainerLayerStyle, particlesBackgroundLayerStyle, particlesContainerLayerStyle, DEFAULT_Z_INDEX as particlesDefaultZIndex, presets, showFPSOverlay, startScreensaver, useParticles, useScreensaver, withParticles };
 //# sourceMappingURL=index.js.map
 //# sourceMappingURL=index.js.map
