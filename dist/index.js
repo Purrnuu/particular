@@ -2045,6 +2045,7 @@ var orangePalette = ["#b33600", "#cc4a00", "#e86100", "#f57c00", "#ff9500", "#ff
 var greenPalette = ["#006b3f", "#008c51", "#00a85e", "#00c46b", "#1edd80", "#4deda0"];
 var mutedPalette = ["#d4a373", "#ccd5ae", "#e9edc9", "#a8dadc", "#b5838d", "#e5989b", "#8d99ae"];
 var meteorPalette = ["#ffffff", "#fff4e0", "#ffd699", "#ff9500", "#ff6b00", "#e84d00"];
+var waterPalette = ["#e0f7fa", "#b2ebf2", "#80deea", "#4dd0e1", "#26c6da", "#00acc1", "#ffffff"];
 var finlandPalette = ["#003580", "#002f6c", "#ffffff", "#f8f9fa"];
 var usaPalette = ["#B22234", "#ffffff", "#3C3B6E"];
 var Burst = {
@@ -2224,6 +2225,36 @@ var Ambient = {
     continuous: true,
     autoStart: true,
     colors: meteorPalette
+  },
+  /** River flow: horizontal stream of water particles, designed for use with attractors */
+  river: {
+    shape: "circle",
+    blendMode: "normal",
+    glow: true,
+    glowSize: 6,
+    glowColor: "#80deea",
+    glowAlpha: 0.25,
+    shadow: false,
+    trail: true,
+    trailLength: 6,
+    trailFade: 0.5,
+    trailShrink: 0.4,
+    rate: 4,
+    life: 999999,
+    particleLife: 220,
+    velocity: Vector.fromAngle(0, 1.8),
+    spread: Math.PI / 10,
+    sizeMin: 1,
+    sizeMax: 4,
+    velocityMultiplier: 0,
+    fadeTime: 80,
+    gravity: 0,
+    friction: 0,
+    scaleStep: 1,
+    maxCount: 500,
+    continuous: true,
+    autoStart: true,
+    colors: waterPalette
   }
 };
 var ImageParticles = {
@@ -2266,7 +2297,9 @@ var Colors = {
   /** American flag red, white, blue */
   usa: { colors: usaPalette },
   /** White-hot to deep red meteor palette */
-  meteor: { colors: meteorPalette }
+  meteor: { colors: meteorPalette },
+  /** Cyan-to-white water palette */
+  water: { colors: waterPalette }
 };
 var presetRegistry = {
   confetti: Burst.confetti,
@@ -2277,7 +2310,8 @@ var presetRegistry = {
   imageText: ImageParticles.text,
   imageShape: ImageParticles.shape,
   snow: Ambient.snow,
-  meteors: Ambient.meteors
+  meteors: Ambient.meteors,
+  river: Ambient.river
 };
 var presets = {
   Burst,
@@ -2294,7 +2328,8 @@ var presets = {
   imageText: ImageParticles.text,
   imageShape: ImageParticles.shape,
   snow: Ambient.snow,
-  meteors: Ambient.meteors
+  meteors: Ambient.meteors,
+  river: Ambient.river
 };
 function getPreset(name) {
   return presetRegistry[name];

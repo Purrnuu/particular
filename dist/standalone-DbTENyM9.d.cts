@@ -821,6 +821,35 @@ declare const presetRegistry: {
         autoStart: true;
         colors: string[];
     };
+    readonly river: {
+        shape: "circle";
+        blendMode: "normal";
+        glow: true;
+        glowSize: number;
+        glowColor: string;
+        glowAlpha: number;
+        shadow: false;
+        trail: true;
+        trailLength: number;
+        trailFade: number;
+        trailShrink: number;
+        rate: number;
+        life: number;
+        particleLife: number;
+        velocity: Vector;
+        spread: number;
+        sizeMin: number;
+        sizeMax: number;
+        velocityMultiplier: number;
+        fadeTime: number;
+        gravity: number;
+        friction: number;
+        scaleStep: number;
+        maxCount: number;
+        continuous: true;
+        autoStart: true;
+        colors: string[];
+    };
 };
 declare const presets: {
     readonly Burst: {
@@ -1021,6 +1050,36 @@ declare const presets: {
             autoStart: true;
             colors: string[];
         };
+        /** River flow: horizontal stream of water particles, designed for use with attractors */
+        readonly river: {
+            shape: "circle";
+            blendMode: "normal";
+            glow: true;
+            glowSize: number;
+            glowColor: string;
+            glowAlpha: number;
+            shadow: false;
+            trail: true;
+            trailLength: number;
+            trailFade: number;
+            trailShrink: number;
+            rate: number;
+            life: number;
+            particleLife: number;
+            velocity: Vector;
+            spread: number;
+            sizeMin: number;
+            sizeMax: number;
+            velocityMultiplier: number;
+            fadeTime: number;
+            gravity: number;
+            friction: number;
+            scaleStep: number;
+            maxCount: number;
+            continuous: true;
+            autoStart: true;
+            colors: string[];
+        };
     };
     readonly Colors: {
         /** White to offwhite range */
@@ -1061,6 +1120,10 @@ declare const presets: {
         };
         /** White-hot to deep red meteor palette */
         readonly meteor: {
+            readonly colors: string[];
+        };
+        /** Cyan-to-white water palette */
+        readonly water: {
             readonly colors: string[];
         };
     };
@@ -1240,6 +1303,35 @@ declare const presets: {
         accelerationSize: number;
         friction: number;
         frictionSize: number;
+        scaleStep: number;
+        maxCount: number;
+        continuous: true;
+        autoStart: true;
+        colors: string[];
+    };
+    readonly river: {
+        shape: "circle";
+        blendMode: "normal";
+        glow: true;
+        glowSize: number;
+        glowColor: string;
+        glowAlpha: number;
+        shadow: false;
+        trail: true;
+        trailLength: number;
+        trailFade: number;
+        trailShrink: number;
+        rate: number;
+        life: number;
+        particleLife: number;
+        velocity: Vector;
+        spread: number;
+        sizeMin: number;
+        sizeMax: number;
+        velocityMultiplier: number;
+        fadeTime: number;
+        gravity: number;
+        friction: number;
         scaleStep: number;
         maxCount: number;
         continuous: true;
