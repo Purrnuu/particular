@@ -238,6 +238,20 @@ export interface ParticleConstructorParams extends ShapeConfig {
   homeConfig?: HomePositionConfig;
 }
 
+export type IntroMode = 'scatter' | 'scaleIn' | 'ripple' | 'paint';
+
+/** Configuration for intro animation when creating image/text particles. */
+export interface IntroConfig {
+  /** Animation mode. Default 'scatter'.
+   *  - 'scatter': particles start at random positions and spring to home while scaling in.
+   *  - 'scaleIn': particles fly outward from image center — outer edges form first, filling inward.
+   *  - 'ripple': shockwave from center — particles appear and get pushed outward, overshoot, spring back.
+   *  - 'paint': particles spray from bottom center, staggered left-to-right, painting the image. */
+  mode?: IntroMode;
+  /** Total intro duration in ms (controls stagger for scaleIn/ripple, grow speed for scatter). Default 800. */
+  duration?: number;
+}
+
 /** Configuration for mapping an image into a grid of colored particles. */
 export interface ImageParticlesConfig extends ShapeConfig {
   /** Image source — URL string or HTMLImageElement. */
@@ -266,6 +280,8 @@ export interface ImageParticlesConfig extends ShapeConfig {
   scaleStep?: number;
   /** Home position spring + idle animation config. Applied to all generated particles. */
   homeConfig?: HomePositionConfig;
+  /** Intro animation — particles animate in rather than appearing instantly. See IntroConfig. */
+  intro?: IntroConfig;
 }
 
 export interface BurstSettings {

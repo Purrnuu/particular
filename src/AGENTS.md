@@ -278,6 +278,28 @@ File: `src/particular/convenience/imageParticles.ts`
 6. **Collector emitter**: A non-emitting `Emitter` (`rate: 0, life: 0`) holds all particles. Added to engine. No emission cycle — particles just exist and update.
 7. **maxCount**: Auto-expanded if needed to hold all image particles.
 
+### Intro animation
+
+When `intro` config is provided, particles animate in rather than appearing instantly. Four modes are available:
+
+1. **`scatter`** (default): All particles are created at once at random positions (scattered within 30% of image size from home). Each starts at `factoredSize = 0` with a small random velocity. The existing spring physics pulls them to home while `scaleStep` grows them from invisible to full size over ~250ms. Most dramatic — every particle takes a unique path.
+
+2. **`scaleIn`**: Particles fly outward from the image center to their home positions. Sorted **farthest-first** so outer edges form first, filling inward to center. Created in 30 distance-ordered batches over `duration` ms. Each particle gets distance-proportional outward velocity (`dist * 0.03`) with speed variance (0.8×–1.2×). Spring with heavy damping (`springDamping: 0.75`, `springStrength: 0.08`) ensures smooth settle without bounce.
+
+3. **`ripple`**: Shockwave from center. Particles are created at home in distance-ordered batches (nearest-first, 40 batches over `duration`). Each particle gets an outward velocity impulse (2.5–5.0 magnitude) with ±20° angular wobble. They overshoot their home position, then spring back with a bouncy settle. Scale from 0 with 0.4×–1.6× speed variance.
+
+4. **`paint`**: Particles spray from bottom center of the image, staggered left-to-right (sorted by x-position). Created in 40 batches over `duration`. Each particle starts at `(centerX, bottomY)` with velocity aimed at home (distance-proportional speed `dist * 0.03`, ±8° wobble). Spring with heavy damping (`springDamping: 0.75`, `springStrength: 0.08`) ensures smooth settle. Creates a spray-painting effect.
+
+Key implementation details:
+- All modes create the **final permanent particles** (with home positions, full visual config). No temporary emitters.
+- `factoredSize = 0` is set post-construction. The engine's existing `scaleStep` math (`factoredSize += scaleStep * dt`) smoothly grows particles via RAF — no setTimeout timing issues.
+- For scatter: `scatterRadius = max(engineW, engineH) * 0.3`. Particles get small random initial velocity `(±1, ±1)`.
+- For scaleIn: 30 batches via setTimeout over `duration` ms. For ripple/paint: 40 batches. First batch adds the collector to the engine. Subsequent batches push particles to the already-registered collector.
+- scaleIn and paint override per-particle `homeConfig` for heavier damping and no return noise, giving smooth ease-out arrival.
+- Intro `scaleStep = size / 15` (~250ms grow time), overriding the user's scaleStep only for the intro animation.
+
+Config: `IntroConfig { mode?: 'scatter' | 'scaleIn' | 'ripple' | 'paint', duration?: number }`. Pass `intro: {}` for defaults.
+
 ### Text pipeline
 
 `textToParticles(text, config?)` → `createTextImage({ text, ...textConfig })` → offscreen canvas → `canvasToDataURL()` → `imageToParticles({ image: dataURL, ...config })`. The text is rendered with configurable font, size, weight, and fill (solid color or gradient stops).

@@ -256,6 +256,18 @@ interface ParticleConstructorParams extends ShapeConfig {
     /** Home position spring + idle animation config. */
     homeConfig?: HomePositionConfig;
 }
+type IntroMode = 'scatter' | 'scaleIn' | 'ripple' | 'paint';
+/** Configuration for intro animation when creating image/text particles. */
+interface IntroConfig {
+    /** Animation mode. Default 'scatter'.
+     *  - 'scatter': particles start at random positions and spring to home while scaling in.
+     *  - 'scaleIn': particles fly outward from image center — outer edges form first, filling inward.
+     *  - 'ripple': shockwave from center — particles appear and get pushed outward, overshoot, spring back.
+     *  - 'paint': particles spray from bottom center, staggered left-to-right, painting the image. */
+    mode?: IntroMode;
+    /** Total intro duration in ms (controls stagger for scaleIn/ripple, grow speed for scatter). Default 800. */
+    duration?: number;
+}
 /** Configuration for mapping an image into a grid of colored particles. */
 interface ImageParticlesConfig extends ShapeConfig {
     /** Image source — URL string or HTMLImageElement. */
@@ -284,6 +296,8 @@ interface ImageParticlesConfig extends ShapeConfig {
     scaleStep?: number;
     /** Home position spring + idle animation config. Applied to all generated particles. */
     homeConfig?: HomePositionConfig;
+    /** Intro animation — particles animate in rather than appearing instantly. See IntroConfig. */
+    intro?: IntroConfig;
 }
 interface BurstSettings {
     clientX: number;
@@ -391,6 +405,8 @@ declare class Particle {
     trailSegments: TrailSegment[];
     homePosition: Vector | null;
     homeConfig: Required<HomePositionConfig> | null;
+    /** When false, idle animations (breathing, wiggle, wave, pulse) are suppressed. Spring return still works. */
+    idleEnabled: boolean;
     private breathingPhase;
     /** Per-particle spring multiplier (0.6–1.4) — breaks sync so particles return at different rates. */
     private springMultiplier;
@@ -1289,6 +1305,9 @@ interface ParticlesController {
     textToParticles: (text: string, config?: Omit<ImageParticlesConfig, 'image'> & {
         textConfig?: Omit<TextImageConfig, 'text'>;
     }) => Promise<Emitter>;
+    /** Toggle idle animations (breathing, wiggle, wave, pulse) on all particles with home positions.
+     *  Spring return still works when idle is disabled — particles return home but stay still once there. */
+    setIdleEffect: (enabled: boolean) => void;
     destroy: () => void;
 }
 interface ScreensaverOptions {
@@ -1375,4 +1394,4 @@ interface FPSOverlayController {
 }
 declare function showFPSOverlay(options?: FPSOverlayOptions): FPSOverlayController;
 
-export { Attractor as A, type BurstSettings as B, CanvasRenderer as C, type DetonateConfig as D, type ExplodeOptions as E, type FullParticularConfig as F, createParticles as G, type HomePositionConfig as H, type ImageParticlesConfig as I, createTextImage as J, getParticlesBackgroundLayerStyle as K, getParticlesContainerLayerStyle as L, type MouseForceConfig as M, particlesBackgroundLayerStyle as N, particlesContainerLayerStyle as O, type ParticularConfig as P, DEFAULT_Z_INDEX as Q, type RendererType as R, type ScreensaverController as S, type TextImageConfig as T, presets as U, Vector as V, WebGLRenderer as W, showFPSOverlay as X, startScreensaver as Y, type ParticleConfig as a, Particular as b, type PresetName as c, type ParticlesController as d, type BurstOptions as e, type AttractorConfig as f, type BlendMode as g, type BoundaryConfig as h, type BoundaryHandle as i, type ChildExplosionConfig as j, type CreateParticlesOptions as k, Emitter as l, type EmitterConfiguration as m, type FPSOverlayController as n, type FPSOverlayOptions as o, type ForceSource as p, MouseForce as q, Particle as r, type ParticleConstructorParams as s, type ParticleShape as t, type ScreensaverOptions as u, type ShapeConfig as v, type WebGLRendererOptions as w, applyCanvasStyles as x, canvasToDataURL as y, createHeartImage as z };
+export { Attractor as A, type BurstSettings as B, CanvasRenderer as C, type DetonateConfig as D, type ExplodeOptions as E, type FullParticularConfig as F, canvasToDataURL as G, type HomePositionConfig as H, type ImageParticlesConfig as I, createHeartImage as J, createParticles as K, createTextImage as L, type MouseForceConfig as M, getParticlesBackgroundLayerStyle as N, getParticlesContainerLayerStyle as O, type ParticularConfig as P, particlesBackgroundLayerStyle as Q, type RendererType as R, type ScreensaverController as S, type TextImageConfig as T, particlesContainerLayerStyle as U, Vector as V, WebGLRenderer as W, DEFAULT_Z_INDEX as X, presets as Y, showFPSOverlay as Z, startScreensaver as _, type ParticleConfig as a, Particular as b, type PresetName as c, type ParticlesController as d, type BurstOptions as e, type AttractorConfig as f, type BlendMode as g, type BoundaryConfig as h, type BoundaryHandle as i, type ChildExplosionConfig as j, type CreateParticlesOptions as k, Emitter as l, type EmitterConfiguration as m, type FPSOverlayController as n, type FPSOverlayOptions as o, type ForceSource as p, type IntroConfig as q, type IntroMode as r, MouseForce as s, Particle as t, type ParticleConstructorParams as u, type ParticleShape as v, type ScreensaverOptions as w, type ShapeConfig as x, type WebGLRendererOptions as y, applyCanvasStyles as z };

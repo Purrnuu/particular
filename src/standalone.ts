@@ -40,6 +40,8 @@ export type {
   HomePositionConfig,
   TextImageConfig,
   BoundaryConfig,
+  IntroConfig,
+  IntroMode,
 } from './particular/types';
 export type { PresetName } from './particular/presets';
 export type {

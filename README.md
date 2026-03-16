@@ -187,6 +187,18 @@ function Snow() {
 
 Image/text particles have spring physics — they return to their home positions after being pushed. Press E (in the examples) to scatter them.
 
+### Intro Animation
+
+Add `intro` to `imageToParticles()` or `textToParticles()` for animated particle reveals:
+
+```js
+controller.imageToParticles({ image: "/photo.png", intro: {} }); // scatter (default)
+controller.imageToParticles({ image: "/photo.png", intro: { mode: "scaleIn" } }); // edges first, fills inward
+controller.imageToParticles({ image: "/photo.png", intro: { mode: "ripple" } }); // center-out shockwave
+```
+
+Modes: `scatter` (particles fly in from random positions), `scaleIn` (outer edges form first from center, filling inward), `ripple` (shockwave — pushed outward, overshoot, spring back), `paint` (spray from bottom center, left-to-right).
+
 ## Smart Defaults
 
 The library is designed for zero-config usage:

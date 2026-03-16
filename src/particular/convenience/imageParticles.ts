@@ -5,7 +5,8 @@ import { configureParticle, defaultImageParticles, type MergedConfig } from '../
 import Vector from '../utils/vector';
 import { loadImage, sampleImagePixels } from '../utils/pixelSampler';
 import { createTextImage, canvasToDataURL } from '../utils/imageSource';
-import type { ImageParticlesConfig, TextImageConfig } from '../types';
+import type { ImageParticlesConfig, TextImageConfig, IntroMode } from '../types';
+import type { PixelSample } from '../utils/pixelSampler';
 
 /**
  * Create imageToParticles() and textToParticles() helpers bound to an engine instance.
@@ -51,6 +52,7 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
       trailShrink,
       imageTint,
       homeConfig,
+      intro,
     } = merged;
 
     // Squares pack tighter on a grid — use higher resolution. Circles/triangles need fewer.
@@ -93,20 +95,23 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
     const originX = centerX - engineW / 2;
     const originY = centerY - engineH / 2;
 
-    const samples = sampleImagePixels(image, resolution, alphaThreshold);
+    /** Calculate particle size for a given resolution. */
+    const sizeForRes = (res: number, particleShape: string): number => {
+      const cols = aspect >= 1 ? res : Math.max(1, Math.round(res * aspect));
+      const sp = engineW / cols;
+      const scale = particleShape === 'square' ? 0.55 : 0.7;
+      return sp * scale;
+    };
 
-    // Calculate particle size from grid spacing.
-    // Circles/triangles need larger size to avoid gaps; squares tile perfectly.
-    const gridCols = aspect >= 1 ? resolution : Math.max(1, Math.round(resolution * aspect));
-    const spacing = engineW / gridCols;
-    const sizeScale = shape === 'square' ? 0.55 : 0.7;
-    const size = sizeOverride != null ? sizeOverride / pr : spacing * sizeScale;
-    const scaleStep = scaleStepOverride ?? size; // instant full size
+    const imageCenter = new Vector(centerX, centerY);
+
+    const samples = sampleImagePixels(image, resolution, alphaThreshold);
+    const size = sizeOverride != null ? sizeOverride / pr : sizeForRes(resolution, shape ?? 'square');
+    const scaleStep = scaleStepOverride ?? size;
 
     // Ensure maxCount can hold all particles
-    const needed = samples.length;
-    if (engine.maxCount < engine.getCount() + needed) {
-      engine.maxCount = engine.getCount() + needed;
+    if (engine.maxCount < engine.getCount() + samples.length) {
+      engine.maxCount = engine.getCount() + samples.length;
     }
 
     // Create collector emitter (no auto-emission)
@@ -120,9 +125,8 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
     });
     collector.isEmitting = false;
 
-    const imageCenter = new Vector(centerX, centerY);
-
-    for (const sample of samples) {
+    /** Create a particle from a pixel sample and add it to the collector. */
+    const makeParticle = (sample: PixelSample, introScaleStep?: number): Particle => {
       const px = originX + sample.nx * engineW;
       const py = originY + sample.ny * engineH;
       const homePos = new Vector(px, py);
@@ -137,7 +141,7 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
         size,
         particleLife,
         gravity,
-        scaleStep,
+        scaleStep: introScaleStep ?? scaleStep,
         fadeTime,
         shape,
         blendMode,
@@ -161,16 +165,192 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
         homeConfig,
       });
 
-      // Triangle tessellation: alternate up/down based on grid parity
       if (shape === 'triangle' && (sample.gridX + sample.gridY) % 2 === 1) {
         particle.rotation = 180;
       }
 
       particle.init(null, engine);
-      collector.particles.push(particle);
+      return particle;
+    };
+
+    if (intro) {
+      const mode: IntroMode = intro.mode ?? 'scatter';
+      const duration = intro.duration ?? 800;
+      // Grow from 0 to full size over ~15 ticks (~250ms)
+      const introScaleStep = size / 15;
+
+      if (mode === 'scatter') {
+        // All particles created at once at random positions — spring pulls them home
+        const scatterRadius = Math.max(engineW, engineH) * 0.3;
+
+        for (const sample of samples) {
+          const particle = makeParticle(sample, introScaleStep);
+          // Scatter: offset from home position
+          const angle = Math.random() * Math.PI * 2;
+          const dist = Math.random() * scatterRadius;
+          particle.position.x += Math.cos(angle) * dist;
+          particle.position.y += Math.sin(angle) * dist;
+          // Small random initial velocity for organic motion
+          particle.velocity.x = (Math.random() - 0.5) * 2;
+          particle.velocity.y = (Math.random() - 0.5) * 2;
+          // Start invisible — grows from 0 via scaleStep
+          particle.factoredSize = 0;
+          collector.particles.push(particle);
+        }
+
+        engine.addEmitter(collector);
+      } else if (mode === 'scaleIn') {
+        // Particles start at image center and fly outward to home via spring.
+        // Sorted farthest-first so outer edges form first, filling inward to center.
+        const sorted = [...samples];
+        sorted.sort((a, b) => {
+          const dA = Math.hypot(a.nx - 0.5, a.ny - 0.5);
+          const dB = Math.hypot(b.nx - 0.5, b.ny - 0.5);
+          return dB - dA; // farthest first
+        });
+
+        // Small spread around center so particles don't all originate from one pixel
+        const spread = Math.max(engineW, engineH) * 0.03;
+        const numBatches = 30;
+        const batchMs = duration / numBatches;
+
+        for (let b = 0; b < numBatches; b++) {
+          const bStart = Math.floor(b * sorted.length / numBatches);
+          const bEnd = Math.floor((b + 1) * sorted.length / numBatches);
+
+          const createBatch = () => {
+            for (let i = bStart; i < bEnd; i++) {
+              const speedVariance = 0.5 + Math.random() * 1.0;
+              const particle = makeParticle(sorted[i]!, introScaleStep * speedVariance);
+              // Start at center with small random spread
+              particle.position.x = centerX + (Math.random() - 0.5) * spread;
+              particle.position.y = centerY + (Math.random() - 0.5) * spread;
+              particle.factoredSize = 0;
+              // Override spring for scaleIn: heavy damping for smooth settle
+              particle.homeConfig!.springDamping = 0.75;
+              particle.homeConfig!.springStrength = 0.08;
+              particle.homeConfig!.returnNoise = 0;
+              // Outward nudge toward home — spring + heavy damping handles deceleration
+              const dx = particle.homePosition!.x - centerX;
+              const dy = particle.homePosition!.y - centerY;
+              const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+              const nudge = dist * 0.03 * (0.8 + Math.random() * 0.4);
+              particle.velocity.x = (dx / dist) * nudge;
+              particle.velocity.y = (dy / dist) * nudge;
+              collector.particles.push(particle);
+            }
+            if (b === 0) engine.addEmitter(collector);
+          };
+
+          if (b === 0) {
+            createBatch();
+          } else {
+            setTimeout(createBatch, b * batchMs);
+          }
+        }
+      } else if (mode === 'ripple') {
+        // ripple: shockwave from center — particles get pushed outward, overshoot, spring back
+        const sorted = [...samples];
+        sorted.sort((a, b) => {
+          const dA = Math.hypot(a.nx - 0.5, a.ny - 0.5);
+          const dB = Math.hypot(b.nx - 0.5, b.ny - 0.5);
+          return dA - dB;
+        });
+
+        const numBatches = 40;
+        const batchMs = duration / numBatches;
+
+        for (let b = 0; b < numBatches; b++) {
+          const bStart = Math.floor(b * sorted.length / numBatches);
+          const bEnd = Math.floor((b + 1) * sorted.length / numBatches);
+
+          const createBatch = () => {
+            for (let i = bStart; i < bEnd; i++) {
+              const s = sorted[i]!;
+              const speedVariance = 0.4 + Math.random() * 1.2;
+              const particle = makeParticle(s, introScaleStep * speedVariance);
+              particle.factoredSize = 0;
+
+              // Shockwave push: outward from center with angular wobble
+              const dx = s.nx - 0.5;
+              const dy = s.ny - 0.5;
+              const radialAngle = Math.atan2(dy, dx);
+              const wobble = (Math.random() - 0.5) * 0.7; // ±20° tangential spread
+              const pushAngle = radialAngle + wobble;
+              const pushMag = 2.5 + Math.random() * 2.5; // 2.5–5.0 velocity
+              particle.velocity.x = Math.cos(pushAngle) * pushMag;
+              particle.velocity.y = Math.sin(pushAngle) * pushMag;
+
+              collector.particles.push(particle);
+            }
+            if (b === 0) engine.addEmitter(collector);
+          };
+
+          if (b === 0) {
+            createBatch();
+          } else {
+            setTimeout(createBatch, b * batchMs);
+          }
+        }
+      } else {
+        // paint: particles spray from bottom center, staggered left to right
+        const sorted = [...samples];
+        sorted.sort((a, b) => (a.nx + Math.random() * 0.05) - (b.nx + Math.random() * 0.05));
+
+        const launchX = centerX;
+        const launchY = originY + engineH; // bottom center of image
+        const numBatches = 40;
+        const batchMs = duration / numBatches;
+
+        for (let b = 0; b < numBatches; b++) {
+          const bStart = Math.floor(b * sorted.length / numBatches);
+          const bEnd = Math.floor((b + 1) * sorted.length / numBatches);
+
+          const createBatch = () => {
+            for (let i = bStart; i < bEnd; i++) {
+              const speedVariance = 0.5 + Math.random() * 1.0;
+              const particle = makeParticle(sorted[i]!, introScaleStep * speedVariance);
+              // All particles spray from the exact same point
+              particle.position.x = launchX;
+              particle.position.y = launchY;
+              particle.factoredSize = 0;
+
+              // Override spring for paint: heavy damping, strong correction, no wobble
+              particle.homeConfig!.springDamping = 0.75;
+              particle.homeConfig!.springStrength = 0.08;
+              particle.homeConfig!.returnNoise = 0;
+
+              // Aim toward home — low speed, spring + heavy damping handles deceleration
+              const dx = particle.homePosition!.x - launchX;
+              const dy = particle.homePosition!.y - launchY;
+              const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+              const aimAngle = Math.atan2(dy, dx);
+              const wobble = (Math.random() - 0.5) * 0.3; // ±8° tight spray
+              const speed = dist * 0.03 * (0.9 + Math.random() * 0.2);
+              particle.velocity.x = Math.cos(aimAngle + wobble) * speed;
+              particle.velocity.y = Math.sin(aimAngle + wobble) * speed;
+
+              collector.particles.push(particle);
+            }
+            if (b === 0) engine.addEmitter(collector);
+          };
+
+          if (b === 0) {
+            createBatch();
+          } else {
+            setTimeout(createBatch, b * batchMs);
+          }
+        }
+      }
+    } else {
+      // No intro — create all particles immediately at full size
+      for (const sample of samples) {
+        const particle = makeParticle(sample);
+        collector.particles.push(particle);
+      }
+      engine.addEmitter(collector);
     }
 
-    engine.addEmitter(collector);
     return collector;
   };
 
