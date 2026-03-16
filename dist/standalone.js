@@ -1281,10 +1281,11 @@ var CanvasRenderer = class {
     this.context.save();
     this.context.translate(pixelRounded[0], pixelRounded[1]);
     this.context.rotate(degToRad(particle.rotation));
+    const k = 0.5773502691896258;
     this.context.beginPath();
-    this.context.moveTo(0, -size);
-    this.context.lineTo(size, size);
-    this.context.lineTo(-size, size);
+    this.context.moveTo(0, -size * 2 * k);
+    this.context.lineTo(size, size * k);
+    this.context.lineTo(-size, size * k);
     this.context.closePath();
     this.context.fill();
     if (this.stroke) {
@@ -2854,7 +2855,7 @@ function createImageParticles(engine, mergedConfig, container) {
     const sizeForRes = (res, particleShape) => {
       const cols = aspect >= 1 ? res : Math.max(1, Math.round(res * aspect));
       const sp = engineW / cols;
-      const scale = particleShape === "square" ? 0.55 : 0.7;
+      const scale = particleShape === "square" ? 0.55 : particleShape === "triangle" ? 0.95 : 0.7;
       return sp * scale;
     };
     const imageCenter = new Vector(centerX, centerY);

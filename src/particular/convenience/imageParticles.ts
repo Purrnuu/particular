@@ -99,7 +99,7 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
     const sizeForRes = (res: number, particleShape: string): number => {
       const cols = aspect >= 1 ? res : Math.max(1, Math.round(res * aspect));
       const sp = engineW / cols;
-      const scale = particleShape === 'square' ? 0.55 : 0.7;
+      const scale = particleShape === 'square' ? 0.55 : particleShape === 'triangle' ? 0.95 : 0.7;
       return sp * scale;
     };
 
