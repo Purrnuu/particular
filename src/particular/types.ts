@@ -361,4 +361,44 @@ export interface BoundaryConfig {
   inset?: number;
 }
 
+/** Configuration for a glowing particle halo around an HTML element. */
+export interface ContainerGlowConfig {
+  /** The HTML element to create a glow effect around. */
+  element: HTMLElement;
+  /** Glow particle colors. Default: soft blue-to-purple palette. */
+  colors?: string[];
+  /** Emission rate per edge (particles/tick). Default 0.5. */
+  rate?: number;
+  /** Minimum particle size. Default 1. */
+  sizeMin?: number;
+  /** Maximum particle size. Default 3. */
+  sizeMax?: number;
+  /** Individual particle lifetime in ticks. Default 100. */
+  particleLife?: number;
+  /** Fade time in ticks. Default 50. */
+  fadeTime?: number;
+  /** Outward velocity magnitude. Default 0.8. */
+  velocity?: number;
+  /** Spread angle (radians) from perpendicular. Default 0.4. */
+  spread?: number;
+  /** Friction applied to glow particles. Default 0.01. */
+  friction?: number;
+  /** Particle shape. Default 'circle'. */
+  shape?: ParticleShape;
+  /** Enable glow rendering on particles. Default true. */
+  glow?: boolean;
+  /** Glow color. Default '#74c0fc'. */
+  glowColor?: string;
+  /** Glow opacity (0–1). Default 0.35. */
+  glowAlpha?: number;
+  /** Glow size in pixels. Default 12. */
+  glowSize?: number;
+  /** Blend mode for glow particles. Default 'additive'. */
+  blendMode?: BlendMode;
+  /** Sinusoidal pulse speed (radians/tick). 0 = no pulse. Default 0.02. */
+  pulseSpeed?: number;
+  /** Pulse amplitude (0–1) — how much the emission rate varies. Default 0.4. */
+  pulseAmplitude?: number;
+}
+
 export type RendererType = 'canvas' | 'webgl';

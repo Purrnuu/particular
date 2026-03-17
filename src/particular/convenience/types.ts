@@ -12,6 +12,7 @@ import type {
   TextImageConfig,
   ElementParticlesConfig,
   BoundaryConfig,
+  ContainerGlowConfig,
 } from '../types';
 import type { PresetName } from '../presets';
 
@@ -45,6 +46,18 @@ export interface BoundaryHandle {
   destroy: () => void;
 }
 
+/** Handle returned by addContainerGlow(). */
+export interface ContainerGlowHandle {
+  /** Re-sync glow emitters to the element's current position/size. Called automatically on resize. */
+  update: () => void;
+  /** Stop emitting new particles. Existing particles fade out naturally. Call start() to resume. */
+  stop: () => void;
+  /** Resume emitting after stop(). */
+  start: () => void;
+  /** Remove this glow effect and its emitters immediately. */
+  destroy: () => void;
+}
+
 export interface ParticlesController {
   engine: Particular;
   /** The canvas element used by this controller (may have been auto-created). */
@@ -67,6 +80,9 @@ export interface ParticlesController {
   /** Create a repulsion boundary around an HTML element. Particles are pushed away from its edges.
    *  The boundary auto-syncs when the element resizes or scrolls. Returns a handle to update or remove it. */
   addBoundary: (config: BoundaryConfig) => BoundaryHandle;
+  /** Create a glowing particle halo around an HTML element. Particles emit outward from all edges
+   *  with a gentle pulse. Works with any element including text. Returns a handle to update or remove it. */
+  addContainerGlow: (config: ContainerGlowConfig) => ContainerGlowHandle;
 
   // ── Effects ──
   explode: (options?: ExplodeOptions) => void;

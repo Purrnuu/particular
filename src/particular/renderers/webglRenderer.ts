@@ -83,6 +83,31 @@ float sdStar5(vec2 p, float r, float rf) {
   return length(p - ba * h) * sign(p.y * ba.x - p.x * ba.y);
 }
 
+float sdRing(vec2 p, float radius, float thickness) {
+  return abs(length(p) - radius) - thickness;
+}
+
+float sdSparkle(vec2 p) {
+  // 4-pointed star: union of two diamond shapes rotated 45 degrees
+  float armWidth = 0.15;
+  // Axis-aligned diamond (vertical/horizontal arms)
+  float d1 = abs(p.x) * 0.7 + abs(p.y) - 1.0;
+  float w1 = abs(p.x) - armWidth;
+  float arm1 = max(d1, w1);
+  float d2 = abs(p.y) * 0.7 + abs(p.x) - 1.0;
+  float w2 = abs(p.y) - armWidth;
+  float arm2 = max(d2, w2);
+  // Diagonal arms (rotated 45 degrees)
+  vec2 pr = vec2(p.x + p.y, p.y - p.x) * 0.7071;
+  float d3 = abs(pr.x) * 0.7 + abs(pr.y) - 0.7;
+  float w3 = abs(pr.x) - armWidth;
+  float arm3 = max(d3, w3);
+  float d4 = abs(pr.y) * 0.7 + abs(pr.x) - 0.7;
+  float w4 = abs(pr.y) - armWidth;
+  float arm4 = max(d4, w4);
+  return min(min(arm1, arm2), min(arm3, arm4));
+}
+
 float shapeSdf(vec2 p, float shapeId) {
   if (shapeId < 0.5) {
     return length(p) - 1.0; // circle
@@ -96,7 +121,13 @@ float shapeSdf(vec2 p, float shapeId) {
   if (shapeId < 3.5) {
     return sdStar5(p, 1.0, 0.45); // star
   }
-  return sdRoundedBox(p, vec2(0.75), 0.25); // rounded rectangle
+  if (shapeId < 4.5) {
+    return sdRoundedBox(p, vec2(0.75), 0.25); // rounded rectangle
+  }
+  if (shapeId < 5.5) {
+    return sdRing(p, 0.75, 0.2); // ring
+  }
+  return sdSparkle(p); // sparkle
 }
 
 void main() {
@@ -222,6 +253,10 @@ function shapeToId(shape: Particle['shape']): number {
       return 3;
     case 'roundedRectangle':
       return 4;
+    case 'ring':
+      return 5;
+    case 'sparkle':
+      return 6;
     default:
       return 0;
   }

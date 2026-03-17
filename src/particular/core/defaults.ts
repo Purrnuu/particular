@@ -10,6 +10,7 @@ import type {
   HomePositionConfig,
   ImageParticlesConfig,
   ElementParticlesConfig,
+  ContainerGlowConfig,
 } from '../types';
 
 export const defaultParticular: Required<Omit<ParticularConfig, 'container'>> = {
@@ -142,6 +143,27 @@ export const defaultElementParticles: Partial<ElementParticlesConfig> = {
   shape: 'triangle',
   hideElement: true,
   restoreElement: true,
+};
+
+/** Default container glow config — soft blue/purple halo with gentle pulse. */
+export const defaultContainerGlow: Required<Omit<ContainerGlowConfig, 'element'>> = {
+  colors: ['#a5d8ff', '#74c0fc', '#4dabf7', '#d0bfff', '#b197fc', '#9775fa'],
+  rate: 0.5,
+  sizeMin: 0.5,
+  sizeMax: 2,
+  particleLife: 60,
+  fadeTime: 30,
+  velocity: 0.4,
+  spread: 0.3,
+  friction: 0.01,
+  shape: 'sparkle',
+  glow: true,
+  glowColor: '#74c0fc',
+  glowAlpha: 0.35,
+  glowSize: 8,
+  blendMode: 'additive',
+  pulseSpeed: 0.02,
+  pulseAmplitude: 0.4,
 };
 
 /** Screensaver mouse-wind defaults — softer, broader than base mouse force. */

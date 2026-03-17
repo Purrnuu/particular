@@ -50,6 +50,7 @@ export type {
   HomePositionConfig,
   TextImageConfig,
   BoundaryConfig,
+  ContainerGlowConfig,
   IntroConfig,
   IntroMode,
 } from './particular/types';
@@ -59,6 +60,7 @@ export type {
   CreateParticlesOptions,
   ParticlesController,
   BoundaryHandle,
+  ContainerGlowHandle,
   ScreensaverOptions,
   ScreensaverController,
 } from './particular/convenience';
