@@ -43,6 +43,7 @@ export type {
   TextImageConfig,
   BoundaryConfig,
   ContainerGlowConfig,
+  MouseTrailConfig,
   IntroConfig,
   IntroMode,
 } from './particular/types';
@@ -53,6 +54,7 @@ export type {
   ParticlesController,
   BoundaryHandle,
   ContainerGlowHandle,
+  MouseTrailHandle,
   ScreensaverOptions,
   ScreensaverController,
 } from './particular/convenience';

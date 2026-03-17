@@ -11,6 +11,7 @@ import type {
   ImageParticlesConfig,
   ElementParticlesConfig,
   ContainerGlowConfig,
+  MouseTrailConfig,
 } from '../types';
 
 export const defaultParticular: Required<Omit<ParticularConfig, 'container'>> = {
@@ -164,6 +165,30 @@ export const defaultContainerGlow: Required<Omit<ContainerGlowConfig, 'element'>
   blendMode: 'additive',
   pulseSpeed: 0.02,
   pulseAmplitude: 0.4,
+};
+
+/** Default mouse trail config — magical wisps streaming from cursor. */
+export const defaultMouseTrail: Required<Omit<MouseTrailConfig, 'target'>> = {
+  colors: ['#a5d8ff', '#74c0fc', '#4dabf7', '#d0bfff', '#b197fc', '#9775fa'],
+  rate: 1.5,
+  sizeMin: 1,
+  sizeMax: 3,
+  particleLife: 40,
+  fadeTime: 20,
+  velocity: 1.5,
+  spread: 0.8,
+  friction: 0.02,
+  shape: 'sparkle',
+  glow: true,
+  glowColor: '#74c0fc',
+  glowAlpha: 0.4,
+  glowSize: 10,
+  blendMode: 'additive',
+  trail: true,
+  trailLength: 6,
+  trailFade: 0.4,
+  trailShrink: 0.5,
+  minSpeed: 0.5,
 };
 
 /** Screensaver mouse-wind defaults — softer, broader than base mouse force. */

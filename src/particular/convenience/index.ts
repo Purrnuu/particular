@@ -25,6 +25,7 @@ import type { FullParticularConfig } from '../types';
 import { createForces } from './forces';
 import { createBoundaryHelper } from './boundary';
 import { createContainerGlowHelper } from './containerGlow';
+import { createMouseTrailHelper } from './mouseTrail';
 import { createEffects } from './effects';
 import { createImageParticles } from './imageParticles';
 import type { BurstOptions, CreateParticlesOptions, ParticlesController } from './types';
@@ -36,6 +37,7 @@ export type {
   ParticlesController,
   BoundaryHandle,
   ContainerGlowHandle,
+  MouseTrailHandle,
   ScreensaverOptions,
   ScreensaverController,
 } from './types';
@@ -170,6 +172,7 @@ export function createParticles({
   const forces = createForces(engine, container, cleanups);
   const boundary = createBoundaryHelper(engine, container, cleanups);
   const containerGlow = createContainerGlowHelper(engine, container, cleanups);
+  const mouseTrail = createMouseTrailHelper(engine, container, cleanups);
   const effects = createEffects(engine, mergedConfig);
   const imageApi = createImageParticles(engine, mergedConfig, container, cleanups);
 
@@ -198,6 +201,7 @@ export function createParticles({
     ...forces,
     ...boundary,
     ...containerGlow,
+    ...mouseTrail,
     ...effects,
     ...imageApi,
     destroy,

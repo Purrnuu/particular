@@ -401,4 +401,50 @@ export interface ContainerGlowConfig {
   pulseAmplitude?: number;
 }
 
+/** Configuration for a mouse-following particle trail. */
+export interface MouseTrailConfig {
+  /** Element to track mouse on. Default: window. */
+  target?: EventTarget;
+  /** Trail particle colors. Default: soft blue-to-purple palette. */
+  colors?: string[];
+  /** Emission rate (particles/tick while moving). Default 1.5. */
+  rate?: number;
+  /** Min particle size. Default 1. */
+  sizeMin?: number;
+  /** Max particle size. Default 3. */
+  sizeMax?: number;
+  /** Particle lifetime in ticks. Default 40. */
+  particleLife?: number;
+  /** Fade time in ticks. Default 20. */
+  fadeTime?: number;
+  /** Base velocity magnitude added to cursor direction. Default 1.5. */
+  velocity?: number;
+  /** Spread angle (radians) from cursor direction. Default 0.8. */
+  spread?: number;
+  /** Friction applied to trail particles. Default 0.02. */
+  friction?: number;
+  /** Particle shape. Default 'sparkle'. */
+  shape?: ParticleShape;
+  /** Enable glow. Default true. */
+  glow?: boolean;
+  /** Glow color. Default '#74c0fc'. */
+  glowColor?: string;
+  /** Glow opacity (0–1). Default 0.4. */
+  glowAlpha?: number;
+  /** Glow size in pixels. Default 10. */
+  glowSize?: number;
+  /** Blend mode. Default 'additive'. */
+  blendMode?: BlendMode;
+  /** Enable particle trails (streak). Default true. */
+  trail?: boolean;
+  /** Trail length (segments). Default 6. */
+  trailLength?: number;
+  /** Trail fade multiplier. Default 0.4. */
+  trailFade?: number;
+  /** Trail shrink ratio. Default 0.5. */
+  trailShrink?: number;
+  /** Minimum mouse speed (engine units/frame) to emit. Default 0.5. */
+  minSpeed?: number;
+}
+
 export type RendererType = 'canvas' | 'webgl';

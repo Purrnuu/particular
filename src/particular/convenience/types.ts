@@ -13,6 +13,7 @@ import type {
   ElementParticlesConfig,
   BoundaryConfig,
   ContainerGlowConfig,
+  MouseTrailConfig,
 } from '../types';
 import type { PresetName } from '../presets';
 
@@ -58,6 +59,16 @@ export interface ContainerGlowHandle {
   destroy: () => void;
 }
 
+/** Handle returned by addMouseTrail(). */
+export interface MouseTrailHandle {
+  /** Stop emitting trail particles. Existing particles fade out naturally. */
+  stop: () => void;
+  /** Resume emitting after stop(). */
+  start: () => void;
+  /** Remove the trail and all its listeners. */
+  destroy: () => void;
+}
+
 export interface ParticlesController {
   engine: Particular;
   /** The canvas element used by this controller (may have been auto-created). */
@@ -83,6 +94,10 @@ export interface ParticlesController {
   /** Create a glowing particle halo around an HTML element. Particles emit outward from all edges
    *  with a gentle pulse. Works with any element including text. Returns a handle to update or remove it. */
   addContainerGlow: (config: ContainerGlowConfig) => ContainerGlowHandle;
+
+  /** Create a particle trail that follows the mouse cursor. Particles inherit cursor velocity
+   *  direction and leave glowing wisp streaks. Returns a handle to stop or remove it. */
+  addMouseTrail: (config?: MouseTrailConfig) => MouseTrailHandle;
 
   // ── Effects ──
   explode: (options?: ExplodeOptions) => void;

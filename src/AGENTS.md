@@ -14,7 +14,7 @@ Types in `src/particular/types.ts`:
 
 Config merge chain: `configureParticular({ ...preset, ...userConfig })` — user config always wins over preset.
 
-Defaults in `src/particular/core/defaults.ts`: `defaultParticular`, `defaultParticle`, `defaultMouseForce` (base physics), `defaultMouseWind` (screensaver wind overrides), `defaultContainerGlow` (glow particle halo). `MouseForce` constructor merges config with `defaultMouseForce`.
+Defaults in `src/particular/core/defaults.ts`: `defaultParticular`, `defaultParticle`, `defaultMouseForce` (base physics), `defaultMouseWind` (screensaver wind overrides), `defaultContainerGlow` (glow particle halo), `defaultMouseTrail` (cursor trail wisps). `MouseForce` constructor merges config with `defaultMouseForce`.
 
 Key fields with non-obvious behavior:
 
@@ -260,6 +260,24 @@ Creates a glowing particle halo around any HTML element by placing 4 continuous 
 
 Same as boundary system: container mode subtracts container rect before dividing by pixelRatio.
 
+## Mouse Trail System
+
+File: `src/particular/convenience/mouseTrail.ts`
+
+Emits particles that follow the mouse cursor, creating a magic wisp trail. Particles fly out behind the cursor direction with configurable trails/streaks.
+
+### How it works
+
+1. **Emitter**: A single continuous emitter (`life: 999999`) positioned at the cursor.
+2. **Tracking**: Listens to `mousemove`, `touchmove`, and `touchstart` on the target (default `window`). Converts coordinates via container offset and pixelRatio, same pattern as `MouseForce`.
+3. **Per-frame update**: On engine `UPDATE`, computes cursor velocity from position delta. If speed > `minSpeed`, sets emitter velocity to reverse cursor direction (particles fly out behind) and enables emission. If below threshold, disables emission.
+4. **Pause/resume**: `paused` flag enforced in the UPDATE handler, same pattern as container glow.
+5. **Cleanup**: `handle.destroy()` removes event listeners and emitter from engine.
+
+### Defaults
+
+Sparkle shape, additive blend, trail streaks enabled, glow enabled. Designed for a magical wisp aesthetic out of the box.
+
 ## Home Position & Spring Physics
 
 Used by image/text particles. When a particle has `homePosition` set, it experiences spring-return forces and idle animations.
@@ -363,6 +381,7 @@ The convenience layer lives in `src/particular/convenience/` as focused modules 
 - `forces.ts` — `createForces()`: attractor + mouse force management
 - `boundary.ts` — `createBoundaryHelper()`: DOM element repulsion boundaries with resize/scroll sync
 - `containerGlow.ts` — `createContainerGlowHelper()`: glowing particle halo around DOM elements
+- `mouseTrail.ts` — `createMouseTrailHelper()`: particle trail following mouse cursor
 - `effects.ts` — `createEffects()`: explode() + scatter()
 - `imageParticles.ts` — `createImageParticles()`: image/text/element to particle grids with smart defaults
 - `screensaver.ts` — `startScreensaver()`: continuous ambient emission

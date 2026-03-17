@@ -77,6 +77,7 @@ src/particular/convenience/types.ts         # Controller, options, and handle in
 src/particular/convenience/forces.ts        # Attractor + mouse force helpers
 src/particular/convenience/boundary.ts      # DOM element boundary (tiled repulsion + resize/scroll sync)
 src/particular/convenience/containerGlow.ts # addContainerGlow() — glowing particle halo around DOM elements
+src/particular/convenience/mouseTrail.ts   # addMouseTrail() — particle trail following cursor
 src/particular/convenience/effects.ts       # explode() + scatter() particle manipulation
 src/particular/convenience/imageParticles.ts # imageToParticles() + textToParticles()
 src/particular/convenience/screensaver.ts   # startScreensaver() — continuous ambient emission
@@ -99,6 +100,7 @@ src/PageLayout.stories.tsx               # Page layout demos (boundaries, scroll
 src/ImageParticles.stories.tsx           # Image/text to particles demos (resolution, shapes, intro anims)
 src/ElementToParticles.stories.tsx       # HTML element dissolve into particles demos
 src/ContainerGlow.stories.tsx           # Container glow demos (continuous, hover text, multiple cards)
+src/MouseTrail.stories.tsx              # Mouse trail demos (wisps, warm, snow dust)
 src/Showcase.stories.tsx                 # Combined showcase demos
 ```
 

@@ -102,6 +102,7 @@ Returned by createParticles(). Methods:
 - removeMouseForce(mouseForce) → void
 - addBoundary({ element, strength?, radius?, inset? }) → BoundaryHandle — repulsion boundary around DOM element
 - addContainerGlow(config) → ContainerGlowHandle                     — glowing particle halo around DOM element. See ContainerGlowConfig
+- addMouseTrail(config?) → MouseTrailHandle                          — particle trail following cursor. See MouseTrailConfig
 
 #### Effects
 - explode(options?) → void                          — explode all particles into child fragments
@@ -257,6 +258,33 @@ ContainerGlowHandle: { update(), stop(), start(), destroy() }
 - start() — resume emitting after stop()
 - update() — rebuild emitter positions (called automatically on resize)
 
+### MouseTrailConfig
+- target?: EventTarget               — element to track mouse on. Default: window
+- colors?: string[]                  — default: soft blue-to-purple palette
+- rate?: number                      — emission rate while moving. Default 1.5
+- sizeMin?: number                   — default 1
+- sizeMax?: number                   — default 3
+- particleLife?: number              — default 40
+- fadeTime?: number                  — default 20
+- velocity?: number                  — base velocity magnitude. Default 1.5
+- spread?: number                    — spread angle in radians. Default 0.8
+- friction?: number                  — default 0.02
+- shape?: ParticleShape              — default "sparkle"
+- glow?: boolean                     — default true
+- glowColor?: string                 — default "#74c0fc"
+- glowAlpha?: number                 — default 0.4
+- glowSize?: number                  — default 10
+- blendMode?: BlendMode              — default "additive"
+- trail?: boolean                    — enable particle streak. Default true
+- trailLength?: number               — default 6
+- trailFade?: number                 — default 0.4
+- trailShrink?: number               — default 0.5
+- minSpeed?: number                  — min mouse speed to emit. Default 0.5
+
+MouseTrailHandle: { stop(), start(), destroy() }
+- stop() — pause emission, existing particles fade naturally
+- start() — resume after stop()
+
 ### HomePositionConfig (for image/text particles)
 - springStrength?: number           — default 0.05
 - springDamping?: number            — default 0.9
@@ -329,6 +357,13 @@ Works with `addBoundary()` for DOM element repulsion inside the container.
 ```js
 const p = createParticles({ container: myElement });
 p.attachClickBurst(myElement);
+```
+
+### Mouse trail (magic wisps following cursor)
+```js
+const p = createParticles({ config: { continuous: true } });
+p.addMouseTrail(); // default sparkle wisps with trails
+// p.addMouseTrail({ colors: ["#ff9500", "#ffb347"], trail: false }) for custom look
 ```
 
 ### Interactive text with mouse push
