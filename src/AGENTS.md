@@ -14,7 +14,7 @@ Types in `src/particular/types.ts`:
 
 Config merge chain: `configureParticular({ ...preset, ...userConfig })` — user config always wins over preset.
 
-Defaults in `src/particular/core/defaults.ts`: `defaultParticular`, `defaultParticle`, `defaultMouseForce` (base physics), `defaultMouseWind` (screensaver wind overrides). `MouseForce` constructor merges config with `defaultMouseForce`.
+Defaults in `src/particular/core/defaults.ts`: `defaultParticular`, `defaultParticle`, `defaultMouseForce` (base physics), `defaultMouseWind` (screensaver wind overrides), `defaultContainerGlow` (glow particle halo). `MouseForce` constructor merges config with `defaultMouseForce`.
 
 Key fields with non-obvious behavior:
 
@@ -240,6 +240,26 @@ Creates repulsion boundaries around HTML elements by tiling negative-strength `A
 
 All positions are in engine coords (screen pixels / pixelRatio). Container mode subtracts container rect offset before dividing by pixelRatio.
 
+## Container Glow System
+
+File: `src/particular/convenience/containerGlow.ts`
+
+Creates a glowing particle halo around any HTML element by placing 4 continuous emitters along its edges (top, bottom, left, right). Each emitter's velocity points outward (perpendicular to edge), with `spawnWidth`/`spawnHeight` matching the edge length.
+
+### How it works
+
+1. **Emitter placement**: `rebuild()` reads element rect relative to container (or viewport), divides by pixelRatio to get engine coords. Creates 4 emitters at edge centers with edge-length spawn bands.
+2. **Particle config**: Built via `configureParticle()` with glow-specific overrides (low velocity, short life, additive blend, sparkle shape by default). All defaults from `defaultContainerGlow` in `defaults.ts`.
+3. **Pulse**: Listens to engine `UPDATE` event and modulates emitter `rate` with `1 + amplitude * sin(tick * speed)`.
+4. **Pause/resume**: A `paused` flag is enforced every frame in the `UPDATE` handler (sets `isEmitting = false`), overriding the engine's continuous-mode reset. `stop()` sets the flag; `start()` clears it. Existing particles fade naturally.
+5. **Resize**: `ResizeObserver` watches element (and container), calls `rebuild()`.
+6. **Scroll**: rAF-throttled scroll listener calls `reposition()` — lightweight path that moves existing emitter `point` positions.
+7. **Cleanup**: `handle.destroy()` removes event listener, disconnects observers, removes emitters from engine.
+
+### Coordinate conversion
+
+Same as boundary system: container mode subtracts container rect before dividing by pixelRatio.
+
 ## Home Position & Spring Physics
 
 Used by image/text particles. When a particle has `homePosition` set, it experiences spring-return forces and idle animations.
@@ -342,6 +362,7 @@ The convenience layer lives in `src/particular/convenience/` as focused modules 
 - `types.ts` — All interfaces (`CreateParticlesOptions`, `ParticlesController`, etc.)
 - `forces.ts` — `createForces()`: attractor + mouse force management
 - `boundary.ts` — `createBoundaryHelper()`: DOM element repulsion boundaries with resize/scroll sync
+- `containerGlow.ts` — `createContainerGlowHelper()`: glowing particle halo around DOM elements
 - `effects.ts` — `createEffects()`: explode() + scatter()
 - `imageParticles.ts` — `createImageParticles()`: image/text/element to particle grids with smart defaults
 - `screensaver.ts` — `startScreensaver()`: continuous ambient emission

@@ -101,6 +101,7 @@ Returned by createParticles(). Methods:
 - addMouseForce(config?) → MouseForce               — config: { track?, strength?, radius?, damping?, maxSpeed?, falloff? }
 - removeMouseForce(mouseForce) → void
 - addBoundary({ element, strength?, radius?, inset? }) → BoundaryHandle — repulsion boundary around DOM element
+- addContainerGlow(config) → ContainerGlowHandle                     — glowing particle halo around DOM element. See ContainerGlowConfig
 
 #### Effects
 - explode(options?) → void                          — explode all particles into child fragments
@@ -231,6 +232,31 @@ Extends ImageParticlesConfig (minus `image`). Position and size auto-derived fro
 - radius?: number                   — repulsion distance from edge. Default 10
 - inset?: number                    — 0-1 fraction. Default 0.4
 
+### ContainerGlowConfig
+- element: HTMLElement              — REQUIRED. DOM element to glow around
+- colors?: string[]                 — default: soft blue-to-purple palette
+- rate?: number                     — emission rate per edge. Default 0.5
+- sizeMin?: number                  — default 0.5
+- sizeMax?: number                  — default 2
+- particleLife?: number             — default 60
+- fadeTime?: number                 — default 30
+- velocity?: number                 — outward velocity. Default 0.4
+- spread?: number                   — spread angle in radians. Default 0.3
+- friction?: number                 — default 0.01
+- shape?: ParticleShape             — default "sparkle"
+- glow?: boolean                    — default true
+- glowColor?: string                — default "#74c0fc"
+- glowAlpha?: number                — default 0.35
+- glowSize?: number                 — default 8
+- blendMode?: BlendMode             — default "additive"
+- pulseSpeed?: number               — sinusoidal pulse speed. 0 = off. Default 0.02
+- pulseAmplitude?: number           — pulse amplitude (0–1). Default 0.4
+
+ContainerGlowHandle: { update(), stop(), start(), destroy() }
+- stop() — stop emitting, existing particles fade naturally
+- start() — resume emitting after stop()
+- update() — rebuild emitter positions (called automatically on resize)
+
 ### HomePositionConfig (for image/text particles)
 - springStrength?: number           — default 0.05
 - springDamping?: number            — default 0.9
@@ -337,6 +363,23 @@ const p = createParticles({ container: document.getElementById("app"), preset: "
 const heading = document.querySelector("h1");
 p.elementToParticles(heading, { intro: { mode: "ripple" } });
 // Element is hidden, particles appear in its place. Restored on p.destroy().
+```
+
+### Container glow around an element
+```js
+const p = createParticles({ container: myContainer, config: { continuous: true } });
+const glow = p.addContainerGlow({ element: document.querySelector(".card") });
+// glow.stop() / glow.start() for hover interactions
+// glow.destroy() to remove
+```
+
+### Container glow on text (hover)
+```js
+const p = createParticles({ container, config: { continuous: true } });
+const glow = p.addContainerGlow({ element: heading, colors: ["#ff9500", "#ffb347"] });
+glow.stop(); // start paused
+heading.addEventListener("mouseenter", () => glow.start());
+heading.addEventListener("mouseleave", () => glow.stop());
 ```
 
 ### Custom colors
