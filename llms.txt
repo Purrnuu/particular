@@ -106,12 +106,16 @@ Returned by createParticles(). Methods:
 
 #### Effects
 - explode(options?) → void                          — explode all particles into child fragments
-- scatter({ velocity? }?) → void                    — random impulse. Particles with home positions spring back
+- scatter({ velocity?, rotation? }?) → void           — random impulse. Particles with home positions spring back. rotation = rotational impulse (degrees/tick)
+- startWobble(config?: WobbleConfig) → void           — start continuous per-frame nudges on all spring-return particles. When `track` element is provided, particles react to mouse proximity and velocity (directional push outward from image center, weighted by distance to cursor). Without `track`, falls back to simple random wobble. Suppresses settle-snap while active
+- stopWobble() → void                                 — stop wobble and let particles settle back to home positions
 
 #### Image/Text/Element
 - imageToParticles(config) → Promise<Emitter>       — see ImageParticlesConfig below
 - textToParticles(text, config?) → Promise<Emitter> — config is optional, auto-centers with smart defaults
 - elementToParticles(element, config?) → Promise<Emitter> — capture any HTML element and replace with particles. See ElementParticlesConfig
+- shatterImage(config) → Promise<Emitter>           — shatter an image into irregular polygon chunks that explode outward like broken glass. See ImageShatterConfig. Pass homeConfig for interactive mode (scatter/reassemble)
+- shatterText(text, config?) → Promise<Emitter>    — render text to canvas and shatter into polygon chunks. config = ImageShatterConfig (minus image) + textConfig
 - setIdleEffect(enabled) → void                    — toggle idle animations (breathing, wiggle, wave, pulse) on all home-position particles. Spring return still works when disabled
 
 #### Properties
@@ -157,9 +161,13 @@ Returns:
 - burstFromEvent(event, overrides?) → void — pass directly as onClick handler
 - explode(options?) → void
 - scatter(options?) → void
+- startWobble(config?) → void
+- stopWobble() → void
 - imageToParticles(config) → void
 - textToParticles(text, config?) → void
 - elementToParticles(element, config?) → void
+- shatterImage(config) → void
+- shatterText(text, config?) → void
 
 ### useScreensaver(options?) → UseScreensaverResult (React hook)
 
@@ -185,7 +193,7 @@ Returns: { canvasRef, canvasStyle, destroy() }
 - resolution?: number               — particles along longest axis. Default: 400 (square), 200 (circle/triangle)
 - alphaThreshold?: number           — skip transparent pixels. Default 0.1
 - particleSize?: number             — auto-calculated from grid if omitted
-- particleLife?: number             — default 99999 (effectively permanent)
+- particleLife?: number             — default Infinity (truly permanent — no lifetime countdown)
 - gravity?: number                  — default 0
 - fadeTime?: number                 — default 40
 - scaleStep?: number                — default: instant (equal to size)
@@ -199,6 +207,24 @@ Extends ImageParticlesConfig (minus `image`). Position and size auto-derived fro
 - hideElement?: boolean             — hide the original element after capture. Default true
 - restoreElement?: boolean          — restore element visibility on destroy(). Default true
 - All ImageParticlesConfig fields except `image` (x, y, width, height, resolution, shape, intro, homeConfig, etc.)
+
+### ImageShatterConfig
+- image: string | HTMLImageElement   — REQUIRED. URL, data URI, or element
+- x?: number                        — default: center of viewport/container
+- y?: number                        — default: center of viewport/container
+- width?: number                    — default: min(80% viewport, 800px). Calculated from height if omitted
+- height?: number                   — calculated from width + aspect ratio if omitted
+- chunkCount?: number               — approximate number of chunks (actual = cols x rows). Default 36
+- jitter?: number                   — grid jitter (0–1). Higher = more irregular shapes. Default 0.4
+- velocity?: number                 — outward explosion velocity. Default 5
+- velocitySpread?: number           — velocity randomness (0–1). Each chunk gets velocity x (1 +/- spread). Default 0.5
+- gravity?: number                  — downward gravity on chunks. Default 0.12
+- rotationSpeed?: number            — rotation speed (degrees/tick). Default 5
+- particleLife?: number             — individual chunk lifetime in ticks. Default 120
+- fadeTime?: number                 — fade out duration in ticks. Default 40
+- friction?: number                 — friction applied to chunks. Default 0.005
+- scaleStep?: number                — how quickly chunks grow to full size. Default 100 (instant)
+- homeConfig?: HomePositionConfig   — when provided, enables interactive mode: chunks get spring-return home positions. Use scatter() for impulse or startWobble()/stopWobble() for continuous organic motion. Gravity and fadeTime are ignored in this mode
 
 ### IntroConfig (for image/text particles)
 - mode?: "scatter" | "scaleIn" | "ripple" | "paint" — animation mode. Default "scatter"
@@ -285,6 +311,13 @@ MouseTrailHandle: { stop(), start(), destroy() }
 - stop() — pause emission, existing particles fade naturally
 - start() — resume after stop()
 
+### WobbleConfig
+- velocity?: number                  — base outward velocity per frame. Default 0.8
+- rotation?: number                  — rotational jitter per frame. Default 0.4
+- track?: HTMLElement                — element to track mouse/touch on. Enables mouse-reactive directional wobble: particles near cursor get pushed harder outward from image center, mouse velocity drags nearby particles. Without this, falls back to simple random wobble (backward compatible)
+- mouseRadius?: number               — radius of mouse influence in screen px. Default 200
+- mouseStrength?: number             — push multiplier for particles near mouse. Default 3
+
 ### HomePositionConfig (for image/text particles)
 - springStrength?: number           — default 0.05
 - springDamping?: number            — default 0.9
@@ -307,7 +340,7 @@ MouseTrailHandle: { stop(), start(), destroy() }
 - blendMode: "normal" | "additive" | "multiply" | "screen"
 - rate: number                      — particles per frame. Default 8
 - life: number                      — emitter burst budget. Default 30
-- particleLife: number              — particle lifetime in ticks. Default 100
+- particleLife: number              — particle lifetime in ticks. Default 100. Use Infinity for permanent particles (no lifetime countdown). Particles with homePosition are automatically permanent
 - velocity: Vector                  — initial velocity direction + speed
 - spread: number                    — emission cone width in radians
 - sizeMin/sizeMax: number           — particle size range
@@ -398,6 +431,43 @@ const p = createParticles({ container: document.getElementById("app"), preset: "
 const heading = document.querySelector("h1");
 p.elementToParticles(heading, { intro: { mode: "ripple" } });
 // Element is hidden, particles appear in its place. Restored on p.destroy().
+```
+
+### Shatter an image into glass-like pieces
+```js
+const p = createParticles({ config: { continuous: true } });
+p.shatterImage({ image: "/photo.png", width: 500 });
+// Fine pieces: p.shatterImage({ image: "/photo.png", chunkCount: 120, velocity: 8, gravity: 0.15 });
+```
+
+### Interactive shatter (hover to break, leave to reassemble)
+```js
+const p = createParticles({ container, config: { continuous: true } });
+await p.shatterImage({
+  image: "/photo.png",
+  homeConfig: { springStrength: 0.06, springDamping: 0.85 },
+});
+container.addEventListener("mouseenter", () => {
+  p.scatter({ velocity: 5, rotation: 3 });
+  p.startWobble({ track: container });
+});
+container.addEventListener("mouseleave", () => p.stopWobble());
+// Mouse-reactive wobble: particles near cursor get pushed harder. stopWobble lets spring system pull chunks back
+```
+
+### Shatter text (interactive)
+```js
+const p = createParticles({ container, config: { continuous: true } });
+await p.shatterText("HELLO", {
+  chunkCount: 64,
+  homeConfig: { springStrength: 0.06, springDamping: 0.85 },
+  textConfig: { fontSize: 180, fontWeight: "bold" },
+});
+container.addEventListener("mouseenter", () => {
+  p.scatter({ velocity: 5, rotation: 3 });
+  p.startWobble({ track: container });
+});
+container.addEventListener("mouseleave", () => p.stopWobble());
 ```
 
 ### Container glow around an element

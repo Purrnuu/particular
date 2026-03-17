@@ -80,6 +80,7 @@ src/particular/convenience/containerGlow.ts # addContainerGlow() — glowing par
 src/particular/convenience/mouseTrail.ts   # addMouseTrail() — particle trail following cursor
 src/particular/convenience/effects.ts       # explode() + scatter() particle manipulation
 src/particular/convenience/imageParticles.ts # imageToParticles() + textToParticles()
+src/particular/convenience/imageShatter.ts  # shatterImage() + shatterText() — polygon-chunk glass-break + interactive mode
 src/particular/convenience/screensaver.ts   # startScreensaver() — continuous ambient emission
 src/particular/useParticles.ts              # useParticles(), useScreensaver() — React hooks
 src/particular/ParticularWrapper.tsx        # HOC wrapper (legacy React API)
@@ -99,6 +100,7 @@ src/Screensaver.stories.tsx              # Ambient screensaver demos (snow, etc.
 src/PageLayout.stories.tsx               # Page layout demos (boundaries, scrolling, container mode)
 src/ImageParticles.stories.tsx           # Image/text to particles demos (resolution, shapes, intro anims)
 src/ElementToParticles.stories.tsx       # HTML element dissolve into particles demos
+src/ImageShatter.stories.tsx            # Image shatter demos (click-to-shatter, hover interactive, text shatter)
 src/ContainerGlow.stories.tsx           # Container glow demos (continuous, hover text, multiple cards)
 src/MouseTrail.stories.tsx              # Mouse trail demos (wisps, warm, snow dust)
 src/Showcase.stories.tsx                 # Combined showcase demos
@@ -115,6 +117,7 @@ src/particular/utils/pixelSampler.ts     # Image loading + pixel grid sampling f
 src/particular/utils/imageSource.ts      # Text/shape rendering to offscreen canvas (createTextImage, etc.)
 src/particular/utils/explosion.ts        # Shared child particle factory (used by explode + detonate)
 src/particular/utils/elementCapture.ts   # Manual Canvas 2D element capture for elementToParticles (reads computed styles)
+src/particular/utils/imageChunker.ts    # Jittered-grid polygon chunker for image shatter (buildJitteredGrid, clipPolygon, generateImageChunks)
 ```
 
 ## Modification Checklists

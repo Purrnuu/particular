@@ -14,6 +14,8 @@ import type {
   BoundaryConfig,
   ContainerGlowConfig,
   MouseTrailConfig,
+  ImageShatterConfig,
+  WobbleConfig,
 } from '../types';
 import type { PresetName } from '../presets';
 
@@ -101,8 +103,15 @@ export interface ParticlesController {
 
   // ── Effects ──
   explode: (options?: ExplodeOptions) => void;
-  /** Scatter all particles with a random impulse. Particles with home positions spring back. */
-  scatter: (options?: { velocity?: number }) => void;
+  /** Scatter all particles with a random impulse. Particles with home positions spring back.
+   *  Pass `rotation` to also add a random rotational impulse (degrees/tick). */
+  scatter: (options?: { velocity?: number; rotation?: number }) => void;
+  /** Start continuous per-frame wobble on all spring-return particles.
+   *  Small random velocity and rotation nudges each frame — the spring fights back,
+   *  creating an organic jitter effect. Call stopWobble() to let particles settle. */
+  startWobble: (config?: WobbleConfig) => void;
+  /** Stop wobble and let spring-return particles settle back to home positions. */
+  stopWobble: () => void;
 
   // ── Image ──
   imageToParticles: (config: ImageParticlesConfig) => Promise<Emitter>;
@@ -114,6 +123,16 @@ export interface ParticlesController {
    *  Uses manual Canvas 2D rendering (reads computed styles) — no external libraries needed.
    *  The original element is hidden by default and restored on destroy(). */
   elementToParticles: (element: HTMLElement, config?: ElementParticlesConfig) => Promise<Emitter>;
+  /** Shatter an image into irregular polygon chunks that explode outward like broken glass.
+   *  Each chunk is a particle with its own piece of the source image as texture.
+   *  Pass `homeConfig` for interactive mode — chunks spring back after scatter(). */
+  shatterImage: (config: ImageShatterConfig) => Promise<Emitter>;
+  /** Render text to a canvas and shatter it into polygon chunks.
+   *  Supports all ImageShatterConfig options plus text styling via textConfig. */
+  shatterText: (
+    text: string,
+    config?: Omit<ImageShatterConfig, 'image'> & { textConfig?: Omit<TextImageConfig, 'text'> },
+  ) => Promise<Emitter>;
   /** Toggle idle animations (breathing, wiggle, wave, pulse) on all particles with home positions.
    *  Spring return still works when idle is disabled — particles return home but stay still once there. */
   setIdleEffect: (enabled: boolean) => void;

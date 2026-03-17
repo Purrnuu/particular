@@ -52,6 +52,8 @@ export type {
   BoundaryConfig,
   ContainerGlowConfig,
   MouseTrailConfig,
+  ImageShatterConfig,
+  WobbleConfig,
   IntroConfig,
   IntroMode,
 } from './particular/types';

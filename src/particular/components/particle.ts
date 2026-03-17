@@ -61,6 +61,9 @@ export default class Particle {
   homeConfig: Required<HomePositionConfig> | null = null;
   /** When false, idle animations (breathing, wiggle, wave, pulse) are suppressed. Spring return still works. */
   idleEnabled: boolean = true;
+  /** When true, suppress the settle-snap behavior. Spring still runs but particles never hard-snap to home.
+   *  Useful for interactive effects where external forces (wobble, drag) should keep particles in motion. */
+  preventSettle: boolean = false;
   private breathingPhase: number = Math.random() * Math.PI * 2;
   /** Per-particle spring multiplier (0.6–1.4) — breaks sync so particles return at different rates. */
   private springMultiplier: number = 1;
@@ -130,7 +133,7 @@ export default class Particle {
 
     this.factoredSize = 1;
 
-    this.lifeTime = getRandomInt(Math.round(particleLife * 0.75), particleLife);
+    this.lifeTime = particleLife === Infinity ? Infinity : getRandomInt(Math.round(particleLife * 0.75), particleLife);
     this.lifeTick = 0;
     this.size = size ?? getRandomInt(5, 15);
 
@@ -212,7 +215,7 @@ export default class Particle {
       const dy = this.homePosition.y - this.position.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
       const speed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y);
-      const isSettled = dist < this.homeConfig.homeThreshold && speed < this.homeConfig.velocityThreshold;
+      const isSettled = !this.preventSettle && dist < this.homeConfig.homeThreshold && speed < this.homeConfig.velocityThreshold;
 
       // Idle pulse timer ticks when idle is enabled (monotonic, never resets) — mouse/scatter don't affect wave timing.
       // When idle is disabled, we still advance the timer so re-enabling doesn't fire a burst of missed pulses.
@@ -222,11 +225,13 @@ export default class Particle {
       }
 
       if (isSettled) {
-        // Idle: snap to home, zero velocity
+        // Idle: snap to home, zero velocity and rotation
         this.velocity.x = 0;
         this.velocity.y = 0;
         this.position.x = this.homePosition.x;
         this.position.y = this.homePosition.y;
+        this.rotationVelocity = 0;
+        this.rotation = 0;
         // Coordinated idle ripple — fire pulse AFTER zeroing velocity so impulse isn't overwritten.
         // nextPulseAt is computed deterministically from cycle count, so all particles agree on timing.
         // idleTicks is monotonic — never resets — so nextPulseAt accumulates across cycles.
@@ -259,6 +264,13 @@ export default class Particle {
           this.velocity.x += (Math.random() - 0.5) * noise;
           this.velocity.y += (Math.random() - 0.5) * noise;
         }
+        // Rotation spring: dampen spin and pull rotation angle toward 0
+        if (this.rotationVelocity !== 0 || this.rotation !== 0) {
+          this.rotationVelocity *= dampFactor;
+          // Normalize rotation to [-180, 180] and spring toward 0
+          let normRot = ((this.rotation % 360) + 540) % 360 - 180;
+          this.rotationVelocity -= normRot * k * dt;
+        }
       }
     }
 
@@ -274,8 +286,13 @@ export default class Particle {
       this.factoredSize = baseSize;
     }
 
-    this.alpha = Math.min(1, Math.max((this.lifeTime - this.lifeTick) / this.fadeTime, 0)) * this.baseAlpha;
-    this.lifeTick += dt;
+    // Permanent particles (homePosition) skip lifetime countdown entirely
+    if (this.homePosition) {
+      this.alpha = this.baseAlpha;
+    } else {
+      this.alpha = Math.min(1, Math.max((this.lifeTime - this.lifeTick) / this.fadeTime, 0)) * this.baseAlpha;
+      this.lifeTick += dt;
+    }
     this.dispatch('PARTICLE_UPDATE', this);
   }
 

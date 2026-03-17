@@ -276,7 +276,7 @@ export interface ImageParticlesConfig extends ShapeConfig {
   alphaThreshold?: number;
   /** Override particle size. Auto-calculated from grid spacing if omitted (≈1px for high-fidelity). */
   particleSize?: number;
-  /** Individual particle lifetime in ticks. Default 99999 (effectively permanent). */
+  /** Individual particle lifetime in ticks. Default Infinity (permanent). */
   particleLife?: number;
   /** Gravity applied to particles. Default 0 (static). */
   gravity?: number;
@@ -445,6 +445,62 @@ export interface MouseTrailConfig {
   trailShrink?: number;
   /** Minimum mouse speed (engine units/frame) to emit. Default 0.5. */
   minSpeed?: number;
+}
+
+/** Configuration for shattering an image into irregular polygon chunk particles. */
+export interface ImageShatterConfig {
+  /** Image source — URL string or HTMLImageElement. */
+  image: string | HTMLImageElement;
+  /** X center position in screen pixels. Default: center of container/viewport. */
+  x?: number;
+  /** Y center position in screen pixels. Default: center of container/viewport. */
+  y?: number;
+  /** Display width in screen pixels. Default: 80% of container/viewport width (max 800px). */
+  width?: number;
+  /** Display height in screen pixels. Calculated from width + aspect ratio if omitted. */
+  height?: number;
+  /** Approximate number of chunks (actual = cols × rows). Default 36. */
+  chunkCount?: number;
+  /** Grid jitter amount (0–1). Higher = more irregular shapes. Default 0.4. */
+  jitter?: number;
+  /** Outward explosion velocity. Default 3. */
+  velocity?: number;
+  /** Velocity randomness (0–1). Each chunk gets velocity × (1 ± spread). Default 0.4. */
+  velocitySpread?: number;
+  /** Downward gravity on chunks. Default 0.08. */
+  gravity?: number;
+  /** Rotation speed (degrees/tick). Default 3. */
+  rotationSpeed?: number;
+  /** Individual chunk lifetime in ticks. Default 120. */
+  particleLife?: number;
+  /** Fade time in ticks. Default 40. */
+  fadeTime?: number;
+  /** Friction applied to chunks. Default 0.005. */
+  friction?: number;
+  /** Scale step — how quickly chunks grow to full size. Default: instant. */
+  scaleStep?: number;
+  /** When provided, chunks get spring-return home positions and effectively permanent lifetime.
+   *  This enables interactive mode: use scatter() to push chunks outward and they spring back.
+   *  Gravity and fadeTime are ignored in interactive mode. */
+  homeConfig?: HomePositionConfig;
+}
+
+/** Configuration for continuous per-frame wobble on spring-return particles.
+ *  When `track` is provided, wobble becomes mouse-reactive: particles push outward
+ *  from the image center, weighted by mouse proximity, and react to mouse velocity. */
+export interface WobbleConfig {
+  /** Base outward velocity nudge per frame. Default 0.8. */
+  velocity?: number;
+  /** Rotational jitter per frame (degrees). Default 0.4. */
+  rotation?: number;
+  /** Element to track mouse/touch on for reactive wobble. When set, particles
+   *  near the cursor are pushed outward from the image center with extra force,
+   *  and mouse movement creates directional impulses on nearby particles. */
+  track?: HTMLElement;
+  /** Radius of mouse influence in screen pixels. Default 200. */
+  mouseRadius?: number;
+  /** Strength multiplier for mouse-proximity push. Default 3. */
+  mouseStrength?: number;
 }
 
 export type RendererType = 'canvas' | 'webgl';

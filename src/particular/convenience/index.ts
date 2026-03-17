@@ -5,7 +5,7 @@
  * with methods organized by concern:
  *   - Emission: burst, attachClickBurst
  *   - Forces:   addAttractor, addMouseForce, addBoundary, …
- *   - Effects:  explode, scatter
+ *   - Effects:  explode, scatter, startWobble, stopWobble
  *   - Image:    imageToParticles, textToParticles, elementToParticles
  *
  * Each group is implemented in its own module (forces.ts, boundary.ts,
@@ -28,6 +28,7 @@ import { createContainerGlowHelper } from './containerGlow';
 import { createMouseTrailHelper } from './mouseTrail';
 import { createEffects } from './effects';
 import { createImageParticles } from './imageParticles';
+import { createImageShatterHelper } from './imageShatter';
 import type { BurstOptions, CreateParticlesOptions, ParticlesController } from './types';
 
 // Re-export public types (screensaver exported separately to avoid circular dep)
@@ -175,6 +176,7 @@ export function createParticles({
   const mouseTrail = createMouseTrailHelper(engine, container, cleanups);
   const effects = createEffects(engine, mergedConfig);
   const imageApi = createImageParticles(engine, mergedConfig, container, cleanups);
+  const imageShatter = createImageShatterHelper(engine, mergedConfig, container);
 
   // ── Mouse force shorthand ──
 
@@ -204,6 +206,7 @@ export function createParticles({
     ...mouseTrail,
     ...effects,
     ...imageApi,
+    ...imageShatter,
     destroy,
   };
 }

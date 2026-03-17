@@ -14,7 +14,7 @@ Types in `src/particular/types.ts`:
 
 Config merge chain: `configureParticular({ ...preset, ...userConfig })` — user config always wins over preset.
 
-Defaults in `src/particular/core/defaults.ts`: `defaultParticular`, `defaultParticle`, `defaultMouseForce` (base physics), `defaultMouseWind` (screensaver wind overrides), `defaultContainerGlow` (glow particle halo), `defaultMouseTrail` (cursor trail wisps). `MouseForce` constructor merges config with `defaultMouseForce`.
+Defaults in `src/particular/core/defaults.ts`: `defaultParticular`, `defaultParticle`, `defaultMouseForce` (base physics), `defaultMouseWind` (screensaver wind overrides), `defaultContainerGlow` (glow particle halo), `defaultMouseTrail` (cursor trail wisps), `defaultImageShatter` (glass-break explosion), `defaultWobble` (per-frame velocity/rotation nudges + mouse-reactive tracking config). `MouseForce` constructor merges config with `defaultMouseForce`.
 
 Key fields with non-obvious behavior:
 
@@ -76,6 +76,8 @@ Implementation notes:
 - `Emitter.createParticle()` forwards all glow/shadow fields from emitter config.
 - Particle alpha decays over time, clamped to valid range.
 - **`life` vs `particleLife`**: `life` (default 30) = emitter emission budget (burst only). `particleLife` (default 100) = individual particle lifetime in ticks. Each particle lives `[particleLife * 0.75, particleLife]` ticks. Fading begins at `lifeTime - fadeTime`.
+- **Permanent particles**: Particles with `homePosition` are truly permanent — they skip `lifeTick` increment entirely and alpha stays at `baseAlpha` (no fade). `particleLife: Infinity` is also supported: the constructor detects it and sets `lifeTime = Infinity` directly (skipping `getRandomInt`). The magic number `99999` has been replaced with `Infinity` in defaults and convenience methods.
+- **`preventSettle` flag**: `Particle.preventSettle` (boolean, default `false`). When `true`, the `isSettled` check in `update()` always returns `false`, so the spring path always runs and particles never hard-snap to home. Used by `startWobble()` to keep particles in continuous motion under external nudges.
 
 ## Attractors
 
@@ -222,6 +224,42 @@ File: `src/particular/utils/explosion.ts`. Pure factory function used by both ma
 - `ExplodeOptions extends ChildExplosionConfig`: adds `destroyParents`
 - `DetonateConfig extends ChildExplosionConfig`: adds `at` (0-1 lifetime fraction)
 
+## Wobble Effect
+
+File: `src/particular/convenience/effects.ts`
+
+Continuous per-frame nudges that keep home-position particles visually alive. The spring system fights back, creating organic jittering motion. Supports two modes: simple random wobble (no `track`) and mouse-reactive directional wobble (with `track`).
+
+### How it works
+
+1. **`startWobble(config?)`**: Stops any existing wobble, merges `config` over `defaultWobble` (`velocity: 0.8`, `rotation: 0.4`). Sets `preventSettle = true` on all current particles so the settle-snap doesn't zero them out. Registers an `UPDATE` event listener on the engine that runs every frame. If `track` is provided, attaches mouse/touch listeners and uses the mouse-reactive algorithm (see below). If `track` is omitted, falls back to simple random nudges (`±velocity` per axis, `±rotation` jitter) — fully backward compatible.
+2. **`stopWobble()`**: Removes the `UPDATE` listener, detaches mouse/touch listeners (if any), and sets `preventSettle = false` on all particles, re-enabling the normal settle-snap behavior. Idempotent (safe to call when not wobbling).
+
+### Mouse-reactive mode (when `track` is provided)
+
+When a `track` element is given, wobble becomes directional and mouse-aware:
+
+1. **Image center**: Computed automatically as the average of all particle home positions. This is the "outward push origin."
+2. **Directional push**: Each particle's push direction is from the image center outward through its home position (not random). This creates a natural radial expansion from the center of the image.
+3. **Angular jitter**: The push direction is perturbed by ±23° each frame, creating an organic wobble feel rather than a rigid radial push.
+4. **Mouse proximity weighting**: Distance from each particle to the mouse cursor is computed. A proximity factor (0–1) is derived: `1 - clamp(dist / mouseRadius, 0, 1)`. Particles within `mouseRadius` (default 200px) of the cursor receive a stronger push, scaled by `mouseStrength` (default 3). Particles outside the radius still get the base wobble velocity.
+5. **Mouse velocity influence**: When the mouse is moving, nearby particles are additionally dragged in the direction of mouse movement. This creates a sense of physical interaction — swiping across the image pushes particles along with the cursor.
+6. **Organic noise**: A small random velocity perturbation is added on top of the directional push for visual richness.
+
+The effective per-particle velocity is: `baseVelocity * (1 + proximity * mouseStrength)`, applied along the jittered outward direction, plus mouse-velocity drag on nearby particles.
+
+### Simple mode (no `track`)
+
+Falls back to the original behavior: each frame adds random velocity nudges (`±velocity` per axis) and rotational jitter (`±rotation`) to all particles. No mouse tracking, no directional push.
+
+### Interaction with spring
+
+The wobble listener fires on the engine's `UPDATE` event (before `particle.update()`), so nudges are applied before the spring force is calculated. The spring pulls particles back toward home each frame while the wobble pushes them away — the balance creates a jittery orbit around the home position. In mouse-reactive mode, particles near the cursor orbit wider due to the amplified push. `preventSettle` ensures particles stay on the spring path and never hard-snap to home.
+
+### Config
+
+`WobbleConfig { velocity?: number, rotation?: number, track?: HTMLElement, mouseRadius?: number, mouseStrength?: number }`. Defaults in `defaultWobble` (`defaults.ts`): `velocity: 0.8`, `rotation: 0.4`, `mouseRadius: 200`, `mouseStrength: 3`.
+
 ## Boundary System
 
 File: `src/particular/convenience/boundary.ts`
@@ -288,6 +326,8 @@ In `Particle.update()`, when `homePosition` is set:
 - Force = `(home - position) * springStrength` — pulls particle toward home.
 - Velocity *= `Math.pow(springDamping, dt)` — decays velocity during return.
 - `returnNoise` adds small random velocity perturbations so particles wobble organically instead of traveling in straight lines.
+- **Settle check**: `isSettled = !preventSettle && dist < homeThreshold && speed < velocityThreshold`. When settled, particle snaps to home and zeroes velocity/rotation. When `preventSettle` is `true`, the spring path always runs instead — particles orbit home without snapping.
+- **Permanent lifetime**: Particles with `homePosition` skip `lifeTick` increment entirely and hold `alpha = baseAlpha`. They never fade or die.
 
 ### Runtime Toggle
 
@@ -372,6 +412,58 @@ Config type: `ElementParticlesConfig extends Omit<ImageParticlesConfig, 'image'>
 - Complex layouts (flexbox alignment, transforms, clip-path) may not position perfectly.
 - Multi-line text draws as a single fillText call at the first line rect position.
 
+## Image Shatter Pipeline
+
+File: `src/particular/convenience/imageShatter.ts`
+Chunker: `src/particular/utils/imageChunker.ts`
+
+Shatters an image into irregular polygon chunks that explode outward like broken glass. Each chunk is a particle with its own piece of the source image as a texture.
+
+### Flow
+
+1. **Load image**: `loadImage()` from `pixelSampler.ts` — same loader used by imageToParticles.
+2. **Smart defaults**: Position defaults to center of viewport/container, width defaults to `min(80% viewport, 800px)`. Config merged over `defaultImageShatter` from `defaults.ts`.
+3. **Draw to offscreen canvas**: Source image is drawn to an offscreen canvas at display resolution. This canvas becomes the source for polygon clipping.
+4. **Generate chunks**: `generateImageChunks(sourceCanvas, chunkCount, jitter)` produces polygon pieces:
+   - **Jittered grid**: `buildJitteredGrid()` creates a `(cols+1) x (rows+1)` grid of points over the image. Edge points stay on the boundary; interior points jitter randomly within their cell by `jitter` fraction. `cols` and `rows` are derived from `chunkCount` preserving image aspect ratio.
+   - **Polygon clipping**: For each grid cell, the four corner points form an irregular quadrilateral. `clipPolygon()` creates a canvas for each quad, uses Canvas 2D `clip()` to mask the polygon region, draws the source image through the mask, and pads the result to a square.
+   - **Image conversion**: Each clipped canvas is converted to an `HTMLImageElement` via `canvas.toDataURL()` + `new Image()`, resolved with `Promise.all`.
+   - **Output**: Array of `ChunkResult { image, cx, cy, size }` where `cx`/`cy` are normalized (0-1) center positions and `size` is the square canvas side length in source pixels.
+5. **Particle creation**: Each chunk becomes a `Particle`:
+   - Position: chunk center mapped to engine coordinates (screen pixels / pixelRatio).
+   - Velocity: outward from image center, scaled by distance (edge pieces fly further). Angle has `±0.3 rad` random spread, speed has `velocitySpread` randomness. `distFactor = 0.5 + (dist / max(w,h)) * 1.5` ensures natural explosion.
+   - Size: proportional to chunk canvas size relative to image width, in engine coords.
+   - Rotation: `rotationVelocity` set to random `±rotationSpeed` for spinning glass shards.
+   - Image: `particle.init(chunk.image, engine)` so renderers pick up the chunk as a texture.
+6. **Collector emitter**: Non-emitting `Emitter` (`rate: 0, life: 0`) holds all chunk particles. Same pattern as imageToParticles.
+7. **maxCount**: Auto-expanded if needed to hold all chunks.
+
+### Interactive mode (homeConfig)
+
+When `homeConfig` is provided in the config, chunks are created in **interactive mode**:
+- Chunks start assembled at their home positions with zero velocity
+- `particleLife` is set to `Infinity` (truly permanent — no lifetime decrement)
+- `gravity` is 0 (would fight the spring)
+- `fadeTime` is `Infinity` (no fade)
+- Each chunk gets a `homePosition` at its grid center
+- Use `scatter({ velocity, rotation })` to push chunks outward
+- The spring system (from `particle.ts`) automatically pulls them back
+- **Rotation dampening**: The spring return section in `particle.ts` also dampens `rotationVelocity` and springs the rotation angle back to 0 — chunks de-spin and re-orient as they return home
+
+This enables hover-to-break/reassemble effects. The `shatterText()` method renders text via `createTextImage()` then passes it through `shatterImage()`.
+
+### Key differences from imageToParticles
+
+- No pixel sampling — works with polygon clipping instead of per-pixel grid.
+- Home positions only when `homeConfig` is provided (interactive mode). Without it, chunks fly outward and fade.
+- Chunk count is much smaller (default 36 vs hundreds/thousands of pixel particles).
+- Each particle has a unique image texture (its polygon piece) rather than a solid color.
+- Rotation is a key visual element — spinning shards sell the glass-break effect. Rotation dampening added to spring return so chunks smoothly de-rotate.
+
+### Defaults
+
+All defaults in `defaultImageShatter` (`defaults.ts`): chunkCount 36, jitter 0.4, velocity 5, velocitySpread 0.5, gravity 0.12, rotationSpeed 5, particleLife 120, fadeTime 40, friction 0.005, scaleStep 100 (instant).
+
 ## Convenience API Architecture
 
 The convenience layer lives in `src/particular/convenience/` as focused modules composed by the orchestrator (`index.ts`):
@@ -382,8 +474,9 @@ The convenience layer lives in `src/particular/convenience/` as focused modules 
 - `boundary.ts` — `createBoundaryHelper()`: DOM element repulsion boundaries with resize/scroll sync
 - `containerGlow.ts` — `createContainerGlowHelper()`: glowing particle halo around DOM elements
 - `mouseTrail.ts` — `createMouseTrailHelper()`: particle trail following mouse cursor
-- `effects.ts` — `createEffects()`: explode() + scatter()
+- `effects.ts` — `createEffects()`: explode() + scatter() + startWobble()/stopWobble() (scatter supports optional rotation impulse)
 - `imageParticles.ts` — `createImageParticles()`: image/text/element to particle grids with smart defaults
+- `imageShatter.ts` — `createImageShatterHelper()`: image/text-to-polygon-chunks glass-break explosion + interactive mode
 - `screensaver.ts` — `startScreensaver()`: continuous ambient emission
 
 Each module exports a factory function that receives shared state (engine, config, container, cleanups) and returns an API slice. The orchestrator spreads them together into the `ParticlesController`.
@@ -397,6 +490,7 @@ Each module exports a factory function that receives shared state (engine, confi
 - **mouseForce shorthand**: `createParticles({ mouseForce: true })` adds a tracking mouse force with sensible defaults.
 - **textToParticles config**: Optional — `textToParticles('Hello')` works with zero config.
 - **elementToParticles**: `elementToParticles(el)` works with zero config — position, size, and image derived from the element automatically.
+- **shatterImage**: `shatterImage({ image: url })` works with minimal config — position and size default to centered/auto-sized, all physics defaults produce a polished glass-break effect.
 
 **Defaults pattern**: Every feature's defaults live in `src/particular/core/defaults.ts` as named exports (`defaultImageParticles`, `defaultElementParticles`, `defaultMouseWind`, etc.). Convenience methods merge user config over these: `{ ...defaultXxx, ...userConfig }`. Never hardcode default values inline in convenience methods or stories.
 
@@ -404,4 +498,4 @@ Minimal usage: `createParticles()` gives a fully working engine with WebGL, auto
 
 ## Stable Public API
 
-From `src/index.ts`: `Particular`, `Emitter`, `Particle`, `Attractor`, `MouseForce`, `CanvasRenderer`, `WebGLRenderer`, `ParticularWrapper`, `useParticles`, `useScreensaver`, `createParticles`, `startScreensaver`, `presets`, `applyCanvasStyles`, and all public types. Avoid breaking these exports.
+From `src/index.ts`: `Particular`, `Emitter`, `Particle`, `Attractor`, `MouseForce`, `CanvasRenderer`, `WebGLRenderer`, `ParticularWrapper`, `useParticles`, `useScreensaver`, `createParticles`, `startScreensaver`, `presets`, `applyCanvasStyles`, and all public types (including `ImageShatterConfig`). Avoid breaking these exports.

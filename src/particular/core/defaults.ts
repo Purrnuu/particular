@@ -12,6 +12,8 @@ import type {
   ElementParticlesConfig,
   ContainerGlowConfig,
   MouseTrailConfig,
+  ImageShatterConfig,
+  WobbleConfig,
 } from '../types';
 
 export const defaultParticular: Required<Omit<ParticularConfig, 'container'>> = {
@@ -130,7 +132,7 @@ export const defaultHomeConfig: Required<HomePositionConfig> = {
 /** Default image-to-particles config — 1px-ish particles, no effects, permanent lifetime. */
 export const defaultImageParticles: Partial<ImageParticlesConfig> = {
   alphaThreshold: 0.1,
-  particleLife: 99999,
+  particleLife: Infinity,
   gravity: 0,
   fadeTime: 40,
   shape: 'square',
@@ -189,6 +191,28 @@ export const defaultMouseTrail: Required<Omit<MouseTrailConfig, 'target'>> = {
   trailFade: 0.4,
   trailShrink: 0.5,
   minSpeed: 0.5,
+};
+
+/** Default image shatter config — dramatic glass-break explosion. */
+export const defaultImageShatter: Required<Omit<ImageShatterConfig, 'image' | 'x' | 'y' | 'width' | 'height' | 'homeConfig'>> = {
+  chunkCount: 36,
+  jitter: 0.4,
+  velocity: 5,
+  velocitySpread: 0.5,
+  gravity: 0.12,
+  rotationSpeed: 5,
+  particleLife: 120,
+  fadeTime: 40,
+  friction: 0.005,
+  scaleStep: 100,
+};
+
+/** Default wobble config — directional outward push that spring fights back against. */
+export const defaultWobble: Required<Omit<WobbleConfig, 'track'>> = {
+  velocity: 0.8,
+  rotation: 0.4,
+  mouseRadius: 200,
+  mouseStrength: 3,
 };
 
 /** Screensaver mouse-wind defaults — softer, broader than base mouse force. */
