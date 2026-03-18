@@ -804,7 +804,7 @@ declare class CanvasRenderer {
 }
 
 interface WebGLRendererOptions {
-    /** Max particles per draw call (default 4096). Increase for fewer draw calls with many particles. */
+    /** Max particles per draw call (default 16384). Increase for fewer draw calls with many particles. */
     maxInstances?: number;
 }
 declare class WebGLRenderer {

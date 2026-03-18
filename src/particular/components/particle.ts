@@ -333,10 +333,71 @@ export default class Particle {
   }
 
   update(forces?: ForceSource[], dt = 1): void {
+    // ── Settled home-position fast path ──
+    // Particles at rest at home skip velocity integration, friction, gravity, spring math.
+    // Only forces and idle pulses can wake them. Saves ~25 ops/particle/frame for 10K+ text particles.
+    if (this.homePosition && this.homeConfig && !this.preventSettle
+      && this.velocity.x === 0 && this.velocity.y === 0
+      && this.position.x === this.homePosition.x && this.position.y === this.homePosition.y) {
+
+      // Only evaluate external forces — everything else would be a no-op
+      if (forces && forces.length > 0) {
+        for (let i = 0; i < forces.length; i++) {
+          const f = forces[i]!.getForce(this.position);
+          this.velocity.x += f.x * dt;
+          this.velocity.y += f.y * dt;
+        }
+      }
+
+      // Idle pulse timer (monotonic, always ticks)
+      if (this.homeConfig.idlePulseStrength > 0 && this.homeConfig.idlePulseIntervalMin > 0) {
+        this.idleTicks += dt;
+        if (this.idleEnabled) {
+          const waveDelay = this.homeDistFromCenter * 0.3;
+          if (this.idleTicks >= this.nextPulseAt + waveDelay) {
+            const angle = this.homeAngleFromCenter + (Math.random() - 0.5) * 1.0;
+            const mag = this.homeConfig.idlePulseStrength * (0.6 + Math.random() * 0.4);
+            this.velocity.x = Math.cos(angle) * mag;
+            this.velocity.y = Math.sin(angle) * mag;
+            this.pulseCycleCount++;
+            this.nextPulseAt += Particle.deterministicInterval(
+              this.pulseCycleCount, this.homeConfig.idlePulseIntervalMin, this.homeConfig.idlePulseIntervalMax,
+            );
+          }
+        }
+      }
+
+      // Size + breathing still need to run (particle may not have reached target size yet)
+      if (this.factoredSize < this.size) {
+        this.factoredSize = Math.min(this.factoredSize + this.scaleStep * dt, this.size);
+      } else if (this.idleEnabled && this.homeConfig.breathingAmplitude > 0) {
+        this.breathingPhase += this.homeConfig.breathingSpeed * dt;
+        this.factoredSize = this.size * (1 + Math.sin(this.breathingPhase) * this.homeConfig.breathingAmplitude);
+      }
+
+      // If still at rest, nothing else changed — early exit
+      if (this.velocity.x === 0 && this.velocity.y === 0) {
+        if (this.particular && this.particular.hasEventListener('PARTICLE_UPDATE')) {
+          this.particular.dispatchEvent('PARTICLE_UPDATE', this);
+        }
+        return;
+      }
+
+      // Disturbed — apply velocity and let spring catch it next frame
+      this.position.x += this.velocity.x * dt;
+      this.position.y += this.velocity.y * dt;
+      if (this.particular && this.particular.hasEventListener('PARTICLE_UPDATE')) {
+        this.particular.dispatchEvent('PARTICLE_UPDATE', this);
+      }
+      return;
+    }
+
+    // ── Full update path (non-home particles, unsettled home particles) ──
+
     // Trail update — skip the function call entirely for non-trail particles
     if (this.trail) this.updateTrail(true, dt);
 
-    // Inlined velocity integration — eliminates 4 function calls per particle per frame
+    // Inlined velocity integration
     this.velocity.x += this.acceleration.x * dt;
     this.velocity.y += this.acceleration.y * dt;
     if (this.friction > 0) {
@@ -365,8 +426,7 @@ export default class Particle {
       const speedSq = this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y;
       const isSettled = !this.preventSettle && distSq < this.homeThresholdSq && speedSq < this.velocityThresholdSq;
 
-      // Idle pulse timer ticks when idle is enabled (monotonic, never resets) — mouse/scatter don't affect wave timing.
-      // When idle is disabled, we still advance the timer so re-enabling doesn't fire a burst of missed pulses.
+      // Idle pulse timer ticks when idle is enabled (monotonic, never resets).
       if (this.homeConfig.idlePulseStrength > 0 && this.homeConfig.idlePulseIntervalMin > 0) {
         this.idleTicks += dt;
       }
@@ -379,7 +439,7 @@ export default class Particle {
         this.position.y = this.homePosition.y;
         this.rotationVelocity = 0;
         this.rotation = 0;
-        // Coordinated idle ripple — fire pulse AFTER zeroing velocity so impulse isn't overwritten.
+        // Coordinated idle ripple
         if (this.idleEnabled && this.homeConfig.idlePulseStrength > 0 && this.homeConfig.idlePulseIntervalMin > 0) {
           const waveDelay = this.homeDistFromCenter * 0.3;
           if (this.idleTicks >= this.nextPulseAt + waveDelay) {

@@ -341,7 +341,7 @@ MouseTrailHandle: { stop(), start(), destroy() }
 - pixelRatio: number                 — canvas pixel ratio. Default 2
 - continuous: boolean                — keep emitters alive after burst. Default false
 - particlePoolSize: number           — max dead particles kept in reuse pool. Default 2000. Higher = less GC, more idle memory
-- webglMaxInstances: number          — WebGL max particles per draw call. Default 4096
+- webglMaxInstances: number          — WebGL max particles per draw call. Default 16384
 - container: HTMLElement             — container-aware mode element
 
 ### setParticlePoolSize(size: number): void

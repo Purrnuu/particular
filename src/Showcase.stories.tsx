@@ -591,8 +591,8 @@ const WelcomeDemo: React.FC = () => {
       container,
       preset: 'snow',
       config: {
-        rate: 0.6,
-        maxCount: 800,
+        rate: 0.4,
+        maxCount: 500,
         particleLife: 1200,
         colors: subtleSnowColors,
         glow: false,
@@ -681,6 +681,7 @@ const WelcomeDemo: React.FC = () => {
       x: w / 2,
       y: heroH * 0.38,
       width: Math.min(w * 0.75, 800),
+      resolution: 300,
       intro: { mode: 'scatter', duration: 1200 },
     });
 

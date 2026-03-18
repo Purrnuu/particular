@@ -181,7 +181,7 @@ const Ambient = {
     glowColor: '#ffffff',
     glowAlpha: 0.2,
 
-    rate: 0.55,
+    rate: 0.4,
     life: 999999,
     particleLife: 500,
     velocity: Vector.fromAngle(Math.PI / 2, 0.4),
@@ -197,7 +197,7 @@ const Ambient = {
     friction: 0.001,
     frictionSize: 0.003,
     scaleStep: 1,
-    maxCount: 280,
+    maxCount: 200,
     continuous: true,
     autoStart: true,
     colors: snowPalette,

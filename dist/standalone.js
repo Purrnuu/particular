@@ -326,6 +326,7 @@ function degToRad(deg) {
 
 // src/particular/components/particle.ts
 var freeSegments = [];
+var _maxFreeSegments = 5e3;
 var _particlePool = [];
 var _maxPoolSize = 2e3;
 function setParticlePoolSize(size) {
@@ -506,6 +507,12 @@ var Particle = class _Particle {
     this.shadowOffsetY = shadowOffsetY;
     this.shadowColor = shadowColor;
     this.shadowAlpha = shadowAlpha;
+    if (this.trailSegments.length > 0) {
+      for (let i = 0; i < this.trailSegments.length; i++) {
+        if (freeSegments.length < _maxFreeSegments) freeSegments.push(this.trailSegments[i]);
+      }
+      this.trailSegments.length = 0;
+    }
     this.particular = null;
     this.image = null;
     this.isDetonationChild = false;
@@ -555,13 +562,67 @@ var Particle = class _Particle {
     this.dispatch("PARTICLE_CREATED", this);
   }
   update(forces, dt = 1) {
-    this.updateTrail(true, dt);
-    this.velocity.add(this.acceleration, dt);
-    this.velocity.addFriction(this.friction, dt);
-    this.velocity.addGravity(this.gravity, dt);
-    if (forces) {
+    if (this.homePosition && this.homeConfig && !this.preventSettle && this.velocity.x === 0 && this.velocity.y === 0 && this.position.x === this.homePosition.x && this.position.y === this.homePosition.y) {
+      if (forces && forces.length > 0) {
+        for (let i = 0; i < forces.length; i++) {
+          const f = forces[i].getForce(this.position);
+          this.velocity.x += f.x * dt;
+          this.velocity.y += f.y * dt;
+        }
+      }
+      if (this.homeConfig.idlePulseStrength > 0 && this.homeConfig.idlePulseIntervalMin > 0) {
+        this.idleTicks += dt;
+        if (this.idleEnabled) {
+          const waveDelay = this.homeDistFromCenter * 0.3;
+          if (this.idleTicks >= this.nextPulseAt + waveDelay) {
+            const angle = this.homeAngleFromCenter + (Math.random() - 0.5) * 1;
+            const mag = this.homeConfig.idlePulseStrength * (0.6 + Math.random() * 0.4);
+            this.velocity.x = Math.cos(angle) * mag;
+            this.velocity.y = Math.sin(angle) * mag;
+            this.pulseCycleCount++;
+            this.nextPulseAt += _Particle.deterministicInterval(
+              this.pulseCycleCount,
+              this.homeConfig.idlePulseIntervalMin,
+              this.homeConfig.idlePulseIntervalMax
+            );
+          }
+        }
+      }
+      if (this.factoredSize < this.size) {
+        this.factoredSize = Math.min(this.factoredSize + this.scaleStep * dt, this.size);
+      } else if (this.idleEnabled && this.homeConfig.breathingAmplitude > 0) {
+        this.breathingPhase += this.homeConfig.breathingSpeed * dt;
+        this.factoredSize = this.size * (1 + Math.sin(this.breathingPhase) * this.homeConfig.breathingAmplitude);
+      }
+      if (this.velocity.x === 0 && this.velocity.y === 0) {
+        if (this.particular && this.particular.hasEventListener("PARTICLE_UPDATE")) {
+          this.particular.dispatchEvent("PARTICLE_UPDATE", this);
+        }
+        return;
+      }
+      this.position.x += this.velocity.x * dt;
+      this.position.y += this.velocity.y * dt;
+      if (this.particular && this.particular.hasEventListener("PARTICLE_UPDATE")) {
+        this.particular.dispatchEvent("PARTICLE_UPDATE", this);
+      }
+      return;
+    }
+    if (this.trail) this.updateTrail(true, dt);
+    this.velocity.x += this.acceleration.x * dt;
+    this.velocity.y += this.acceleration.y * dt;
+    if (this.friction > 0) {
+      const frictionFactor = Math.pow(1 - this.friction, dt);
+      this.velocity.x *= frictionFactor;
+      this.velocity.y *= frictionFactor;
+    }
+    if (this.gravity !== 0) {
+      this.velocity.y += this.gravity * dt;
+    }
+    if (forces && forces.length > 0) {
       for (let i = 0; i < forces.length; i++) {
-        this.velocity.add(forces[i].getForce(this.position), dt);
+        const f = forces[i].getForce(this.position);
+        this.velocity.x += f.x * dt;
+        this.velocity.y += f.y * dt;
       }
     }
     if (this.homePosition && this.homeConfig) {
@@ -614,7 +675,8 @@ var Particle = class _Particle {
         }
       }
     }
-    this.position.add(this.velocity, dt);
+    this.position.x += this.velocity.x * dt;
+    this.position.y += this.velocity.y * dt;
     this.rotation = this.rotation + this.rotationVelocity * dt;
     const baseSize = Math.min(this.factoredSize + this.scaleStep * dt, this.size);
     if (this.idleEnabled && this.homePosition && this.homeConfig && this.homeConfig.breathingAmplitude > 0) {
@@ -629,7 +691,9 @@ var Particle = class _Particle {
       this.alpha = Math.min(1, Math.max((this.lifeTime - this.lifeTick) / this.fadeTime, 0)) * this.baseAlpha;
       this.lifeTick += dt;
     }
-    this.dispatch("PARTICLE_UPDATE", this);
+    if (this.particular && this.particular.hasEventListener("PARTICLE_UPDATE")) {
+      this.particular.dispatchEvent("PARTICLE_UPDATE", this);
+    }
   }
   advanceTrail(dt = 1) {
     this.updateTrail(false, dt);
@@ -638,7 +702,7 @@ var Particle = class _Particle {
     if (!this.trail || this.trailLength <= 0) {
       if (this.trailSegments.length) {
         for (let i = 0; i < this.trailSegments.length; i++) {
-          freeSegments.push(this.trailSegments[i]);
+          if (freeSegments.length < _maxFreeSegments) freeSegments.push(this.trailSegments[i]);
         }
         this.trailSegments.length = 0;
       }
@@ -652,7 +716,7 @@ var Particle = class _Particle {
       if (segment.age < maxAge) {
         this.trailSegments[writeIdx++] = segment;
       } else {
-        freeSegments.push(segment);
+        if (freeSegments.length < _maxFreeSegments) freeSegments.push(segment);
       }
     }
     this.trailSegments.length = writeIdx;
@@ -700,7 +764,7 @@ var Particle = class _Particle {
   destroy() {
     this.dispatch("PARTICLE_DEAD", this);
     for (let i = 0; i < this.trailSegments.length; i++) {
-      freeSegments.push(this.trailSegments[i]);
+      if (freeSegments.length < _maxFreeSegments) freeSegments.push(this.trailSegments[i]);
     }
     this.trailSegments.length = 0;
     this.particular = null;
@@ -2054,7 +2118,8 @@ var WebGLRenderer = class {
       if (!this.gl || !this.particular || !this.program) return;
       const baseParticles = this.particular.getAllParticles();
       const particles = this.expandParticlesWithTrails(baseParticles);
-      for (const attractor of this.particular.attractors) {
+      for (let ai = 0; ai < this.particular.attractors.length; ai++) {
+        const attractor = this.particular.attractors[ai];
         if (attractor.visible) {
           particles.push(attractor.toDrawable());
         }
@@ -2073,7 +2138,8 @@ var WebGLRenderer = class {
       const posLoc = this.circleAttrPos;
       this.gl.enableVertexAttribArray(posLoc);
       this.gl.vertexAttribPointer(posLoc, 2, this.gl.FLOAT, false, 0, 0);
-      for (const batch of batches) {
+      for (let bi = 0; bi < batches.length; bi++) {
+        const batch = batches[bi];
         if (batch.type === "circle") {
           this.drawCircleBatch(batch);
         } else {
@@ -2086,7 +2152,7 @@ var WebGLRenderer = class {
       }
     };
     this.target = target;
-    this.maxInstances = options?.maxInstances ?? 4096;
+    this.maxInstances = options?.maxInstances ?? 16384;
     this.instanceStride = 9;
     this.instanceData = new Float32Array(this.maxInstances * this.instanceStride);
   }
@@ -2226,11 +2292,13 @@ var WebGLRenderer = class {
     const expanded = this.expandedArr;
     expanded.length = 0;
     this.ghostPoolIdx = 0;
-    for (const particle of particles) {
+    for (let pi = 0; pi < particles.length; pi++) {
+      const particle = particles[pi];
       expanded.push(particle);
       if (!particle.trail || particle.trailSegments.length === 0) continue;
       const maxAge = Math.max(1, Math.floor(particle.trailLength));
-      for (const segment of particle.trailSegments) {
+      for (let si = 0; si < particle.trailSegments.length; si++) {
+        const segment = particle.trailSegments[si];
         const life = 1 - segment.age / maxAge;
         if (life <= 0) continue;
         const sizeScale = particle.trailShrink + life * (1 - particle.trailShrink);
@@ -2288,7 +2356,8 @@ var WebGLRenderer = class {
     const batches = this._batchResult;
     batches.length = 0;
     let current = null;
-    for (const p of particles) {
+    for (let bi = 0; bi < particles.length; bi++) {
+      const p = particles[bi];
       const img = p.image && p.image instanceof HTMLImageElement ? p.image : null;
       const tex = img ? this.getOrCreateTexture(img) : null;
       const isImage = !!tex;
@@ -2339,9 +2408,10 @@ var WebGLRenderer = class {
     this.batchPoolIdx++;
     return batch;
   }
-  fillInstanceData(particles, offsetX = 0, offsetY = 0, scaleOffsetByAlpha = false, directionalFromLightOrigin = false) {
+  fillInstanceData(particles, startIdx, endIdx, offsetX = 0, offsetY = 0, scaleOffsetByAlpha = false, directionalFromLightOrigin = false) {
     let offset = 0;
-    for (const p of particles) {
+    for (let pi = startIdx; pi < endIdx; pi++) {
+      const p = particles[pi];
       const r = p.colorR;
       const g = p.colorG;
       const b = p.colorB;
@@ -2384,39 +2454,34 @@ var WebGLRenderer = class {
     const rotLoc = this.circleAttrRotation;
     const colLoc = this.circleAttrColor;
     const shapeLoc = this.circleAttrShape;
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
+    gl.enableVertexAttribArray(posLoc2);
+    gl.vertexAttribPointer(posLoc2, 2, gl.FLOAT, false, stride * 4, 0);
+    gl.vertexAttribDivisor(posLoc2, 1);
+    gl.enableVertexAttribArray(sizeLoc);
+    gl.vertexAttribPointer(sizeLoc, 1, gl.FLOAT, false, stride * 4, 8);
+    gl.vertexAttribDivisor(sizeLoc, 1);
+    gl.enableVertexAttribArray(rotLoc);
+    gl.vertexAttribPointer(rotLoc, 1, gl.FLOAT, false, stride * 4, 12);
+    gl.vertexAttribDivisor(rotLoc, 1);
+    gl.enableVertexAttribArray(colLoc);
+    gl.vertexAttribPointer(colLoc, 4, gl.FLOAT, false, stride * 4, 16);
+    gl.vertexAttribDivisor(colLoc, 1);
+    gl.enableVertexAttribArray(shapeLoc);
+    gl.vertexAttribPointer(shapeLoc, 1, gl.FLOAT, false, stride * 4, 32);
+    gl.vertexAttribDivisor(shapeLoc, 1);
     for (let i = 0; i < list.length; i += this.maxInstances) {
-      const chunk = list.slice(i, i + this.maxInstances);
-      this.fillInstanceData(
-        chunk,
-        offsetX,
-        offsetY,
-        scaleOffsetByAlpha,
-        directionalFromLightOrigin
-      );
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
-      gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.instanceData.subarray(0, chunk.length * stride));
-      gl.enableVertexAttribArray(posLoc2);
-      gl.vertexAttribPointer(posLoc2, 2, gl.FLOAT, false, stride * 4, 0);
-      gl.vertexAttribDivisor(posLoc2, 1);
-      gl.enableVertexAttribArray(sizeLoc);
-      gl.vertexAttribPointer(sizeLoc, 1, gl.FLOAT, false, stride * 4, 8);
-      gl.vertexAttribDivisor(sizeLoc, 1);
-      gl.enableVertexAttribArray(rotLoc);
-      gl.vertexAttribPointer(rotLoc, 1, gl.FLOAT, false, stride * 4, 12);
-      gl.vertexAttribDivisor(rotLoc, 1);
-      gl.enableVertexAttribArray(colLoc);
-      gl.vertexAttribPointer(colLoc, 4, gl.FLOAT, false, stride * 4, 16);
-      gl.vertexAttribDivisor(colLoc, 1);
-      gl.enableVertexAttribArray(shapeLoc);
-      gl.vertexAttribPointer(shapeLoc, 1, gl.FLOAT, false, stride * 4, 32);
-      gl.vertexAttribDivisor(shapeLoc, 1);
-      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, chunk.length);
-      gl.vertexAttribDivisor(posLoc2, 0);
-      gl.vertexAttribDivisor(sizeLoc, 0);
-      gl.vertexAttribDivisor(rotLoc, 0);
-      gl.vertexAttribDivisor(colLoc, 0);
-      gl.vertexAttribDivisor(shapeLoc, 0);
+      const end = Math.min(i + this.maxInstances, list.length);
+      const count = end - i;
+      this.fillInstanceData(list, i, end, offsetX, offsetY, scaleOffsetByAlpha, directionalFromLightOrigin);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.instanceData.subarray(0, count * stride));
+      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, count);
     }
+    gl.vertexAttribDivisor(posLoc2, 0);
+    gl.vertexAttribDivisor(sizeLoc, 0);
+    gl.vertexAttribDivisor(rotLoc, 0);
+    gl.vertexAttribDivisor(colLoc, 0);
+    gl.vertexAttribDivisor(shapeLoc, 0);
   }
   drawCircleBatch(batch) {
     const gl = this.gl;
@@ -2447,35 +2512,30 @@ var WebGLRenderer = class {
     const sizeLoc = this.imageAttrSize;
     const rotLoc = this.imageAttrRotation;
     const colLoc = this.imageAttrColor;
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
+    gl.enableVertexAttribArray(posLoc2);
+    gl.vertexAttribPointer(posLoc2, 2, gl.FLOAT, false, stride * 4, 0);
+    gl.vertexAttribDivisor(posLoc2, 1);
+    gl.enableVertexAttribArray(sizeLoc);
+    gl.vertexAttribPointer(sizeLoc, 1, gl.FLOAT, false, stride * 4, 8);
+    gl.vertexAttribDivisor(sizeLoc, 1);
+    gl.enableVertexAttribArray(rotLoc);
+    gl.vertexAttribPointer(rotLoc, 1, gl.FLOAT, false, stride * 4, 12);
+    gl.vertexAttribDivisor(rotLoc, 1);
+    gl.enableVertexAttribArray(colLoc);
+    gl.vertexAttribPointer(colLoc, 4, gl.FLOAT, false, stride * 4, 16);
+    gl.vertexAttribDivisor(colLoc, 1);
     for (let i = 0; i < list.length; i += this.maxInstances) {
-      const chunk = list.slice(i, i + this.maxInstances);
-      this.fillInstanceData(
-        chunk,
-        offsetX,
-        offsetY,
-        scaleOffsetByAlpha,
-        directionalFromLightOrigin
-      );
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
-      gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.instanceData.subarray(0, chunk.length * stride));
-      gl.enableVertexAttribArray(posLoc2);
-      gl.vertexAttribPointer(posLoc2, 2, gl.FLOAT, false, stride * 4, 0);
-      gl.vertexAttribDivisor(posLoc2, 1);
-      gl.enableVertexAttribArray(sizeLoc);
-      gl.vertexAttribPointer(sizeLoc, 1, gl.FLOAT, false, stride * 4, 8);
-      gl.vertexAttribDivisor(sizeLoc, 1);
-      gl.enableVertexAttribArray(rotLoc);
-      gl.vertexAttribPointer(rotLoc, 1, gl.FLOAT, false, stride * 4, 12);
-      gl.vertexAttribDivisor(rotLoc, 1);
-      gl.enableVertexAttribArray(colLoc);
-      gl.vertexAttribPointer(colLoc, 4, gl.FLOAT, false, stride * 4, 16);
-      gl.vertexAttribDivisor(colLoc, 1);
-      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, chunk.length);
-      gl.vertexAttribDivisor(posLoc2, 0);
-      gl.vertexAttribDivisor(sizeLoc, 0);
-      gl.vertexAttribDivisor(rotLoc, 0);
-      gl.vertexAttribDivisor(colLoc, 0);
+      const end = Math.min(i + this.maxInstances, list.length);
+      const count = end - i;
+      this.fillInstanceData(list, i, end, offsetX, offsetY, scaleOffsetByAlpha, directionalFromLightOrigin);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.instanceData.subarray(0, count * stride));
+      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, count);
     }
+    gl.vertexAttribDivisor(posLoc2, 0);
+    gl.vertexAttribDivisor(sizeLoc, 0);
+    gl.vertexAttribDivisor(rotLoc, 0);
+    gl.vertexAttribDivisor(colLoc, 0);
   }
   drawImageBatch(batch, logicalW, logicalH) {
     const gl = this.gl;
@@ -2693,7 +2753,7 @@ var Ambient = {
     glowSize: 8,
     glowColor: "#ffffff",
     glowAlpha: 0.2,
-    rate: 0.55,
+    rate: 0.4,
     life: 999999,
     particleLife: 500,
     velocity: Vector.fromAngle(Math.PI / 2, 0.4),
@@ -2709,7 +2769,7 @@ var Ambient = {
     friction: 1e-3,
     frictionSize: 3e-3,
     scaleStep: 1,
-    maxCount: 280,
+    maxCount: 200,
     continuous: true,
     autoStart: true,
     colors: snowPalette

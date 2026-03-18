@@ -303,7 +303,7 @@ interface DrawBatch {
 }
 
 export interface WebGLRendererOptions {
-  /** Max particles per draw call (default 4096). Increase for fewer draw calls with many particles. */
+  /** Max particles per draw call (default 16384). Increase for fewer draw calls with many particles. */
   maxInstances?: number;
 }
 
@@ -357,7 +357,7 @@ export default class WebGLRenderer {
 
   constructor(target: HTMLCanvasElement, options?: WebGLRendererOptions) {
     this.target = target;
-    this.maxInstances = options?.maxInstances ?? 4096;
+    this.maxInstances = options?.maxInstances ?? 16384;
     this.instanceStride = 9; // x, y, size, rotation, r, g, b, a, shape
     this.instanceData = new Float32Array(this.maxInstances * this.instanceStride);
   }
@@ -504,13 +504,15 @@ export default class WebGLRenderer {
     expanded.length = 0;
     this.ghostPoolIdx = 0;
 
-    for (const particle of particles) {
+    for (let pi = 0; pi < particles.length; pi++) {
+      const particle = particles[pi]!;
       expanded.push(particle);
 
       if (!particle.trail || particle.trailSegments.length === 0) continue;
       const maxAge = Math.max(1, Math.floor(particle.trailLength));
 
-      for (const segment of particle.trailSegments) {
+      for (let si = 0; si < particle.trailSegments.length; si++) {
+        const segment = particle.trailSegments[si]!;
         const life = 1 - segment.age / maxAge;
         if (life <= 0) continue;
 
@@ -574,7 +576,8 @@ export default class WebGLRenderer {
     batches.length = 0;
     let current: DrawBatch | null = null;
 
-    for (const p of particles) {
+    for (let bi = 0; bi < particles.length; bi++) {
+      const p = particles[bi]!;
       const img = p.image && p.image instanceof HTMLImageElement ? p.image : null;
       const tex = img ? this.getOrCreateTexture(img) : null;
       const isImage = !!tex;
@@ -651,13 +654,16 @@ export default class WebGLRenderer {
 
   private fillInstanceData(
     particles: Particle[],
+    startIdx: number,
+    endIdx: number,
     offsetX = 0,
     offsetY = 0,
     scaleOffsetByAlpha = false,
     directionalFromLightOrigin = false,
   ): void {
     let offset = 0;
-    for (const p of particles) {
+    for (let pi = startIdx; pi < endIdx; pi++) {
+      const p = particles[pi]!;
       const r = p.colorR;
       const g = p.colorG;
       const b = p.colorB;
@@ -710,46 +716,37 @@ export default class WebGLRenderer {
     const colLoc = this.circleAttrColor;
     const shapeLoc = this.circleAttrShape;
 
+    // Bind instance buffer and configure attribute pointers once (GL captures buffer at pointer-set time)
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
+    gl.enableVertexAttribArray(posLoc2);
+    gl.vertexAttribPointer(posLoc2, 2, gl.FLOAT, false, stride * 4, 0);
+    gl.vertexAttribDivisor(posLoc2, 1);
+    gl.enableVertexAttribArray(sizeLoc);
+    gl.vertexAttribPointer(sizeLoc, 1, gl.FLOAT, false, stride * 4, 8);
+    gl.vertexAttribDivisor(sizeLoc, 1);
+    gl.enableVertexAttribArray(rotLoc);
+    gl.vertexAttribPointer(rotLoc, 1, gl.FLOAT, false, stride * 4, 12);
+    gl.vertexAttribDivisor(rotLoc, 1);
+    gl.enableVertexAttribArray(colLoc);
+    gl.vertexAttribPointer(colLoc, 4, gl.FLOAT, false, stride * 4, 16);
+    gl.vertexAttribDivisor(colLoc, 1);
+    gl.enableVertexAttribArray(shapeLoc);
+    gl.vertexAttribPointer(shapeLoc, 1, gl.FLOAT, false, stride * 4, 32);
+    gl.vertexAttribDivisor(shapeLoc, 1);
+
     for (let i = 0; i < list.length; i += this.maxInstances) {
-      const chunk = list.slice(i, i + this.maxInstances);
-      this.fillInstanceData(
-        chunk,
-        offsetX,
-        offsetY,
-        scaleOffsetByAlpha,
-        directionalFromLightOrigin,
-      );
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
-      gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.instanceData.subarray(0, chunk.length * stride));
-
-      gl.enableVertexAttribArray(posLoc2);
-      gl.vertexAttribPointer(posLoc2, 2, gl.FLOAT, false, stride * 4, 0);
-      gl.vertexAttribDivisor(posLoc2, 1);
-
-      gl.enableVertexAttribArray(sizeLoc);
-      gl.vertexAttribPointer(sizeLoc, 1, gl.FLOAT, false, stride * 4, 8);
-      gl.vertexAttribDivisor(sizeLoc, 1);
-
-      gl.enableVertexAttribArray(rotLoc);
-      gl.vertexAttribPointer(rotLoc, 1, gl.FLOAT, false, stride * 4, 12);
-      gl.vertexAttribDivisor(rotLoc, 1);
-
-      gl.enableVertexAttribArray(colLoc);
-      gl.vertexAttribPointer(colLoc, 4, gl.FLOAT, false, stride * 4, 16);
-      gl.vertexAttribDivisor(colLoc, 1);
-
-      gl.enableVertexAttribArray(shapeLoc);
-      gl.vertexAttribPointer(shapeLoc, 1, gl.FLOAT, false, stride * 4, 32);
-      gl.vertexAttribDivisor(shapeLoc, 1);
-
-      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, chunk.length);
-
-      gl.vertexAttribDivisor(posLoc2, 0);
-      gl.vertexAttribDivisor(sizeLoc, 0);
-      gl.vertexAttribDivisor(rotLoc, 0);
-      gl.vertexAttribDivisor(colLoc, 0);
-      gl.vertexAttribDivisor(shapeLoc, 0);
+      const end = Math.min(i + this.maxInstances, list.length);
+      const count = end - i;
+      this.fillInstanceData(list, i, end, offsetX, offsetY, scaleOffsetByAlpha, directionalFromLightOrigin);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.instanceData.subarray(0, count * stride));
+      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, count);
     }
+
+    gl.vertexAttribDivisor(posLoc2, 0);
+    gl.vertexAttribDivisor(sizeLoc, 0);
+    gl.vertexAttribDivisor(rotLoc, 0);
+    gl.vertexAttribDivisor(colLoc, 0);
+    gl.vertexAttribDivisor(shapeLoc, 0);
   }
 
   private drawCircleBatch(batch: DrawBatch): void {
@@ -793,41 +790,33 @@ export default class WebGLRenderer {
     const rotLoc = this.imageAttrRotation;
     const colLoc = this.imageAttrColor;
 
+    // Bind instance buffer and configure attribute pointers once
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
+    gl.enableVertexAttribArray(posLoc2);
+    gl.vertexAttribPointer(posLoc2, 2, gl.FLOAT, false, stride * 4, 0);
+    gl.vertexAttribDivisor(posLoc2, 1);
+    gl.enableVertexAttribArray(sizeLoc);
+    gl.vertexAttribPointer(sizeLoc, 1, gl.FLOAT, false, stride * 4, 8);
+    gl.vertexAttribDivisor(sizeLoc, 1);
+    gl.enableVertexAttribArray(rotLoc);
+    gl.vertexAttribPointer(rotLoc, 1, gl.FLOAT, false, stride * 4, 12);
+    gl.vertexAttribDivisor(rotLoc, 1);
+    gl.enableVertexAttribArray(colLoc);
+    gl.vertexAttribPointer(colLoc, 4, gl.FLOAT, false, stride * 4, 16);
+    gl.vertexAttribDivisor(colLoc, 1);
+
     for (let i = 0; i < list.length; i += this.maxInstances) {
-      const chunk = list.slice(i, i + this.maxInstances);
-      this.fillInstanceData(
-        chunk,
-        offsetX,
-        offsetY,
-        scaleOffsetByAlpha,
-        directionalFromLightOrigin,
-      );
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
-      gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.instanceData.subarray(0, chunk.length * stride));
-
-      gl.enableVertexAttribArray(posLoc2);
-      gl.vertexAttribPointer(posLoc2, 2, gl.FLOAT, false, stride * 4, 0);
-      gl.vertexAttribDivisor(posLoc2, 1);
-
-      gl.enableVertexAttribArray(sizeLoc);
-      gl.vertexAttribPointer(sizeLoc, 1, gl.FLOAT, false, stride * 4, 8);
-      gl.vertexAttribDivisor(sizeLoc, 1);
-
-      gl.enableVertexAttribArray(rotLoc);
-      gl.vertexAttribPointer(rotLoc, 1, gl.FLOAT, false, stride * 4, 12);
-      gl.vertexAttribDivisor(rotLoc, 1);
-
-      gl.enableVertexAttribArray(colLoc);
-      gl.vertexAttribPointer(colLoc, 4, gl.FLOAT, false, stride * 4, 16);
-      gl.vertexAttribDivisor(colLoc, 1);
-
-      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, chunk.length);
-
-      gl.vertexAttribDivisor(posLoc2, 0);
-      gl.vertexAttribDivisor(sizeLoc, 0);
-      gl.vertexAttribDivisor(rotLoc, 0);
-      gl.vertexAttribDivisor(colLoc, 0);
+      const end = Math.min(i + this.maxInstances, list.length);
+      const count = end - i;
+      this.fillInstanceData(list, i, end, offsetX, offsetY, scaleOffsetByAlpha, directionalFromLightOrigin);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.instanceData.subarray(0, count * stride));
+      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, count);
     }
+
+    gl.vertexAttribDivisor(posLoc2, 0);
+    gl.vertexAttribDivisor(sizeLoc, 0);
+    gl.vertexAttribDivisor(rotLoc, 0);
+    gl.vertexAttribDivisor(colLoc, 0);
   }
 
   private drawImageBatch(batch: DrawBatch, logicalW: number, logicalH: number): void {
@@ -878,7 +867,8 @@ export default class WebGLRenderer {
     const particles = this.expandParticlesWithTrails(baseParticles);
 
     // Append visible attractor drawables after particles so they render on top
-    for (const attractor of this.particular.attractors) {
+    for (let ai = 0; ai < this.particular.attractors.length; ai++) {
+      const attractor = this.particular.attractors[ai]!;
       if (attractor.visible) {
         particles.push(attractor.toDrawable());
       }
@@ -906,7 +896,8 @@ export default class WebGLRenderer {
     this.gl.enableVertexAttribArray(posLoc);
     this.gl.vertexAttribPointer(posLoc, 2, this.gl.FLOAT, false, 0, 0);
 
-    for (const batch of batches) {
+    for (let bi = 0; bi < batches.length; bi++) {
+      const batch = batches[bi]!;
       if (batch.type === 'circle') {
         this.drawCircleBatch(batch);
       } else {

@@ -21,7 +21,7 @@ Key fields with non-obvious behavior:
 - `spawnWidth`, `spawnHeight` — randomize particle spawn within a rectangle centered on emitter point. Default 0 (point spawn). Used internally by screensaver to spread across viewport.
 - `acceleration` + `accelerationSize` — downward acceleration split into direct (size-independent) and size-coupled components. Formula: `acceleration + accelerationSize * size`. Defaults: `acceleration: 0, accelerationSize: 0.01`. To disable size-based acceleration, set `accelerationSize: 0`. To add constant downward pull, increase `acceleration`.
 - `friction` + `frictionSize` — air resistance split into direct and size-coupled components. Formula: `friction + frictionSize * size`. Defaults: `friction: 0, frictionSize: 0.0005`. To apply uniform drag regardless of size, set `friction` directly and `frictionSize: 0`.
-- `webglMaxInstances` — max particles per WebGL draw call (default 4096). Increase for fewer draw calls with many particles.
+- `webglMaxInstances` — max particles per WebGL draw call (default 16384). Increase for fewer draw calls with many particles.
 
 ## Runtime Flow
 
@@ -543,14 +543,23 @@ Both renderers expand trail segments into drawable "ghost" objects for the rende
 ### Cached WebGL attribute locations
 `WebGLRenderer` caches all `getAttribLocation()` and `getUniformLocation()` results as class fields during `init()`. The hot-path draw methods (`drawCircleInstances`, `drawImageInstances`, `drawImageBatch`, `onUpdateAfter`) use cached locations instead of querying the GL context each frame.
 
+### WebGL draw call optimization
+`drawCircleInstances` and `drawImageInstances` hoist GL attribute setup (bindBuffer, enableVertexAttribArray, vertexAttribPointer, vertexAttribDivisor) outside the per-chunk loop — only `bufferSubData` + `drawArraysInstanced` run per chunk. `fillInstanceData` takes `startIdx`/`endIdx` parameters and iterates the source array directly, eliminating `list.slice()` temporary array allocations. Default `maxInstances` is 16384, so most scenes (10K particles) render in a single instanced draw call.
+
+### Inlined particle hot path
+`Particle.update()` inlines all Vector method calls (add, addFriction, addGravity) directly as `this.velocity.x += this.acceleration.x * dt` etc, eliminating ~7 function calls per particle per frame. Trail update is guarded with `if (this.trail)` to skip the function call entirely for non-trail particles.
+
+### Settled-particle fast path
+Particles at rest at their exact home position with zero velocity enter a fast path at the top of `update()`. Only external forces and idle pulse timers are evaluated — velocity integration, friction, gravity, and spring math are all skipped. Size growth and breathing animation still run. Saves ~25 ops/particle/frame for 10K+ settled text/image particles.
+
 ### Native iteration
-All `lodash-es` utilities (`forEach`, `filter`, `sample`) replaced with native `for...of` loops, `Array.prototype.filter()`, and `Math.random()` indexing. `Particular.getCount()` sums emitter particle counts in a for-loop instead of allocating `getAllParticles()`.
+All `lodash-es` utilities (`forEach`, `filter`, `sample`) replaced with native loops and `Math.random()` indexing. `Particular.getCount()` sums emitter particle counts in a for-loop instead of allocating `getAllParticles()`. WebGL renderer hot paths (`expandParticlesWithTrails`, `buildBatches`, `fillInstanceData`, batch iteration) use index-based `for` loops instead of `for...of` for tighter JIT optimization.
 
 ### Object pooling (render + update hot paths)
 Per-frame allocations eliminated via index-based pools and array reuse:
 - **Trail ghost pools** (canvasRenderer, webglRenderer): Both renderers maintain pre-allocated pools of ghost objects for trail segment rendering. A pool index resets each frame; ghosts are acquired by index and field-overwritten, never allocated after warm-up.
 - **DrawBatch pool** (webglRenderer): Batch objects and their `particles` arrays are pooled and reused. The result array is also reused.
-- **TrailSegment recycling** (particle.ts): A module-level `freeSegments` free list collects expired segments during in-place compaction. New segments pop from the free list before falling back to allocation.
+- **TrailSegment recycling** (particle.ts): A module-level `freeSegments` free list (capped at 5000) collects expired segments during in-place compaction. New segments pop from the free list before falling back to allocation. `_reinit()` defensively drains stale segments from pooled particles.
 - **Engine array reuse** (particular.ts): `getAllParticles()` fills a cached array instead of `concat()`. Combined forces array is cached. Dead emitter cleanup uses in-place compaction instead of `filter()`.
 - **Force vector reuse** (attractor.ts, mouseForce.ts): `getForce()` returns a module-level reusable `_tempForce` vector instead of `new Vector()` per call. Safe because `velocity.add()` consumes the result immediately. On scroll-heavy pages with ~390 attractors × 600 particles, this eliminates ~234K+ Vector allocations per frame. Math is also inlined (normalize + scale combined into a single division).
 - **Emitter in-place compaction** (emitter.ts): `update()` uses write-index compaction on `this.particles` instead of allocating a new `currentParticles` array each frame. Detonation children use a cached `_newChildren` array.
