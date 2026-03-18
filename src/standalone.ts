@@ -5,7 +5,10 @@ export { default as Particle, setParticlePoolSize } from './particular/component
 export { default as Attractor } from './particular/components/attractor';
 export { default as MouseForce } from './particular/components/mouseForce';
 export { default as CanvasRenderer } from './particular/renderers/canvasRenderer';
-export { default as WebGLRenderer } from './particular/renderers/webglRenderer';
+export {
+  default as WebGLRenderer,
+  type WebGLRendererOptions,
+} from './particular/renderers/webglRenderer';
 export { presets } from './particular/presets';
 export {
   particlesBackgroundLayerStyle,

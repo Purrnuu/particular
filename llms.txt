@@ -21,7 +21,7 @@ p.attachClickBurst(document);           // click anywhere for particles
 ```js
 import { createParticles } from "particular";
 const p = createParticles({ preset: "imageText", mouseForce: true });
-p.textToParticles("Hello");             // auto-centered, 80% viewport width
+p.textToParticles("Hello");             // auto-centered, 1:1 size (capped at 50% viewport)
 ```
 
 ### Vanilla — image to particles
@@ -343,6 +343,10 @@ MouseTrailHandle: { stop(), start(), destroy() }
 - particlePoolSize: number           — max dead particles kept in reuse pool. Default 2000. Higher = less GC, more idle memory
 - webglMaxInstances: number          — WebGL max particles per draw call. Default 4096
 - container: HTMLElement             — container-aware mode element
+
+### setParticlePoolSize(size: number): void
+Set the max dead particles kept in the reuse pool at runtime. Also exported as a standalone function.
+Pool auto-shrinks if new limit is smaller than current pool size. Default 2000.
 
 ### Key Particle Config Fields
 - shape: "circle" | "rectangle" | "square" | "roundedRectangle" | "triangle" | "star" | "ring" | "sparkle"

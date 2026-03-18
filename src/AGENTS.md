@@ -9,7 +9,7 @@ Types in `src/particular/types.ts`:
 
 - `ShapeConfig`: visual effect fields (shape, blendMode, glow*, trail*, shadow*, imageTint)
 - `ParticleConfig extends ShapeConfig`: per-particle behavior (rate, life, particleLife, velocity, spread, size, gravity, acceleration, friction, fadeTime, colors, spawnWidth/Height)
-- `ParticularConfig`: engine-level (pixelRatio, maxCount, continuous, autoStart, webglMaxInstances)
+- `ParticularConfig`: engine-level (pixelRatio, maxCount, continuous, autoStart, webglMaxInstances, particlePoolSize)
 - `FullParticularConfig extends ParticularConfig, ParticleConfig`: merged surface + icons + renderer
 
 Config merge chain: `configureParticular({ ...preset, ...userConfig })` — user config always wins over preset.
