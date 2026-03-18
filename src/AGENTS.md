@@ -546,6 +546,13 @@ Both renderers expand trail segments into drawable "ghost" objects for the rende
 ### Native iteration
 All `lodash-es` utilities (`forEach`, `filter`, `sample`) replaced with native `for...of` loops, `Array.prototype.filter()`, and `Math.random()` indexing. `Particular.getCount()` sums emitter particle counts in a for-loop instead of allocating `getAllParticles()`.
 
+### Object pooling (render + update hot paths)
+Per-frame allocations eliminated via index-based pools and array reuse:
+- **Trail ghost pools** (canvasRenderer, webglRenderer): Both renderers maintain pre-allocated pools of ghost objects for trail segment rendering. A pool index resets each frame; ghosts are acquired by index and field-overwritten, never allocated after warm-up.
+- **DrawBatch pool** (webglRenderer): Batch objects and their `particles` arrays are pooled and reused. The result array is also reused.
+- **TrailSegment recycling** (particle.ts): A module-level `freeSegments` free list collects expired segments during in-place compaction. New segments pop from the free list before falling back to allocation.
+- **Engine array reuse** (particular.ts): `getAllParticles()` fills a cached array instead of `concat()`. Combined forces array is cached. Dead emitter cleanup uses in-place compaction instead of `filter()`.
+
 ## Stable Public API
 
 From `src/index.ts`: `Particular`, `Emitter`, `Particle`, `Attractor`, `MouseForce`, `CanvasRenderer`, `WebGLRenderer`, `ParticularWrapper`, `useParticles`, `useScreensaver`, `createParticles`, `startScreensaver`, `presets`, `applyCanvasStyles`, and all public types (including `ImageShatterConfig`). Avoid breaking these exports.

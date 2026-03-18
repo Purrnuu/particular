@@ -717,6 +717,8 @@ declare class Particular implements IEventDispatcher {
     container: HTMLElement | null;
     private animateRequest;
     private lastTimestamp;
+    private _combinedForces;
+    private _allParticlesCache;
     addEventListener: EventDispatcher['addEventListener'];
     removeEventListener: EventDispatcher['removeEventListener'];
     removeAllEventListeners: EventDispatcher['removeAllEventListeners'];
@@ -759,6 +761,8 @@ declare class CanvasRenderer {
     particular: Particular | null;
     pixelRatio: number;
     stroke?: StrokeConfig;
+    private ghostPool;
+    private ghostPoolIdx;
     constructor(target: HTMLCanvasElement);
     init(particular: Particular, pixelRatio: number): void;
     resize: (args?: {
@@ -830,6 +834,11 @@ declare class WebGLRenderer {
     private imageAttrRotation;
     private imageAttrColor;
     private imageTexUniform;
+    private ghostPool;
+    private ghostPoolIdx;
+    private expandedArr;
+    private batchPool;
+    private batchPoolIdx;
     constructor(target: HTMLCanvasElement, options?: WebGLRendererOptions);
     init(particular: Particular, pixelRatio: number): void;
     private getOrCreateTexture;
@@ -840,7 +849,10 @@ declare class WebGLRenderer {
     }) => void;
     onUpdate: () => void;
     private expandParticlesWithTrails;
+    private acquireGhost;
     private buildBatches;
+    private _batchResult;
+    private acquireBatch;
     private fillInstanceData;
     private drawCircleInstances;
     private drawCircleBatch;

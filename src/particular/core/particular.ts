@@ -29,6 +29,8 @@ export default class Particular implements IEventDispatcher {
   container: HTMLElement | null = null;
   private animateRequest: number | null = null;
   private lastTimestamp = -1;
+  private _combinedForces: ForceSource[] = [];
+  private _allParticlesCache: Particle[] = [];
 
   addEventListener!: EventDispatcher['addEventListener'];
   removeEventListener!: EventDispatcher['removeEventListener'];
@@ -139,22 +141,33 @@ export default class Particular implements IEventDispatcher {
       mf.decay(dt);
     }
 
-    const forces: ForceSource[] =
-      this.mouseForces.length > 0
-        ? [...this.attractors, ...this.mouseForces]
-        : this.attractors;
+    // Reuse cached array for combined forces to avoid per-frame allocation
+    let forces: ForceSource[];
+    if (this.mouseForces.length > 0) {
+      const combined = this._combinedForces;
+      combined.length = 0;
+      for (const a of this.attractors) combined.push(a);
+      for (const mf of this.mouseForces) combined.push(mf);
+      forces = combined;
+    } else {
+      forces = this.attractors;
+    }
 
     for (const emitter of this.emitters) {
       emitter.update(this.width, this.height, forces, dt);
     }
 
-    this.emitters = this.emitters.filter((emitter) => {
+    // Compact in-place instead of filter() to avoid array allocation
+    let writeIdx = 0;
+    for (let i = 0; i < this.emitters.length; i++) {
+      const emitter = this.emitters[i]!;
       if (this.continuous || emitter.isAlive()) {
-        return true;
+        this.emitters[writeIdx++] = emitter;
+      } else {
+        emitter.destroy();
       }
-      emitter.destroy();
-      return false;
-    });
+    }
+    this.emitters.length = writeIdx;
 
     if (!this.emitters.length) {
       this.stop();
@@ -170,12 +183,12 @@ export default class Particular implements IEventDispatcher {
   }
 
   getAllParticles(): Particle[] {
-    let particles: Particle[] = [];
-    let i = this.emitters.length;
-    while (i--) {
-      const emitter = this.emitters[i];
-      if (emitter) {
-        particles = particles.concat(emitter.particles);
+    const particles = this._allParticlesCache;
+    particles.length = 0;
+    for (let i = 0; i < this.emitters.length; i++) {
+      const emitter = this.emitters[i]!;
+      for (let j = 0; j < emitter.particles.length; j++) {
+        particles.push(emitter.particles[j]!);
       }
     }
     return particles;

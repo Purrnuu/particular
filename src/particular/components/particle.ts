@@ -14,6 +14,9 @@ export interface TrailSegment {
   age: number;
 }
 
+// Module-level pool for expired TrailSegment objects to avoid per-frame allocations
+const freeSegments: TrailSegment[] = [];
+
 export default class Particle {
   position: Vector;
   velocity: Vector;
@@ -310,7 +313,13 @@ export default class Particle {
 
   private updateTrail(addCurrentPoint: boolean, dt = 1): void {
     if (!this.trail || this.trailLength <= 0) {
-      if (this.trailSegments.length) this.trailSegments = [];
+      if (this.trailSegments.length) {
+        // Return segments to pool before clearing
+        for (let i = 0; i < this.trailSegments.length; i++) {
+          freeSegments.push(this.trailSegments[i]!);
+        }
+        this.trailSegments.length = 0;
+      }
       return;
     }
 
@@ -321,6 +330,8 @@ export default class Particle {
       segment.age += dt;
       if (segment.age < maxAge) {
         this.trailSegments[writeIdx++] = segment;
+      } else {
+        freeSegments.push(segment);
       }
     }
     this.trailSegments.length = writeIdx;
@@ -330,14 +341,26 @@ export default class Particle {
     // Do not add new trail points once particle is fully transparent.
     if (this.alpha <= 0) return;
 
-    this.trailSegments.push({
-      x: this.position.x,
-      y: this.position.y,
-      size: this.factoredSize,
-      rotation: this.rotation,
-      alpha: this.alpha,
-      age: 0,
-    });
+    // Reuse a recycled segment or create a new one
+    const seg = freeSegments.pop();
+    if (seg) {
+      seg.x = this.position.x;
+      seg.y = this.position.y;
+      seg.size = this.factoredSize;
+      seg.rotation = this.rotation;
+      seg.alpha = this.alpha;
+      seg.age = 0;
+      this.trailSegments.push(seg);
+    } else {
+      this.trailSegments.push({
+        x: this.position.x,
+        y: this.position.y,
+        size: this.factoredSize,
+        rotation: this.rotation,
+        alpha: this.alpha,
+        age: 0,
+      });
+    }
   }
 
   resetImage(): void {

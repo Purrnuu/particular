@@ -14,6 +14,9 @@ export default class CanvasRenderer {
   particular: Particular | null = null;
   pixelRatio = 2;
   stroke?: StrokeConfig;
+  // Ghost object pool to avoid per-frame allocations for trail rendering
+  private ghostPool: Particle[] = [];
+  private ghostPoolIdx = 0;
 
   constructor(target: HTMLCanvasElement) {
     this.target = target;
@@ -47,6 +50,7 @@ export default class CanvasRenderer {
   };
 
   onUpdate = (): void => {
+    this.ghostPoolIdx = 0;
     this.context.save();
     this.context.scale(this.pixelRatio, this.pixelRatio);
     this.context.clearRect(0, 0, this.target.width, this.target.height);
@@ -176,27 +180,53 @@ export default class CanvasRenderer {
     const sizeScale = particle.trailShrink + life * (1 - particle.trailShrink);
     const alphaScale = life * particle.trailFade;
 
-    // Minimal ghost with only fields used by drawBasicElement / drawImage
-    return {
-      position: { x: segment.x, y: segment.y },
-      factoredSize: Math.max(0.1, segment.size * sizeScale),
-      rotation: segment.rotation,
-      alpha: segment.alpha * alphaScale,
-      color: particle.color,
-      shape: particle.shape,
-      blendMode: particle.blendMode,
-      image: particle.image,
-      glow: false,
-      shadow: false,
-      glowColor: particle.glowColor,
-      glowAlpha: particle.glowAlpha,
-      glowSize: particle.glowSize,
-      trailSegments: [],
-      getRoundedLocation: () => [
-        ((segment.x * 10) << 0) * 0.1,
-        ((segment.y * 10) << 0) * 0.1,
-      ],
-    } as unknown as Particle;
+    // Reuse ghost from pool or create new one
+    let ghost: Particle;
+    if (this.ghostPoolIdx < this.ghostPool.length) {
+      ghost = this.ghostPool[this.ghostPoolIdx++]!;
+    } else {
+      const roundedLoc: [number, number] = [0, 0];
+      ghost = {
+        position: { x: 0, y: 0 },
+        factoredSize: 0,
+        rotation: 0,
+        alpha: 0,
+        color: '',
+        shape: 'circle',
+        blendMode: 'normal',
+        image: null,
+        glow: false,
+        shadow: false,
+        glowColor: '#ffffff',
+        glowAlpha: 0.25,
+        glowSize: 10,
+        trailSegments: [],
+        _roundedLoc: roundedLoc,
+        getRoundedLocation: () => roundedLoc,
+      } as unknown as Particle;
+      this.ghostPool.push(ghost);
+      this.ghostPoolIdx++;
+    }
+
+    ghost.position.x = segment.x;
+    ghost.position.y = segment.y;
+    ghost.factoredSize = Math.max(0.1, segment.size * sizeScale);
+    ghost.rotation = segment.rotation;
+    ghost.alpha = segment.alpha * alphaScale;
+    ghost.color = particle.color;
+    ghost.shape = particle.shape;
+    ghost.blendMode = particle.blendMode;
+    ghost.image = particle.image;
+    ghost.glowColor = particle.glowColor;
+    ghost.glowAlpha = particle.glowAlpha;
+    ghost.glowSize = particle.glowSize;
+    // Update cached rounded location
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ghostAny = ghost as any;
+    ghostAny._roundedLoc[0] = ((segment.x * 10) << 0) * 0.1;
+    ghostAny._roundedLoc[1] = ((segment.y * 10) << 0) * 0.1;
+
+    return ghost;
   }
   
   private applyShadow(particle: Particle): void {

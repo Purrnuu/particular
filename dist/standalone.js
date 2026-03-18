@@ -331,6 +331,8 @@ var _Particular = class _Particular {
     this.container = null;
     this.animateRequest = null;
     this.lastTimestamp = -1;
+    this._combinedForces = [];
+    this._allParticlesCache = [];
     this.update = (timestamp) => {
       this.animateRequest = window.requestAnimationFrame(this.update);
       if (this.isOn) {
@@ -416,17 +418,29 @@ var _Particular = class _Particular {
     for (const mf of this.mouseForces) {
       mf.decay(dt);
     }
-    const forces = this.mouseForces.length > 0 ? [...this.attractors, ...this.mouseForces] : this.attractors;
+    let forces;
+    if (this.mouseForces.length > 0) {
+      const combined = this._combinedForces;
+      combined.length = 0;
+      for (const a of this.attractors) combined.push(a);
+      for (const mf of this.mouseForces) combined.push(mf);
+      forces = combined;
+    } else {
+      forces = this.attractors;
+    }
     for (const emitter of this.emitters) {
       emitter.update(this.width, this.height, forces, dt);
     }
-    this.emitters = this.emitters.filter((emitter) => {
+    let writeIdx = 0;
+    for (let i = 0; i < this.emitters.length; i++) {
+      const emitter = this.emitters[i];
       if (this.continuous || emitter.isAlive()) {
-        return true;
+        this.emitters[writeIdx++] = emitter;
+      } else {
+        emitter.destroy();
       }
-      emitter.destroy();
-      return false;
-    });
+    }
+    this.emitters.length = writeIdx;
     if (!this.emitters.length) {
       this.stop();
     }
@@ -439,12 +453,12 @@ var _Particular = class _Particular {
     return count;
   }
   getAllParticles() {
-    let particles = [];
-    let i = this.emitters.length;
-    while (i--) {
+    const particles = this._allParticlesCache;
+    particles.length = 0;
+    for (let i = 0; i < this.emitters.length; i++) {
       const emitter = this.emitters[i];
-      if (emitter) {
-        particles = particles.concat(emitter.particles);
+      for (let j = 0; j < emitter.particles.length; j++) {
+        particles.push(emitter.particles[j]);
       }
     }
     return particles;
@@ -475,6 +489,7 @@ function degToRad(deg) {
 }
 
 // src/particular/components/particle.ts
+var freeSegments = [];
 var Particle = class _Particle {
   constructor({
     color,
@@ -680,7 +695,12 @@ var Particle = class _Particle {
   }
   updateTrail(addCurrentPoint, dt = 1) {
     if (!this.trail || this.trailLength <= 0) {
-      if (this.trailSegments.length) this.trailSegments = [];
+      if (this.trailSegments.length) {
+        for (let i = 0; i < this.trailSegments.length; i++) {
+          freeSegments.push(this.trailSegments[i]);
+        }
+        this.trailSegments.length = 0;
+      }
       return;
     }
     const maxAge = Math.max(1, Math.floor(this.trailLength));
@@ -690,19 +710,32 @@ var Particle = class _Particle {
       segment.age += dt;
       if (segment.age < maxAge) {
         this.trailSegments[writeIdx++] = segment;
+      } else {
+        freeSegments.push(segment);
       }
     }
     this.trailSegments.length = writeIdx;
     if (!addCurrentPoint) return;
     if (this.alpha <= 0) return;
-    this.trailSegments.push({
-      x: this.position.x,
-      y: this.position.y,
-      size: this.factoredSize,
-      rotation: this.rotation,
-      alpha: this.alpha,
-      age: 0
-    });
+    const seg = freeSegments.pop();
+    if (seg) {
+      seg.x = this.position.x;
+      seg.y = this.position.y;
+      seg.size = this.factoredSize;
+      seg.rotation = this.rotation;
+      seg.alpha = this.alpha;
+      seg.age = 0;
+      this.trailSegments.push(seg);
+    } else {
+      this.trailSegments.push({
+        x: this.position.x,
+        y: this.position.y,
+        size: this.factoredSize,
+        rotation: this.rotation,
+        alpha: this.alpha,
+        age: 0
+      });
+    }
   }
   resetImage() {
     this.image = null;
@@ -1187,6 +1220,9 @@ var CanvasRenderer = class {
     this.name = "CanvasRenderer";
     this.particular = null;
     this.pixelRatio = 2;
+    // Ghost object pool to avoid per-frame allocations for trail rendering
+    this.ghostPool = [];
+    this.ghostPoolIdx = 0;
     this.resize = (args) => {
       if (!args) return;
       const { width, height } = args;
@@ -1194,6 +1230,7 @@ var CanvasRenderer = class {
       this.target.height = height;
     };
     this.onUpdate = () => {
+      this.ghostPoolIdx = 0;
       this.context.save();
       this.context.scale(this.pixelRatio, this.pixelRatio);
       this.context.clearRect(0, 0, this.target.width, this.target.height);
@@ -1317,26 +1354,48 @@ var CanvasRenderer = class {
   makeTrailGhost(particle, segment, life) {
     const sizeScale = particle.trailShrink + life * (1 - particle.trailShrink);
     const alphaScale = life * particle.trailFade;
-    return {
-      position: { x: segment.x, y: segment.y },
-      factoredSize: Math.max(0.1, segment.size * sizeScale),
-      rotation: segment.rotation,
-      alpha: segment.alpha * alphaScale,
-      color: particle.color,
-      shape: particle.shape,
-      blendMode: particle.blendMode,
-      image: particle.image,
-      glow: false,
-      shadow: false,
-      glowColor: particle.glowColor,
-      glowAlpha: particle.glowAlpha,
-      glowSize: particle.glowSize,
-      trailSegments: [],
-      getRoundedLocation: () => [
-        (segment.x * 10 << 0) * 0.1,
-        (segment.y * 10 << 0) * 0.1
-      ]
-    };
+    let ghost;
+    if (this.ghostPoolIdx < this.ghostPool.length) {
+      ghost = this.ghostPool[this.ghostPoolIdx++];
+    } else {
+      const roundedLoc = [0, 0];
+      ghost = {
+        position: { x: 0, y: 0 },
+        factoredSize: 0,
+        rotation: 0,
+        alpha: 0,
+        color: "",
+        shape: "circle",
+        blendMode: "normal",
+        image: null,
+        glow: false,
+        shadow: false,
+        glowColor: "#ffffff",
+        glowAlpha: 0.25,
+        glowSize: 10,
+        trailSegments: [],
+        _roundedLoc: roundedLoc,
+        getRoundedLocation: () => roundedLoc
+      };
+      this.ghostPool.push(ghost);
+      this.ghostPoolIdx++;
+    }
+    ghost.position.x = segment.x;
+    ghost.position.y = segment.y;
+    ghost.factoredSize = Math.max(0.1, segment.size * sizeScale);
+    ghost.rotation = segment.rotation;
+    ghost.alpha = segment.alpha * alphaScale;
+    ghost.color = particle.color;
+    ghost.shape = particle.shape;
+    ghost.blendMode = particle.blendMode;
+    ghost.image = particle.image;
+    ghost.glowColor = particle.glowColor;
+    ghost.glowAlpha = particle.glowAlpha;
+    ghost.glowSize = particle.glowSize;
+    const ghostAny = ghost;
+    ghostAny._roundedLoc[0] = (segment.x * 10 << 0) * 0.1;
+    ghostAny._roundedLoc[1] = (segment.y * 10 << 0) * 0.1;
+    return ghost;
   }
   applyShadow(particle) {
     if (particle.glow) {
@@ -1851,6 +1910,12 @@ var WebGLRenderer = class {
     this.imageAttrRotation = -1;
     this.imageAttrColor = -1;
     this.imageTexUniform = null;
+    // Object pools to avoid per-frame allocations
+    this.ghostPool = [];
+    this.ghostPoolIdx = 0;
+    this.expandedArr = [];
+    this.batchPool = [];
+    this.batchPoolIdx = 0;
     this.resize = (args) => {
       if (!args || !this.gl) return;
       const { width, height } = args;
@@ -1863,16 +1928,16 @@ var WebGLRenderer = class {
       this.gl.clearColor(0, 0, 0, 0);
       this.gl.clear(this.gl.COLOR_BUFFER_BIT);
     };
+    this._batchResult = [];
     this.onUpdateAfter = () => {
       if (!this.gl || !this.particular || !this.program) return;
       const baseParticles = this.particular.getAllParticles();
-      const attractorDrawables = [];
+      const particles = this.expandParticlesWithTrails(baseParticles);
       for (const attractor of this.particular.attractors) {
         if (attractor.visible) {
-          attractorDrawables.push(attractor.toDrawable());
+          particles.push(attractor.toDrawable());
         }
       }
-      const particles = this.expandParticlesWithTrails(baseParticles).concat(attractorDrawables);
       const pixelRatio = this.particular.pixelRatio;
       const w = this.target.width || this.particular.width;
       const h = this.target.height || this.particular.height;
@@ -2037,7 +2102,9 @@ var WebGLRenderer = class {
     return shader;
   }
   expandParticlesWithTrails(particles) {
-    const expanded = [];
+    const expanded = this.expandedArr;
+    expanded.length = 0;
+    this.ghostPoolIdx = 0;
     for (const particle of particles) {
       expanded.push(particle);
       if (!particle.trail || particle.trailSegments.length === 0) continue;
@@ -2047,32 +2114,57 @@ var WebGLRenderer = class {
         if (life <= 0) continue;
         const sizeScale = particle.trailShrink + life * (1 - particle.trailShrink);
         const alphaScale = life * particle.trailFade;
-        const ghost = {
-          position: { x: segment.x, y: segment.y },
-          factoredSize: Math.max(0.1, segment.size * sizeScale),
-          rotation: segment.rotation,
-          alpha: segment.alpha * alphaScale,
-          color: particle.color,
-          colorR: particle.colorR,
-          colorG: particle.colorG,
-          colorB: particle.colorB,
-          shape: particle.shape,
-          blendMode: particle.blendMode,
-          image: particle.image,
-          imageTint: particle.imageTint,
-          glow: false,
-          shadow: false,
-          trail: false,
-          trailSegments: [],
-          shadowLightOrigin: particle.shadowLightOrigin
-        };
+        const ghost = this.acquireGhost();
+        ghost.position.x = segment.x;
+        ghost.position.y = segment.y;
+        ghost.factoredSize = Math.max(0.1, segment.size * sizeScale);
+        ghost.rotation = segment.rotation;
+        ghost.alpha = segment.alpha * alphaScale;
+        ghost.color = particle.color;
+        ghost.colorR = particle.colorR;
+        ghost.colorG = particle.colorG;
+        ghost.colorB = particle.colorB;
+        ghost.shape = particle.shape;
+        ghost.blendMode = particle.blendMode;
+        ghost.image = particle.image;
+        ghost.imageTint = particle.imageTint;
+        ghost.shadowLightOrigin = particle.shadowLightOrigin;
         expanded.push(ghost);
       }
     }
     return expanded;
   }
+  acquireGhost() {
+    if (this.ghostPoolIdx < this.ghostPool.length) {
+      return this.ghostPool[this.ghostPoolIdx++];
+    }
+    const ghost = {
+      position: { x: 0, y: 0 },
+      factoredSize: 0,
+      rotation: 0,
+      alpha: 0,
+      color: "",
+      colorR: 0,
+      colorG: 0,
+      colorB: 0,
+      shape: "circle",
+      blendMode: "normal",
+      image: null,
+      imageTint: false,
+      glow: false,
+      shadow: false,
+      trail: false,
+      trailSegments: [],
+      shadowLightOrigin: null
+    };
+    this.ghostPool.push(ghost);
+    this.ghostPoolIdx++;
+    return ghost;
+  }
   buildBatches(particles) {
-    const batches = [];
+    this.batchPoolIdx = 0;
+    const batches = this._batchResult;
+    batches.length = 0;
     let current = null;
     for (const p of particles) {
       const img = p.image && p.image instanceof HTMLImageElement ? p.image : null;
@@ -2082,22 +2174,23 @@ var WebGLRenderer = class {
       const imageTint = !!p.imageTint;
       const sameBatch = current && current.type === (isImage ? "image" : "circle") && current.blendMode === blendMode && current.shadow === p.shadow && (!p.shadow || current.shadowOffsetX === p.shadowOffsetX && current.shadowOffsetY === p.shadowOffsetY && current.shadowBlur === p.shadowBlur && current.shadowColor === p.shadowColor && current.shadowAlpha === p.shadowAlpha) && (isImage ? current.texture === tex && current.imageTint === imageTint : current.glow === p.glow && (!p.glow || current.glowSize === p.glowSize && current.glowColor === p.glowColor && current.glowAlpha === p.glowAlpha));
       if (!sameBatch) {
-        current = {
-          type: isImage ? "image" : "circle",
-          blendMode,
-          shadow: p.shadow,
-          shadowBlur: p.shadowBlur,
-          shadowOffsetX: p.shadowOffsetX,
-          shadowOffsetY: p.shadowOffsetY,
-          shadowColor: p.shadowColor,
-          shadowAlpha: p.shadowAlpha,
-          particles: []
-        };
+        current = this.acquireBatch();
+        current.type = isImage ? "image" : "circle";
+        current.blendMode = blendMode;
+        current.shadow = p.shadow;
+        current.shadowBlur = p.shadowBlur;
+        current.shadowOffsetX = p.shadowOffsetX;
+        current.shadowOffsetY = p.shadowOffsetY;
+        current.shadowColor = p.shadowColor;
+        current.shadowAlpha = p.shadowAlpha;
         if (isImage && tex) {
           current.texture = tex;
           current.image = img;
           current.imageTint = imageTint;
         } else {
+          current.texture = void 0;
+          current.image = void 0;
+          current.imageTint = void 0;
           current.glow = p.glow;
           current.glowSize = p.glowSize;
           current.glowColor = p.glowColor;
@@ -2108,6 +2201,21 @@ var WebGLRenderer = class {
       current.particles.push(p);
     }
     return batches;
+  }
+  acquireBatch() {
+    if (this.batchPoolIdx < this.batchPool.length) {
+      const batch2 = this.batchPool[this.batchPoolIdx++];
+      batch2.particles.length = 0;
+      return batch2;
+    }
+    const batch = {
+      type: "circle",
+      blendMode: "normal",
+      particles: []
+    };
+    this.batchPool.push(batch);
+    this.batchPoolIdx++;
+    return batch;
   }
   fillInstanceData(particles, offsetX = 0, offsetY = 0, scaleOffsetByAlpha = false, directionalFromLightOrigin = false) {
     let offset = 0;

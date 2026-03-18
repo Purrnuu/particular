@@ -348,6 +348,12 @@ export default class WebGLRenderer {
   private imageAttrRotation = -1;
   private imageAttrColor = -1;
   private imageTexUniform: WebGLUniformLocation | null = null;
+  // Object pools to avoid per-frame allocations
+  private ghostPool: Particle[] = [];
+  private ghostPoolIdx = 0;
+  private expandedArr: Particle[] = [];
+  private batchPool: DrawBatch[] = [];
+  private batchPoolIdx = 0;
 
   constructor(target: HTMLCanvasElement, options?: WebGLRendererOptions) {
     this.target = target;
@@ -494,7 +500,10 @@ export default class WebGLRenderer {
   };
 
   private expandParticlesWithTrails(particles: Particle[]): Particle[] {
-    const expanded: Particle[] = [];
+    const expanded = this.expandedArr;
+    expanded.length = 0;
+    this.ghostPoolIdx = 0;
+
     for (const particle of particles) {
       expanded.push(particle);
 
@@ -507,34 +516,60 @@ export default class WebGLRenderer {
 
         const sizeScale = particle.trailShrink + life * (1 - particle.trailShrink);
         const alphaScale = life * particle.trailFade;
-        // Minimal ghost with only fields used by buildBatches + fillInstanceData
-        const ghost = {
-          position: { x: segment.x, y: segment.y },
-          factoredSize: Math.max(0.1, segment.size * sizeScale),
-          rotation: segment.rotation,
-          alpha: segment.alpha * alphaScale,
-          color: particle.color,
-          colorR: particle.colorR,
-          colorG: particle.colorG,
-          colorB: particle.colorB,
-          shape: particle.shape,
-          blendMode: particle.blendMode,
-          image: particle.image,
-          imageTint: particle.imageTint,
-          glow: false,
-          shadow: false,
-          trail: false,
-          trailSegments: [],
-          shadowLightOrigin: particle.shadowLightOrigin,
-        } as unknown as Particle;
+        // Reuse ghost from pool or create new one
+        const ghost = this.acquireGhost();
+        ghost.position.x = segment.x;
+        ghost.position.y = segment.y;
+        ghost.factoredSize = Math.max(0.1, segment.size * sizeScale);
+        ghost.rotation = segment.rotation;
+        ghost.alpha = segment.alpha * alphaScale;
+        ghost.color = particle.color;
+        ghost.colorR = particle.colorR;
+        ghost.colorG = particle.colorG;
+        ghost.colorB = particle.colorB;
+        ghost.shape = particle.shape;
+        ghost.blendMode = particle.blendMode;
+        ghost.image = particle.image;
+        ghost.imageTint = particle.imageTint;
+        ghost.shadowLightOrigin = particle.shadowLightOrigin;
         expanded.push(ghost);
       }
     }
     return expanded;
   }
 
+  private acquireGhost(): Particle {
+    if (this.ghostPoolIdx < this.ghostPool.length) {
+      return this.ghostPool[this.ghostPoolIdx++]!;
+    }
+    const ghost = {
+      position: { x: 0, y: 0 },
+      factoredSize: 0,
+      rotation: 0,
+      alpha: 0,
+      color: '',
+      colorR: 0,
+      colorG: 0,
+      colorB: 0,
+      shape: 'circle',
+      blendMode: 'normal',
+      image: null,
+      imageTint: false,
+      glow: false,
+      shadow: false,
+      trail: false,
+      trailSegments: [],
+      shadowLightOrigin: null,
+    } as unknown as Particle;
+    this.ghostPool.push(ghost);
+    this.ghostPoolIdx++;
+    return ghost;
+  }
+
   private buildBatches(particles: Particle[]): DrawBatch[] {
-    const batches: DrawBatch[] = [];
+    this.batchPoolIdx = 0;
+    const batches = this._batchResult;
+    batches.length = 0;
     let current: DrawBatch | null = null;
 
     for (const p of particles) {
@@ -565,22 +600,23 @@ export default class WebGLRenderer {
                 current.glowAlpha === p.glowAlpha)));
 
       if (!sameBatch) {
-        current = {
-          type: isImage ? 'image' : 'circle',
-          blendMode,
-          shadow: p.shadow,
-          shadowBlur: p.shadowBlur,
-          shadowOffsetX: p.shadowOffsetX,
-          shadowOffsetY: p.shadowOffsetY,
-          shadowColor: p.shadowColor,
-          shadowAlpha: p.shadowAlpha,
-          particles: [],
-        };
+        current = this.acquireBatch();
+        current.type = isImage ? 'image' : 'circle';
+        current.blendMode = blendMode;
+        current.shadow = p.shadow;
+        current.shadowBlur = p.shadowBlur;
+        current.shadowOffsetX = p.shadowOffsetX;
+        current.shadowOffsetY = p.shadowOffsetY;
+        current.shadowColor = p.shadowColor;
+        current.shadowAlpha = p.shadowAlpha;
         if (isImage && tex) {
           current.texture = tex;
           current.image = img!;
           current.imageTint = imageTint;
         } else {
+          current.texture = undefined;
+          current.image = undefined;
+          current.imageTint = undefined;
           current.glow = p.glow;
           current.glowSize = p.glowSize;
           current.glowColor = p.glowColor;
@@ -591,6 +627,24 @@ export default class WebGLRenderer {
       current!.particles.push(p);
     }
     return batches;
+  }
+
+  private _batchResult: DrawBatch[] = [];
+
+  private acquireBatch(): DrawBatch {
+    if (this.batchPoolIdx < this.batchPool.length) {
+      const batch = this.batchPool[this.batchPoolIdx++]!;
+      batch.particles.length = 0;
+      return batch;
+    }
+    const batch: DrawBatch = {
+      type: 'circle',
+      blendMode: 'normal',
+      particles: [],
+    };
+    this.batchPool.push(batch);
+    this.batchPoolIdx++;
+    return batch;
   }
 
   private fillInstanceData(
@@ -819,16 +873,14 @@ export default class WebGLRenderer {
     if (!this.gl || !this.particular || !this.program) return;
 
     const baseParticles = this.particular.getAllParticles();
+    const particles = this.expandParticlesWithTrails(baseParticles);
 
     // Append visible attractor drawables after particles so they render on top
-    const attractorDrawables: Particle[] = [];
     for (const attractor of this.particular.attractors) {
       if (attractor.visible) {
-        attractorDrawables.push(attractor.toDrawable());
+        particles.push(attractor.toDrawable());
       }
     }
-
-    const particles = this.expandParticlesWithTrails(baseParticles).concat(attractorDrawables);
     const pixelRatio = this.particular.pixelRatio;
     const w = this.target.width || this.particular.width;
     const h = this.target.height || this.particular.height;
