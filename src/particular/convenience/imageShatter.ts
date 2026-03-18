@@ -125,7 +125,7 @@ export function createImageShatterHelper(
         // Interactive mode: chunks start assembled at home, no velocity
         const homePos = new Vector(px, py);
 
-        const particle = new Particle({
+        const particle = Particle.create({
           point: new Vector(px, py),
           velocity: new Vector(0, 0),
           acceleration: new Vector(0, 0),
@@ -156,7 +156,7 @@ export function createImageShatterHelper(
         const distFactor = 0.5 + (dist / Math.max(engineW, engineH)) * 1.5;
         const speed = velocity * speedMul * distFactor;
 
-        const particle = new Particle({
+        const particle = Particle.create({
           point: new Vector(px, py),
           velocity: new Vector(
             Math.cos(spreadAngle) * speed,

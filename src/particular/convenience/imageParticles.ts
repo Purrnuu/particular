@@ -132,7 +132,7 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
       const py = originY + sample.ny * engineH;
       const homePos = new Vector(px, py);
 
-      const particle = new Particle({
+      const particle = Particle.create({
         color: sample.color,
         baseAlpha: sample.alpha,
         point: new Vector(px, py),

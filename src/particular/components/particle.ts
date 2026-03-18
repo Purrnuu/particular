@@ -17,6 +17,11 @@ export interface TrailSegment {
 // Module-level pool for expired TrailSegment objects to avoid per-frame allocations
 const freeSegments: TrailSegment[] = [];
 
+// Module-level pool for recycled Particle objects — avoids GC pressure from short-lived particles.
+// Particles are returned here on destroy() and reused via Particle.create().
+const _particlePool: Particle[] = [];
+const MAX_POOL_SIZE = 2000;
+
 export default class Particle {
   position: Vector;
   velocity: Vector;
@@ -41,7 +46,7 @@ export default class Particle {
   particular: Particular | null = null;
   image: string | HTMLImageElement | null = null;
   isDetonationChild = false;
-  
+
   // Shape configuration
   shape: ParticleShape;
   blendMode: BlendMode;
@@ -84,6 +89,9 @@ export default class Particle {
   private homeDistFromCenter: number = 0;
   /** Angle from image center to this particle's home (radians). Used for outward ripple direction. */
   private homeAngleFromCenter: number = 0;
+  // Cached squared thresholds — avoids 2× Math.sqrt per home-particle per frame
+  private homeThresholdSq: number = 0;
+  private velocityThresholdSq: number = 0;
 
   addEventListener!: EventDispatcher['addEventListener'];
   removeEventListener!: EventDispatcher['removeEventListener'];
@@ -94,7 +102,62 @@ export default class Particle {
   /** Permanent alpha multiplier from source image (anti-aliased edges). */
   baseAlpha: number;
 
-  constructor({
+  /** Acquire a particle from the pool or create a new one. */
+  static create(params: ParticleConstructorParams): Particle {
+    const p = _particlePool.pop();
+    if (p) {
+      p._reinit(params);
+      return p;
+    }
+    return new Particle(params);
+  }
+
+  constructor(params: ParticleConstructorParams) {
+    // Allocate Vector objects — only happens for truly new particles; pooled ones reuse existing vectors
+    this.position = new Vector(0, 0);
+    this.velocity = new Vector(0, 0);
+    this.acceleration = new Vector(0, 0);
+    this.shadowLightOrigin = new Vector(0, 0);
+    // Placeholder values — _reinit sets everything from params
+    this.friction = 0;
+    this.rotation = 0;
+    this.rotationDirection = 1;
+    this.rotationVelocity = 0;
+    this.factoredSize = 1;
+    this.lifeTime = 100;
+    this.lifeTick = 0;
+    this.size = 5;
+    this.gravity = 0;
+    this.scaleStep = 1;
+    this.fadeTime = 30;
+    this.alpha = 1;
+    this.baseAlpha = 1;
+    this.color = '#888888';
+    this.colorR = 0.533;
+    this.colorG = 0.533;
+    this.colorB = 0.533;
+    this.shape = 'circle';
+    this.blendMode = 'normal';
+    this.glow = false;
+    this.glowSize = 10;
+    this.glowColor = '#ffffff';
+    this.glowAlpha = 0.35;
+    this.trail = false;
+    this.trailLength = 3;
+    this.trailFade = 0.75;
+    this.trailShrink = 0.55;
+    this.imageTint = false;
+    this.shadow = false;
+    this.shadowBlur = 8;
+    this.shadowOffsetX = 3;
+    this.shadowOffsetY = 3;
+    this.shadowColor = '#000000';
+    this.shadowAlpha = 0.3;
+    this._reinit(params);
+  }
+
+  /** Reinitialize all fields from params. Reuses existing Vector objects for pool efficiency. */
+  private _reinit({
     color,
     baseAlpha = 1,
     point,
@@ -127,37 +190,54 @@ export default class Particle {
     homePosition,
     homeCenter,
     homeConfig,
-  }: ParticleConstructorParams) {
-    this.position = point ?? new Vector(0, 0);
-    this.shadowLightOrigin = new Vector(this.position.x, this.position.y);
-    this.velocity = velocity ?? new Vector(0, 0);
-    this.acceleration = acceleration ?? new Vector(0, 0);
-    this.friction = friction ?? 0;
+  }: ParticleConstructorParams): void {
+    // Reuse existing Vector objects — copy values instead of allocating new ones
+    if (point) {
+      this.position.x = point.x;
+      this.position.y = point.y;
+    } else {
+      this.position.x = 0;
+      this.position.y = 0;
+    }
+    this.shadowLightOrigin.x = this.position.x;
+    this.shadowLightOrigin.y = this.position.y;
+    if (velocity) {
+      this.velocity.x = velocity.x;
+      this.velocity.y = velocity.y;
+    } else {
+      this.velocity.x = 0;
+      this.velocity.y = 0;
+    }
+    if (acceleration) {
+      this.acceleration.x = acceleration.x;
+      this.acceleration.y = acceleration.y;
+    } else {
+      this.acceleration.x = 0;
+      this.acceleration.y = 0;
+    }
 
+    this.friction = friction ?? 0;
     this.rotation = Math.random() * 360;
     this.rotationDirection = Math.random() > 0.5 ? 1 : -1;
     this.rotationVelocity = this.rotationDirection * getRandomInt(1, 3);
-
     this.factoredSize = 1;
-
     this.lifeTime = particleLife === Infinity ? Infinity : getRandomInt(Math.round(particleLife * 0.75), particleLife);
     this.lifeTick = 0;
     this.size = size ?? getRandomInt(5, 15);
-
     this.gravity = gravity;
     this.scaleStep = scaleStep;
     this.fadeTime = fadeTime;
-
     this.alpha = 1;
     this.baseAlpha = baseAlpha;
+
     this.color = color
       ?? (colors && colors.length > 0
         ? colors[Math.floor(Math.random() * colors.length)]!
         : '#888888');
-    const parsed = Particle.parseHexNorm(this.color);
-    this.colorR = parsed[0];
-    this.colorG = parsed[1];
-    this.colorB = parsed[2];
+    const hex = this.color;
+    this.colorR = parseInt(hex.slice(1, 3), 16) / 255;
+    this.colorG = parseInt(hex.slice(3, 5), 16) / 255;
+    this.colorB = parseInt(hex.slice(5, 7), 16) / 255;
 
     // Shape configuration
     this.shape = shape;
@@ -178,10 +258,33 @@ export default class Particle {
     this.shadowColor = shadowColor;
     this.shadowAlpha = shadowAlpha;
 
+    // Clear pooled state
+    this.particular = null;
+    this.image = null;
+    this.isDetonationChild = false;
+    this.idleEnabled = true;
+    this.preventSettle = false;
+    this.breathingPhase = Math.random() * Math.PI * 2;
+    this.springMultiplier = 1;
+    this.idleTicks = 0;
+    this.pulseCycleCount = 0;
+    this.nextPulseAt = 0;
+    this.homeDistFromCenter = 0;
+    this.homeAngleFromCenter = 0;
+    this.homeThresholdSq = 0;
+    this.velocityThresholdSq = 0;
+
     // Home position (spring return + idle animation)
     if (homePosition) {
-      this.homePosition = new Vector(homePosition.x, homePosition.y);
+      if (this.homePosition) {
+        this.homePosition.x = homePosition.x;
+        this.homePosition.y = homePosition.y;
+      } else {
+        this.homePosition = new Vector(homePosition.x, homePosition.y);
+      }
       this.homeConfig = { ...defaultHomeConfig, ...homeConfig };
+      this.homeThresholdSq = this.homeConfig.homeThreshold * this.homeConfig.homeThreshold;
+      this.velocityThresholdSq = this.homeConfig.velocityThreshold * this.homeConfig.velocityThreshold;
       // Image particles should not spin or have random rotation — they represent fixed pixels
       this.rotation = 0;
       this.rotationVelocity = 0;
@@ -198,6 +301,9 @@ export default class Particle {
         this.homeDistFromCenter = Math.sqrt(cdx * cdx + cdy * cdy);
         this.homeAngleFromCenter = Math.atan2(cdy, cdx);
       }
+    } else {
+      this.homePosition = null;
+      this.homeConfig = null;
     }
   }
 
@@ -215,8 +321,8 @@ export default class Particle {
 
     // External forces (attractors, mouse)
     if (forces) {
-      for (const force of forces) {
-        this.velocity.add(force.getForce(this.position), dt);
+      for (let i = 0; i < forces.length; i++) {
+        this.velocity.add(forces[i]!.getForce(this.position), dt);
       }
     }
 
@@ -224,9 +330,10 @@ export default class Particle {
     if (this.homePosition && this.homeConfig) {
       const dx = this.homePosition.x - this.position.x;
       const dy = this.homePosition.y - this.position.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const speed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y);
-      const isSettled = !this.preventSettle && dist < this.homeConfig.homeThreshold && speed < this.homeConfig.velocityThreshold;
+      // Use squared distance/speed to avoid 2× Math.sqrt per particle per frame
+      const distSq = dx * dx + dy * dy;
+      const speedSq = this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y;
+      const isSettled = !this.preventSettle && distSq < this.homeThresholdSq && speedSq < this.velocityThresholdSq;
 
       // Idle pulse timer ticks when idle is enabled (monotonic, never resets) — mouse/scatter don't affect wave timing.
       // When idle is disabled, we still advance the timer so re-enabling doesn't fire a burst of missed pulses.
@@ -371,14 +478,6 @@ export default class Particle {
     return [((this.position.x * 10) << 0) * 0.1, ((this.position.y * 10) << 0) * 0.1];
   }
 
-  /** Parse hex color string to normalized [r, g, b] (0–1). Cached once per particle in constructor. */
-  private static parseHexNorm(hex: string): [number, number, number] {
-    const r = parseInt(hex.slice(1, 3), 16) / 255;
-    const g = parseInt(hex.slice(3, 5), 16) / 255;
-    const b = parseInt(hex.slice(5, 7), 16) / 255;
-    return [r, g, b];
-  }
-
   /** Deterministic pseudo-random interval from cycle number — same output for all particles in the same cycle. */
   private static deterministicInterval(cycle: number, min: number, max: number): number {
     const hash = Math.sin(cycle * 12.9898 + 78.233) * 43758.5453;
@@ -386,14 +485,30 @@ export default class Particle {
     return min + t * (max - min);
   }
 
+  /** Fast-path dispatch: skip entirely when no listeners are registered (the common case). */
   private dispatch<T>(event: string, target: T): void {
-    if (this.particular) {
+    if (this.particular && this.particular.hasEventListener(event)) {
       this.particular.dispatchEvent(event, target);
     }
   }
 
+  /** Dispatch PARTICLE_DEAD event and return this particle to the pool for reuse. */
   destroy(): void {
     this.dispatch('PARTICLE_DEAD', this);
+    // Return trail segments to segment pool
+    for (let i = 0; i < this.trailSegments.length; i++) {
+      freeSegments.push(this.trailSegments[i]!);
+    }
+    this.trailSegments.length = 0;
+    // Clear references to prevent memory leaks in pooled particles
+    this.particular = null;
+    this.image = null;
+    this.homePosition = null;
+    this.homeConfig = null;
+    // Return to particle pool for reuse
+    if (_particlePool.length < MAX_POOL_SIZE) {
+      _particlePool.push(this);
+    }
   }
 }
 

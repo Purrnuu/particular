@@ -188,7 +188,7 @@ export default class Emitter {
 
     this.lifeCycle++;
 
-    return new Particle({
+    return Particle.create({
       point: newPoint,
       velocity: newVelocity,
       acceleration,

@@ -37,7 +37,7 @@ export function createExplosionChild(
       ? fallbackColors
       : [parent.color];
 
-  const particle = new Particle({
+  const particle = Particle.create({
     point: new Vector(parent.x, parent.y),
     velocity,
     acceleration: new Vector(0, 0),

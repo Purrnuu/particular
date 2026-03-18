@@ -17,12 +17,14 @@ export default class Vector {
   }
 
   addFriction(friction: number, dt = 1): void {
+    if (friction <= 0) return;
     const factor = Math.pow(1 - friction, dt);
     this.x *= factor;
     this.y *= factor;
   }
 
   addGravity(gravity: number, dt = 1): void {
+    if (gravity === 0) return;
     this.y += gravity * dt;
   }
 
