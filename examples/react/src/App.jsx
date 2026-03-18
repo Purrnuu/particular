@@ -557,13 +557,15 @@ export default function App() {
     };
   }, []);
 
-  // Boundaries — snow flows around all cards
+  // Boundaries — snow flows around feature cards only (first 6)
   useEffect(() => {
     const ctrl = snowControllerRef.current;
     if (!ctrl) return;
 
+    const featureCount = 6;
     const timer = setTimeout(() => {
-      for (const card of cardRefs.current) {
+      for (let i = 0; i < featureCount; i++) {
+        const card = cardRefs.current[i];
         if (!card) continue;
         ctrl.addBoundary({ element: card, strength: -1.5, radius: 10 });
       }
@@ -741,6 +743,11 @@ export default function App() {
     });
   }, []);
 
+  // Click title to scatter hero text
+  const handleTitleClick = useCallback(() => {
+    textControllerRef.current?.scatter({ velocity: 15, rotation: 8 });
+  }, []);
+
   // E to scatter hero text
   useEffect(() => {
     const onKey = (e) => {
@@ -784,6 +791,20 @@ export default function App() {
         className="showcase-hero-section"
         style={{ position: "relative", zIndex: 1, textAlign: "center", pointerEvents: "none", userSelect: "none" }}
       >
+        {/* Clickable area over the "Particular" text particles — click to explode */}
+        <div
+          onClick={handleTitleClick}
+          style={{
+            position: "absolute",
+            top: "28vh",
+            left: "10%",
+            right: "10%",
+            height: "20vh",
+            pointerEvents: "auto",
+            cursor: "pointer",
+            zIndex: 2,
+          }}
+        />
         <div style={{ paddingTop: "58vh" }}>
           <p style={{ ...sectionSubStyle, fontSize: "1.1rem", margin: "0 auto 20px" }}>
             Turn text, images, and DOM elements into interactive particles.
@@ -791,7 +812,7 @@ export default function App() {
             Beautiful by default. Lightning fast. Zero config.
           </p>
           <p style={{ color: "rgba(255,255,255,0.2)", fontSize: "0.8rem" }}>
-            Touch or move mouse to push particles
+            Click the title or move mouse to push particles
           </p>
         </div>
         <div style={{ position: "absolute", bottom: 40, left: 0, right: 0, color: "rgba(255,255,255,0.25)", fontSize: "0.85rem" }}>
