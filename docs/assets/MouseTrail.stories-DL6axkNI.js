@@ -1,0 +1,28 @@
+import{j as r}from"./jsx-runtime-BO8uF4Og.js";import{r as p}from"./index-D4H_InIO.js";import{f as t,b as x}from"./presets-DPQJpYrI.js";import{c as M}from"./index-DqagH4hZ.js";const S={colorPalette:{control:"select",options:["default",...Object.keys(x)],description:"Color palette",table:{category:"Appearance"}},shape:{control:"select",options:["circle","square","triangle","star","ring","sparkle"],description:"Particle shape",table:{category:"Appearance"}},blendMode:{control:"select",options:["normal","additive","multiply","screen"],description:"Blend mode",table:{category:"Appearance"}},rate:{control:{type:"number",min:.1,max:10,step:.1},description:"Emission rate while moving",table:{category:"Emission"}},sizeMin:{control:{type:"number",min:.5,max:10,step:.5},description:"Min particle size",table:{category:"Emission"}},sizeMax:{control:{type:"number",min:.5,max:15,step:.5},description:"Max particle size",table:{category:"Emission"}},particleLife:{control:{type:"number",min:10,max:200,step:5},description:"Particle lifetime (ticks)",table:{category:"Emission"}},fadeTime:{control:{type:"number",min:5,max:100,step:5},description:"Fade duration (ticks)",table:{category:"Emission"}},velocity:{control:{type:"number",min:.1,max:5,step:.1},description:"Base velocity",table:{category:"Physics"}},spread:{control:{type:"number",min:0,max:3,step:.1},description:"Spread angle (radians)",table:{category:"Physics"}},friction:{control:{type:"number",min:0,max:.1,step:.005},description:"Friction",table:{category:"Physics"}},minSpeed:{control:{type:"number",min:0,max:5,step:.1},description:"Min mouse speed to emit",table:{category:"Physics"}},glow:{control:"boolean",description:"Enable glow",table:{category:"Glow"}},glowColor:{control:"color",description:"Glow color",table:{category:"Glow"}},glowAlpha:{control:{type:"number",min:0,max:1,step:.05},description:"Glow opacity",table:{category:"Glow"}},glowSize:{control:{type:"number",min:2,max:30,step:1},description:"Glow size",table:{category:"Glow"}},trail:{control:"boolean",description:"Enable trail streak",table:{category:"Trail"}},trailLength:{control:{type:"number",min:1,max:20,step:1},description:"Trail length (segments)",table:{category:"Trail"}},trailFade:{control:{type:"number",min:0,max:1,step:.05},description:"Trail fade",table:{category:"Trail"}},trailShrink:{control:{type:"number",min:0,max:1,step:.05},description:"Trail shrink",table:{category:"Trail"}},maxCount:{control:{type:"number",min:100,max:3e3,step:100},description:"Max particles",table:{category:"Emission"}}},T={colorPalette:"default",shape:t.shape,blendMode:t.blendMode,rate:t.rate,sizeMin:t.sizeMin,sizeMax:t.sizeMax,particleLife:t.particleLife,fadeTime:t.fadeTime,velocity:t.velocity,spread:t.spread,friction:t.friction,minSpeed:t.minSpeed,glow:t.glow,glowColor:t.glowColor,glowAlpha:t.glowAlpha,glowSize:t.glowSize,trail:t.trail,trailLength:t.trailLength,trailFade:t.trailFade,trailShrink:t.trailShrink,maxCount:800};function z(e){return{colors:e.colorPalette==="default"?t.colors:x[e.colorPalette]??[],shape:e.shape,rate:e.rate,sizeMin:e.sizeMin,sizeMax:e.sizeMax,particleLife:e.particleLife,fadeTime:e.fadeTime,velocity:e.velocity,spread:e.spread,friction:e.friction,minSpeed:e.minSpeed,glow:e.glow,glowColor:e.glowColor,glowAlpha:e.glowAlpha,glowSize:e.glowSize,blendMode:e.blendMode,trail:e.trail,trailLength:e.trailLength,trailFade:e.trailFade,trailShrink:e.trailShrink}}const l=e=>{const n=p.useRef(null);return p.useEffect(()=>{const s=n.current;if(!s)return;const c=M({container:s,config:{maxCount:e.maxCount,continuous:!0},renderer:"webgl",autoResize:!0});return c.addMouseTrail(z(e)),()=>c.destroy()},[JSON.stringify(e)]),r.jsx("div",{ref:n,style:{position:"relative",width:"100%",height:"100vh",background:"#0a0a1a",display:"flex",alignItems:"center",justifyContent:"center",cursor:"default"},children:r.jsx("p",{style:{color:"rgba(255, 255, 255, 0.2)",fontSize:"1.1rem",fontFamily:"system-ui, sans-serif",pointerEvents:"none",userSelect:"none"},children:"Move your mouse"})})},A={title:"Particular/Mouse Trail",argTypes:S,args:T,parameters:{layout:"fullscreen"}},o={render:e=>r.jsx(l,{...e})},i={args:{colorPalette:"orange",glowColor:"#ff9500",rate:2,velocity:2,particleLife:50,trailLength:8},render:e=>r.jsx(l,{...e})},a={args:{colorPalette:"snow",shape:"circle",glowColor:"#ffffff",glowAlpha:.2,rate:3,sizeMin:.5,sizeMax:2,velocity:.8,spread:1.2,particleLife:60,trail:!1},render:e=>r.jsx(l,{...e})};var m,d,u;o.parameters={...o.parameters,docs:{...(m=o.parameters)==null?void 0:m.docs,source:{originalSource:`{
+  render: args => <MouseTrailDemo {...args as TrailStoryArgs} />
+}`,...(u=(d=o.parameters)==null?void 0:d.docs)==null?void 0:u.source}}};var g,f,y;i.parameters={...i.parameters,docs:{...(g=i.parameters)==null?void 0:g.docs,source:{originalSource:`{
+  args: {
+    colorPalette: 'orange',
+    glowColor: '#ff9500',
+    rate: 2,
+    velocity: 2,
+    particleLife: 50,
+    trailLength: 8
+  },
+  render: args => <MouseTrailDemo {...args as TrailStoryArgs} />
+}`,...(y=(f=i.parameters)==null?void 0:f.docs)==null?void 0:y.source}}};var b,w,h;a.parameters={...a.parameters,docs:{...(b=a.parameters)==null?void 0:b.docs,source:{originalSource:`{
+  args: {
+    colorPalette: 'snow',
+    shape: 'circle',
+    glowColor: '#ffffff',
+    glowAlpha: 0.2,
+    rate: 3,
+    sizeMin: 0.5,
+    sizeMax: 2,
+    velocity: 0.8,
+    spread: 1.2,
+    particleLife: 60,
+    trail: false
+  },
+  render: args => <MouseTrailDemo {...args as TrailStoryArgs} />
+}`,...(h=(w=a.parameters)==null?void 0:w.docs)==null?void 0:h.source}}};const E=["Default","WarmWisps","SnowDust"];export{o as Default,a as SnowDust,i as WarmWisps,E as __namedExportsOrder,A as default};

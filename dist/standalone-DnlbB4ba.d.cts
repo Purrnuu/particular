@@ -88,6 +88,9 @@ interface ParticularConfig {
     continuous?: boolean;
     /** WebGL: max particles per draw call (default 4096). Increase for fewer draw calls with many particles. */
     webglMaxInstances?: number;
+    /** Max dead particles kept in the reuse pool (default 2000). Higher values reduce GC pressure
+     *  in scenes with heavy particle turnover; lower values reduce idle memory usage. */
+    particlePoolSize?: number;
     /** Container element for container-aware mode. When set, the canvas sizes to the container
      *  and coordinates are relative to the container instead of the viewport.
      *  Omit for full-viewport overlay mode (default). */
@@ -548,6 +551,8 @@ interface TrailSegment {
     alpha: number;
     age: number;
 }
+/** Set the maximum number of dead particles kept in the reuse pool. */
+declare function setParticlePoolSize(size: number): void;
 declare class Particle {
     position: Vector;
     velocity: Vector;
@@ -611,6 +616,8 @@ declare class Particle {
     private homeDistFromCenter;
     /** Angle from image center to this particle's home (radians). Used for outward ripple direction. */
     private homeAngleFromCenter;
+    private homeThresholdSq;
+    private velocityThresholdSq;
     addEventListener: EventDispatcher['addEventListener'];
     removeEventListener: EventDispatcher['removeEventListener'];
     removeAllEventListeners: EventDispatcher['removeAllEventListeners'];
@@ -618,18 +625,22 @@ declare class Particle {
     hasEventListener: EventDispatcher['hasEventListener'];
     /** Permanent alpha multiplier from source image (anti-aliased edges). */
     baseAlpha: number;
-    constructor({ color, baseAlpha, point, velocity, acceleration, friction, size, particleLife, gravity, scaleStep, fadeTime, shape, blendMode, glow, glowSize, glowColor, glowAlpha, trail, trailLength, trailFade, trailShrink, imageTint, shadow, shadowBlur, shadowOffsetX, shadowOffsetY, shadowColor, shadowAlpha, colors, homePosition, homeCenter, homeConfig, }: ParticleConstructorParams);
+    /** Acquire a particle from the pool or create a new one. */
+    static create(params: ParticleConstructorParams): Particle;
+    constructor(params: ParticleConstructorParams);
+    /** Reinitialize all fields from params. Reuses existing Vector objects for pool efficiency. */
+    private _reinit;
     init(image: string | HTMLImageElement | null, particular: Particular): void;
     update(forces?: ForceSource[], dt?: number): void;
     advanceTrail(dt?: number): void;
     private updateTrail;
     resetImage(): void;
     getRoundedLocation(): [number, number];
-    /** Parse hex color string to normalized [r, g, b] (0–1). Cached once per particle in constructor. */
-    private static parseHexNorm;
     /** Deterministic pseudo-random interval from cycle number — same output for all particles in the same cycle. */
     private static deterministicInterval;
+    /** Fast-path dispatch: skip entirely when no listeners are registered (the common case). */
     private dispatch;
+    /** Dispatch PARTICLE_DEAD event and return this particle to the pool for reuse. */
     destroy(): void;
 }
 
@@ -725,7 +736,7 @@ declare class Particular implements IEventDispatcher {
     removeAllEventListeners: EventDispatcher['removeAllEventListeners'];
     dispatchEvent: EventDispatcher['dispatchEvent'];
     hasEventListener: EventDispatcher['hasEventListener'];
-    initialize({ maxCount, continuous, pixelRatio, container, }: ParticularConfig): void;
+    initialize({ maxCount, continuous, pixelRatio, particlePoolSize, container, }: ParticularConfig): void;
     start(): void;
     stop(): void;
     onResize(): void;
@@ -1982,4 +1993,4 @@ interface FPSOverlayController {
 }
 declare function showFPSOverlay(options?: FPSOverlayOptions): FPSOverlayController;
 
-export { createTextImage as $, Attractor as A, type BurstSettings as B, CanvasRenderer as C, type DetonateConfig as D, type ExplodeOptions as E, type FullParticularConfig as F, type ParticleConstructorParams as G, type HomePositionConfig as H, type ImageParticlesConfig as I, type ParticleShape as J, type ParticularConfig as K, type ScreensaverOptions as L, type MouseForceConfig as M, type ShapeConfig as N, WebGLRenderer as O, Particular as P, type WebGLRendererOptions as Q, type RendererType as R, type ScreensaverController as S, type TextImageConfig as T, applyCanvasStyles as U, Vector as V, type WobbleConfig as W, canvasToDataURL as X, configureParticle as Y, createHeartImage as Z, createParticles as _, type ParticleConfig as a, getParticlesBackgroundLayerStyle as a0, getParticlesContainerLayerStyle as a1, particlesBackgroundLayerStyle as a2, particlesContainerLayerStyle as a3, DEFAULT_Z_INDEX as a4, presets as a5, showFPSOverlay as a6, startScreensaver as a7, type PresetName as b, configureParticular as c, type ParticlesController as d, type BurstOptions as e, type ElementParticlesConfig as f, type ImageShatterConfig as g, type AttractorConfig as h, type BlendMode as i, type BoundaryConfig as j, type BoundaryHandle as k, type ChildExplosionConfig as l, type ContainerGlowConfig as m, type ContainerGlowHandle as n, type CreateParticlesOptions as o, Emitter as p, type EmitterConfiguration as q, type FPSOverlayController as r, type FPSOverlayOptions as s, type ForceSource as t, type IntroConfig as u, type IntroMode as v, MouseForce as w, type MouseTrailConfig as x, type MouseTrailHandle as y, Particle as z };
+export { createTextImage as $, Attractor as A, type BurstSettings as B, CanvasRenderer as C, type DetonateConfig as D, type ExplodeOptions as E, type FullParticularConfig as F, type ParticleConstructorParams as G, type HomePositionConfig as H, type ImageParticlesConfig as I, type ParticleShape as J, type ParticularConfig as K, type ScreensaverOptions as L, type MouseForceConfig as M, type ShapeConfig as N, WebGLRenderer as O, Particular as P, type WebGLRendererOptions as Q, type RendererType as R, type ScreensaverController as S, type TextImageConfig as T, applyCanvasStyles as U, Vector as V, type WobbleConfig as W, canvasToDataURL as X, configureParticle as Y, createHeartImage as Z, createParticles as _, type ParticleConfig as a, getParticlesBackgroundLayerStyle as a0, getParticlesContainerLayerStyle as a1, particlesBackgroundLayerStyle as a2, particlesContainerLayerStyle as a3, DEFAULT_Z_INDEX as a4, presets as a5, setParticlePoolSize as a6, showFPSOverlay as a7, startScreensaver as a8, type PresetName as b, configureParticular as c, type ParticlesController as d, type BurstOptions as e, type ElementParticlesConfig as f, type ImageShatterConfig as g, type AttractorConfig as h, type BlendMode as i, type BoundaryConfig as j, type BoundaryHandle as k, type ChildExplosionConfig as l, type ContainerGlowConfig as m, type ContainerGlowHandle as n, type CreateParticlesOptions as o, Emitter as p, type EmitterConfiguration as q, type FPSOverlayController as r, type FPSOverlayOptions as s, type ForceSource as t, type IntroConfig as u, type IntroMode as v, MouseForce as w, type MouseTrailConfig as x, type MouseTrailHandle as y, Particle as z };

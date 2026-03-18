@@ -56,14 +56,11 @@ var EventDispatcher = class _EventDispatcher {
   dispatchEvent(type, args) {
     let result = false;
     if (type && this.listeners) {
-      let arr = this.listeners[type];
-      if (!arr) return result;
-      arr = arr.slice();
-      let handler;
+      const arr = this.listeners[type];
+      if (!arr || arr.length === 0) return result;
       let i = arr.length;
       while (i--) {
-        handler = arr[i];
-        result = result || !!handler(args);
+        result = result || !!arr[i](args);
       }
     }
     return result;
@@ -87,11 +84,13 @@ var Vector = class _Vector {
     this.y += vector.y * scale;
   }
   addFriction(friction, dt = 1) {
+    if (friction <= 0) return;
     const factor = Math.pow(1 - friction, dt);
     this.x *= factor;
     this.y *= factor;
   }
   addGravity(gravity, dt = 1) {
+    if (gravity === 0) return;
     this.y += gravity * dt;
   }
   subtract(vector) {
@@ -124,7 +123,8 @@ var defaultParticular = {
   maxCount: 500,
   autoStart: false,
   continuous: false,
-  webglMaxInstances: 4096
+  webglMaxInstances: 4096,
+  particlePoolSize: 2e3
 };
 var defaultParticle = {
   rate: 8,
@@ -325,6 +325,405 @@ function destroy(array, param) {
   array.splice(0, array.length);
 }
 
+// src/particular/utils/math.ts
+function getRandomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+var TO_RADIANS = Math.PI / 180;
+function degToRad(deg) {
+  return deg * TO_RADIANS;
+}
+
+// src/particular/components/particle.ts
+var freeSegments = [];
+var _particlePool = [];
+var _maxPoolSize = 2e3;
+function setParticlePoolSize(size) {
+  _maxPoolSize = Math.max(0, size);
+  if (_particlePool.length > _maxPoolSize) {
+    _particlePool.length = _maxPoolSize;
+  }
+}
+var Particle = class _Particle {
+  constructor(params) {
+    this.particular = null;
+    this.image = null;
+    this.isDetonationChild = false;
+    this.trailSegments = [];
+    // Home position — spring return + idle animation
+    this.homePosition = null;
+    this.homeConfig = null;
+    /** When false, idle animations (breathing, wiggle, wave, pulse) are suppressed. Spring return still works. */
+    this.idleEnabled = true;
+    /** When true, suppress the settle-snap behavior. Spring still runs but particles never hard-snap to home.
+     *  Useful for interactive effects where external forces (wobble, drag) should keep particles in motion. */
+    this.preventSettle = false;
+    this.breathingPhase = Math.random() * Math.PI * 2;
+    /** Per-particle spring multiplier (0.6–1.4) — breaks sync so particles return at different rates. */
+    this.springMultiplier = 1;
+    /** Monotonic tick counter for coordinated idle wave (never resets). */
+    this.idleTicks = 0;
+    /** How many pulse cycles this particle has completed. */
+    this.pulseCycleCount = 0;
+    /** Tick at which the next pulse wave starts (computed deterministically so all particles agree). */
+    this.nextPulseAt = 0;
+    /** Distance from image center (set once in constructor, used for ripple delay). */
+    this.homeDistFromCenter = 0;
+    /** Angle from image center to this particle's home (radians). Used for outward ripple direction. */
+    this.homeAngleFromCenter = 0;
+    // Cached squared thresholds — avoids 2× Math.sqrt per home-particle per frame
+    this.homeThresholdSq = 0;
+    this.velocityThresholdSq = 0;
+    this.position = new Vector(0, 0);
+    this.velocity = new Vector(0, 0);
+    this.acceleration = new Vector(0, 0);
+    this.shadowLightOrigin = new Vector(0, 0);
+    this.friction = 0;
+    this.rotation = 0;
+    this.rotationDirection = 1;
+    this.rotationVelocity = 0;
+    this.factoredSize = 1;
+    this.lifeTime = 100;
+    this.lifeTick = 0;
+    this.size = 5;
+    this.gravity = 0;
+    this.scaleStep = 1;
+    this.fadeTime = 30;
+    this.alpha = 1;
+    this.baseAlpha = 1;
+    this.color = "#888888";
+    this.colorR = 0.533;
+    this.colorG = 0.533;
+    this.colorB = 0.533;
+    this.shape = "circle";
+    this.blendMode = "normal";
+    this.glow = false;
+    this.glowSize = 10;
+    this.glowColor = "#ffffff";
+    this.glowAlpha = 0.35;
+    this.trail = false;
+    this.trailLength = 3;
+    this.trailFade = 0.75;
+    this.trailShrink = 0.55;
+    this.imageTint = false;
+    this.shadow = false;
+    this.shadowBlur = 8;
+    this.shadowOffsetX = 3;
+    this.shadowOffsetY = 3;
+    this.shadowColor = "#000000";
+    this.shadowAlpha = 0.3;
+    this._reinit(params);
+  }
+  /** Acquire a particle from the pool or create a new one. */
+  static create(params) {
+    const p = _particlePool.pop();
+    if (p) {
+      p._reinit(params);
+      return p;
+    }
+    return new _Particle(params);
+  }
+  /** Reinitialize all fields from params. Reuses existing Vector objects for pool efficiency. */
+  _reinit({
+    color,
+    baseAlpha = 1,
+    point,
+    velocity,
+    acceleration,
+    friction,
+    size,
+    particleLife,
+    gravity,
+    scaleStep,
+    fadeTime,
+    shape = "circle",
+    blendMode = "normal",
+    glow = false,
+    glowSize = 10,
+    glowColor = "#ffffff",
+    glowAlpha = 0.35,
+    trail = false,
+    trailLength = 3,
+    trailFade = 0.75,
+    trailShrink = 0.55,
+    imageTint = false,
+    shadow = false,
+    shadowBlur = 8,
+    shadowOffsetX = 3,
+    shadowOffsetY = 3,
+    shadowColor = "#000000",
+    shadowAlpha = 0.3,
+    colors,
+    homePosition,
+    homeCenter,
+    homeConfig
+  }) {
+    if (point) {
+      this.position.x = point.x;
+      this.position.y = point.y;
+    } else {
+      this.position.x = 0;
+      this.position.y = 0;
+    }
+    this.shadowLightOrigin.x = this.position.x;
+    this.shadowLightOrigin.y = this.position.y;
+    if (velocity) {
+      this.velocity.x = velocity.x;
+      this.velocity.y = velocity.y;
+    } else {
+      this.velocity.x = 0;
+      this.velocity.y = 0;
+    }
+    if (acceleration) {
+      this.acceleration.x = acceleration.x;
+      this.acceleration.y = acceleration.y;
+    } else {
+      this.acceleration.x = 0;
+      this.acceleration.y = 0;
+    }
+    this.friction = friction ?? 0;
+    this.rotation = Math.random() * 360;
+    this.rotationDirection = Math.random() > 0.5 ? 1 : -1;
+    this.rotationVelocity = this.rotationDirection * getRandomInt(1, 3);
+    this.factoredSize = 1;
+    this.lifeTime = particleLife === Infinity ? Infinity : getRandomInt(Math.round(particleLife * 0.75), particleLife);
+    this.lifeTick = 0;
+    this.size = size ?? getRandomInt(5, 15);
+    this.gravity = gravity;
+    this.scaleStep = scaleStep;
+    this.fadeTime = fadeTime;
+    this.alpha = 1;
+    this.baseAlpha = baseAlpha;
+    this.color = color ?? (colors && colors.length > 0 ? colors[Math.floor(Math.random() * colors.length)] : "#888888");
+    const hex = this.color;
+    this.colorR = parseInt(hex.slice(1, 3), 16) / 255;
+    this.colorG = parseInt(hex.slice(3, 5), 16) / 255;
+    this.colorB = parseInt(hex.slice(5, 7), 16) / 255;
+    this.shape = shape;
+    this.blendMode = blendMode;
+    this.glow = glow;
+    this.glowSize = glowSize;
+    this.glowColor = glowColor;
+    this.glowAlpha = glowAlpha;
+    this.trail = trail;
+    this.trailLength = trailLength;
+    this.trailFade = trailFade;
+    this.trailShrink = trailShrink;
+    this.imageTint = imageTint;
+    this.shadow = shadow;
+    this.shadowBlur = shadowBlur;
+    this.shadowOffsetX = shadowOffsetX;
+    this.shadowOffsetY = shadowOffsetY;
+    this.shadowColor = shadowColor;
+    this.shadowAlpha = shadowAlpha;
+    this.particular = null;
+    this.image = null;
+    this.isDetonationChild = false;
+    this.idleEnabled = true;
+    this.preventSettle = false;
+    this.breathingPhase = Math.random() * Math.PI * 2;
+    this.springMultiplier = 1;
+    this.idleTicks = 0;
+    this.pulseCycleCount = 0;
+    this.nextPulseAt = 0;
+    this.homeDistFromCenter = 0;
+    this.homeAngleFromCenter = 0;
+    this.homeThresholdSq = 0;
+    this.velocityThresholdSq = 0;
+    if (homePosition) {
+      if (this.homePosition) {
+        this.homePosition.x = homePosition.x;
+        this.homePosition.y = homePosition.y;
+      } else {
+        this.homePosition = new Vector(homePosition.x, homePosition.y);
+      }
+      this.homeConfig = { ...defaultHomeConfig, ...homeConfig };
+      this.homeThresholdSq = this.homeConfig.homeThreshold * this.homeConfig.homeThreshold;
+      this.velocityThresholdSq = this.homeConfig.velocityThreshold * this.homeConfig.velocityThreshold;
+      this.rotation = 0;
+      this.rotationVelocity = 0;
+      this.springMultiplier = 0.6 + Math.random() * 0.8;
+      this.nextPulseAt = _Particle.deterministicInterval(
+        0,
+        this.homeConfig.idlePulseIntervalMin,
+        this.homeConfig.idlePulseIntervalMax
+      );
+      if (homeCenter) {
+        const cdx = homePosition.x - homeCenter.x;
+        const cdy = homePosition.y - homeCenter.y;
+        this.homeDistFromCenter = Math.sqrt(cdx * cdx + cdy * cdy);
+        this.homeAngleFromCenter = Math.atan2(cdy, cdx);
+      }
+    } else {
+      this.homePosition = null;
+      this.homeConfig = null;
+    }
+  }
+  init(image, particular) {
+    this.image = image;
+    this.particular = particular;
+    this.dispatch("PARTICLE_CREATED", this);
+  }
+  update(forces, dt = 1) {
+    this.updateTrail(true, dt);
+    this.velocity.add(this.acceleration, dt);
+    this.velocity.addFriction(this.friction, dt);
+    this.velocity.addGravity(this.gravity, dt);
+    if (forces) {
+      for (let i = 0; i < forces.length; i++) {
+        this.velocity.add(forces[i].getForce(this.position), dt);
+      }
+    }
+    if (this.homePosition && this.homeConfig) {
+      const dx = this.homePosition.x - this.position.x;
+      const dy = this.homePosition.y - this.position.y;
+      const distSq = dx * dx + dy * dy;
+      const speedSq = this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y;
+      const isSettled = !this.preventSettle && distSq < this.homeThresholdSq && speedSq < this.velocityThresholdSq;
+      if (this.homeConfig.idlePulseStrength > 0 && this.homeConfig.idlePulseIntervalMin > 0) {
+        this.idleTicks += dt;
+      }
+      if (isSettled) {
+        this.velocity.x = 0;
+        this.velocity.y = 0;
+        this.position.x = this.homePosition.x;
+        this.position.y = this.homePosition.y;
+        this.rotationVelocity = 0;
+        this.rotation = 0;
+        if (this.idleEnabled && this.homeConfig.idlePulseStrength > 0 && this.homeConfig.idlePulseIntervalMin > 0) {
+          const waveDelay = this.homeDistFromCenter * 0.3;
+          if (this.idleTicks >= this.nextPulseAt + waveDelay) {
+            const angle = this.homeAngleFromCenter + (Math.random() - 0.5) * 1;
+            const mag = this.homeConfig.idlePulseStrength * (0.6 + Math.random() * 0.4);
+            this.velocity.x = Math.cos(angle) * mag;
+            this.velocity.y = Math.sin(angle) * mag;
+            this.pulseCycleCount++;
+            this.nextPulseAt += _Particle.deterministicInterval(
+              this.pulseCycleCount,
+              this.homeConfig.idlePulseIntervalMin,
+              this.homeConfig.idlePulseIntervalMax
+            );
+          }
+        }
+      } else {
+        const k = this.homeConfig.springStrength * this.springMultiplier;
+        this.velocity.x += dx * k * dt;
+        this.velocity.y += dy * k * dt;
+        const dampFactor = Math.pow(this.homeConfig.springDamping, dt);
+        this.velocity.x *= dampFactor;
+        this.velocity.y *= dampFactor;
+        if (this.homeConfig.returnNoise > 0) {
+          const noise = this.homeConfig.returnNoise * dt;
+          this.velocity.x += (Math.random() - 0.5) * noise;
+          this.velocity.y += (Math.random() - 0.5) * noise;
+        }
+        if (this.rotationVelocity !== 0 || this.rotation !== 0) {
+          this.rotationVelocity *= dampFactor;
+          let normRot = (this.rotation % 360 + 540) % 360 - 180;
+          this.rotationVelocity -= normRot * k * dt;
+        }
+      }
+    }
+    this.position.add(this.velocity, dt);
+    this.rotation = this.rotation + this.rotationVelocity * dt;
+    const baseSize = Math.min(this.factoredSize + this.scaleStep * dt, this.size);
+    if (this.idleEnabled && this.homePosition && this.homeConfig && this.homeConfig.breathingAmplitude > 0) {
+      this.breathingPhase += this.homeConfig.breathingSpeed * dt;
+      this.factoredSize = baseSize * (1 + Math.sin(this.breathingPhase) * this.homeConfig.breathingAmplitude);
+    } else {
+      this.factoredSize = baseSize;
+    }
+    if (this.homePosition) {
+      this.alpha = this.baseAlpha;
+    } else {
+      this.alpha = Math.min(1, Math.max((this.lifeTime - this.lifeTick) / this.fadeTime, 0)) * this.baseAlpha;
+      this.lifeTick += dt;
+    }
+    this.dispatch("PARTICLE_UPDATE", this);
+  }
+  advanceTrail(dt = 1) {
+    this.updateTrail(false, dt);
+  }
+  updateTrail(addCurrentPoint, dt = 1) {
+    if (!this.trail || this.trailLength <= 0) {
+      if (this.trailSegments.length) {
+        for (let i = 0; i < this.trailSegments.length; i++) {
+          freeSegments.push(this.trailSegments[i]);
+        }
+        this.trailSegments.length = 0;
+      }
+      return;
+    }
+    const maxAge = Math.max(1, Math.floor(this.trailLength));
+    let writeIdx = 0;
+    for (let i = 0; i < this.trailSegments.length; i++) {
+      const segment = this.trailSegments[i];
+      segment.age += dt;
+      if (segment.age < maxAge) {
+        this.trailSegments[writeIdx++] = segment;
+      } else {
+        freeSegments.push(segment);
+      }
+    }
+    this.trailSegments.length = writeIdx;
+    if (!addCurrentPoint) return;
+    if (this.alpha <= 0) return;
+    const seg = freeSegments.pop();
+    if (seg) {
+      seg.x = this.position.x;
+      seg.y = this.position.y;
+      seg.size = this.factoredSize;
+      seg.rotation = this.rotation;
+      seg.alpha = this.alpha;
+      seg.age = 0;
+      this.trailSegments.push(seg);
+    } else {
+      this.trailSegments.push({
+        x: this.position.x,
+        y: this.position.y,
+        size: this.factoredSize,
+        rotation: this.rotation,
+        alpha: this.alpha,
+        age: 0
+      });
+    }
+  }
+  resetImage() {
+    this.image = null;
+  }
+  getRoundedLocation() {
+    return [(this.position.x * 10 << 0) * 0.1, (this.position.y * 10 << 0) * 0.1];
+  }
+  /** Deterministic pseudo-random interval from cycle number — same output for all particles in the same cycle. */
+  static deterministicInterval(cycle, min, max) {
+    const hash = Math.sin(cycle * 12.9898 + 78.233) * 43758.5453;
+    const t = hash - Math.floor(hash);
+    return min + t * (max - min);
+  }
+  /** Fast-path dispatch: skip entirely when no listeners are registered (the common case). */
+  dispatch(event, target) {
+    if (this.particular && this.particular.hasEventListener(event)) {
+      this.particular.dispatchEvent(event, target);
+    }
+  }
+  /** Dispatch PARTICLE_DEAD event and return this particle to the pool for reuse. */
+  destroy() {
+    this.dispatch("PARTICLE_DEAD", this);
+    for (let i = 0; i < this.trailSegments.length; i++) {
+      freeSegments.push(this.trailSegments[i]);
+    }
+    this.trailSegments.length = 0;
+    this.particular = null;
+    this.image = null;
+    this.homePosition = null;
+    this.homeConfig = null;
+    if (_particlePool.length < _maxPoolSize) {
+      _particlePool.push(this);
+    }
+  }
+};
+EventDispatcher.bind(Particle);
+
 // src/particular/core/particular.ts
 var _Particular = class _Particular {
   constructor() {
@@ -363,12 +762,14 @@ var _Particular = class _Particular {
     maxCount = defaultParticular.maxCount,
     continuous = defaultParticular.continuous,
     pixelRatio = defaultParticular.pixelRatio,
+    particlePoolSize = defaultParticular.particlePoolSize,
     container
   }) {
     this.maxCount = maxCount;
     this.continuous = continuous;
     this.pixelRatio = pixelRatio;
     this.container = container ?? null;
+    setParticlePoolSize(particlePoolSize);
     this.update();
   }
   start() {
@@ -489,294 +890,6 @@ _Particular.RESIZE = "RESIZE";
 var Particular = _Particular;
 EventDispatcher.bind(Particular);
 
-// src/particular/utils/math.ts
-function getRandomInt(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-var TO_RADIANS = Math.PI / 180;
-function degToRad(deg) {
-  return deg * TO_RADIANS;
-}
-
-// src/particular/components/particle.ts
-var freeSegments = [];
-var Particle = class _Particle {
-  constructor({
-    color,
-    baseAlpha = 1,
-    point,
-    velocity,
-    acceleration,
-    friction,
-    size,
-    particleLife,
-    gravity,
-    scaleStep,
-    fadeTime,
-    shape = "circle",
-    blendMode = "normal",
-    glow = false,
-    glowSize = 10,
-    glowColor = "#ffffff",
-    glowAlpha = 0.35,
-    trail = false,
-    trailLength = 3,
-    trailFade = 0.75,
-    trailShrink = 0.55,
-    imageTint = false,
-    shadow = false,
-    shadowBlur = 8,
-    shadowOffsetX = 3,
-    shadowOffsetY = 3,
-    shadowColor = "#000000",
-    shadowAlpha = 0.3,
-    colors,
-    homePosition,
-    homeCenter,
-    homeConfig
-  }) {
-    this.particular = null;
-    this.image = null;
-    this.isDetonationChild = false;
-    this.trailSegments = [];
-    // Home position — spring return + idle animation
-    this.homePosition = null;
-    this.homeConfig = null;
-    /** When false, idle animations (breathing, wiggle, wave, pulse) are suppressed. Spring return still works. */
-    this.idleEnabled = true;
-    /** When true, suppress the settle-snap behavior. Spring still runs but particles never hard-snap to home.
-     *  Useful for interactive effects where external forces (wobble, drag) should keep particles in motion. */
-    this.preventSettle = false;
-    this.breathingPhase = Math.random() * Math.PI * 2;
-    /** Per-particle spring multiplier (0.6–1.4) — breaks sync so particles return at different rates. */
-    this.springMultiplier = 1;
-    /** Monotonic tick counter for coordinated idle wave (never resets). */
-    this.idleTicks = 0;
-    /** How many pulse cycles this particle has completed. */
-    this.pulseCycleCount = 0;
-    /** Tick at which the next pulse wave starts (computed deterministically so all particles agree). */
-    this.nextPulseAt = 0;
-    /** Distance from image center (set once in constructor, used for ripple delay). */
-    this.homeDistFromCenter = 0;
-    /** Angle from image center to this particle's home (radians). Used for outward ripple direction. */
-    this.homeAngleFromCenter = 0;
-    this.position = point ?? new Vector(0, 0);
-    this.shadowLightOrigin = new Vector(this.position.x, this.position.y);
-    this.velocity = velocity ?? new Vector(0, 0);
-    this.acceleration = acceleration ?? new Vector(0, 0);
-    this.friction = friction ?? 0;
-    this.rotation = Math.random() * 360;
-    this.rotationDirection = Math.random() > 0.5 ? 1 : -1;
-    this.rotationVelocity = this.rotationDirection * getRandomInt(1, 3);
-    this.factoredSize = 1;
-    this.lifeTime = particleLife === Infinity ? Infinity : getRandomInt(Math.round(particleLife * 0.75), particleLife);
-    this.lifeTick = 0;
-    this.size = size ?? getRandomInt(5, 15);
-    this.gravity = gravity;
-    this.scaleStep = scaleStep;
-    this.fadeTime = fadeTime;
-    this.alpha = 1;
-    this.baseAlpha = baseAlpha;
-    this.color = color ?? (colors && colors.length > 0 ? colors[Math.floor(Math.random() * colors.length)] : "#888888");
-    const parsed = _Particle.parseHexNorm(this.color);
-    this.colorR = parsed[0];
-    this.colorG = parsed[1];
-    this.colorB = parsed[2];
-    this.shape = shape;
-    this.blendMode = blendMode;
-    this.glow = glow;
-    this.glowSize = glowSize;
-    this.glowColor = glowColor;
-    this.glowAlpha = glowAlpha;
-    this.trail = trail;
-    this.trailLength = trailLength;
-    this.trailFade = trailFade;
-    this.trailShrink = trailShrink;
-    this.imageTint = imageTint;
-    this.shadow = shadow;
-    this.shadowBlur = shadowBlur;
-    this.shadowOffsetX = shadowOffsetX;
-    this.shadowOffsetY = shadowOffsetY;
-    this.shadowColor = shadowColor;
-    this.shadowAlpha = shadowAlpha;
-    if (homePosition) {
-      this.homePosition = new Vector(homePosition.x, homePosition.y);
-      this.homeConfig = { ...defaultHomeConfig, ...homeConfig };
-      this.rotation = 0;
-      this.rotationVelocity = 0;
-      this.springMultiplier = 0.6 + Math.random() * 0.8;
-      this.nextPulseAt = _Particle.deterministicInterval(
-        0,
-        this.homeConfig.idlePulseIntervalMin,
-        this.homeConfig.idlePulseIntervalMax
-      );
-      if (homeCenter) {
-        const cdx = homePosition.x - homeCenter.x;
-        const cdy = homePosition.y - homeCenter.y;
-        this.homeDistFromCenter = Math.sqrt(cdx * cdx + cdy * cdy);
-        this.homeAngleFromCenter = Math.atan2(cdy, cdx);
-      }
-    }
-  }
-  init(image, particular) {
-    this.image = image;
-    this.particular = particular;
-    this.dispatch("PARTICLE_CREATED", this);
-  }
-  update(forces, dt = 1) {
-    this.updateTrail(true, dt);
-    this.velocity.add(this.acceleration, dt);
-    this.velocity.addFriction(this.friction, dt);
-    this.velocity.addGravity(this.gravity, dt);
-    if (forces) {
-      for (const force of forces) {
-        this.velocity.add(force.getForce(this.position), dt);
-      }
-    }
-    if (this.homePosition && this.homeConfig) {
-      const dx = this.homePosition.x - this.position.x;
-      const dy = this.homePosition.y - this.position.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const speed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y);
-      const isSettled = !this.preventSettle && dist < this.homeConfig.homeThreshold && speed < this.homeConfig.velocityThreshold;
-      if (this.homeConfig.idlePulseStrength > 0 && this.homeConfig.idlePulseIntervalMin > 0) {
-        this.idleTicks += dt;
-      }
-      if (isSettled) {
-        this.velocity.x = 0;
-        this.velocity.y = 0;
-        this.position.x = this.homePosition.x;
-        this.position.y = this.homePosition.y;
-        this.rotationVelocity = 0;
-        this.rotation = 0;
-        if (this.idleEnabled && this.homeConfig.idlePulseStrength > 0 && this.homeConfig.idlePulseIntervalMin > 0) {
-          const waveDelay = this.homeDistFromCenter * 0.3;
-          if (this.idleTicks >= this.nextPulseAt + waveDelay) {
-            const angle = this.homeAngleFromCenter + (Math.random() - 0.5) * 1;
-            const mag = this.homeConfig.idlePulseStrength * (0.6 + Math.random() * 0.4);
-            this.velocity.x = Math.cos(angle) * mag;
-            this.velocity.y = Math.sin(angle) * mag;
-            this.pulseCycleCount++;
-            this.nextPulseAt += _Particle.deterministicInterval(
-              this.pulseCycleCount,
-              this.homeConfig.idlePulseIntervalMin,
-              this.homeConfig.idlePulseIntervalMax
-            );
-          }
-        }
-      } else {
-        const k = this.homeConfig.springStrength * this.springMultiplier;
-        this.velocity.x += dx * k * dt;
-        this.velocity.y += dy * k * dt;
-        const dampFactor = Math.pow(this.homeConfig.springDamping, dt);
-        this.velocity.x *= dampFactor;
-        this.velocity.y *= dampFactor;
-        if (this.homeConfig.returnNoise > 0) {
-          const noise = this.homeConfig.returnNoise * dt;
-          this.velocity.x += (Math.random() - 0.5) * noise;
-          this.velocity.y += (Math.random() - 0.5) * noise;
-        }
-        if (this.rotationVelocity !== 0 || this.rotation !== 0) {
-          this.rotationVelocity *= dampFactor;
-          let normRot = (this.rotation % 360 + 540) % 360 - 180;
-          this.rotationVelocity -= normRot * k * dt;
-        }
-      }
-    }
-    this.position.add(this.velocity, dt);
-    this.rotation = this.rotation + this.rotationVelocity * dt;
-    const baseSize = Math.min(this.factoredSize + this.scaleStep * dt, this.size);
-    if (this.idleEnabled && this.homePosition && this.homeConfig && this.homeConfig.breathingAmplitude > 0) {
-      this.breathingPhase += this.homeConfig.breathingSpeed * dt;
-      this.factoredSize = baseSize * (1 + Math.sin(this.breathingPhase) * this.homeConfig.breathingAmplitude);
-    } else {
-      this.factoredSize = baseSize;
-    }
-    if (this.homePosition) {
-      this.alpha = this.baseAlpha;
-    } else {
-      this.alpha = Math.min(1, Math.max((this.lifeTime - this.lifeTick) / this.fadeTime, 0)) * this.baseAlpha;
-      this.lifeTick += dt;
-    }
-    this.dispatch("PARTICLE_UPDATE", this);
-  }
-  advanceTrail(dt = 1) {
-    this.updateTrail(false, dt);
-  }
-  updateTrail(addCurrentPoint, dt = 1) {
-    if (!this.trail || this.trailLength <= 0) {
-      if (this.trailSegments.length) {
-        for (let i = 0; i < this.trailSegments.length; i++) {
-          freeSegments.push(this.trailSegments[i]);
-        }
-        this.trailSegments.length = 0;
-      }
-      return;
-    }
-    const maxAge = Math.max(1, Math.floor(this.trailLength));
-    let writeIdx = 0;
-    for (let i = 0; i < this.trailSegments.length; i++) {
-      const segment = this.trailSegments[i];
-      segment.age += dt;
-      if (segment.age < maxAge) {
-        this.trailSegments[writeIdx++] = segment;
-      } else {
-        freeSegments.push(segment);
-      }
-    }
-    this.trailSegments.length = writeIdx;
-    if (!addCurrentPoint) return;
-    if (this.alpha <= 0) return;
-    const seg = freeSegments.pop();
-    if (seg) {
-      seg.x = this.position.x;
-      seg.y = this.position.y;
-      seg.size = this.factoredSize;
-      seg.rotation = this.rotation;
-      seg.alpha = this.alpha;
-      seg.age = 0;
-      this.trailSegments.push(seg);
-    } else {
-      this.trailSegments.push({
-        x: this.position.x,
-        y: this.position.y,
-        size: this.factoredSize,
-        rotation: this.rotation,
-        alpha: this.alpha,
-        age: 0
-      });
-    }
-  }
-  resetImage() {
-    this.image = null;
-  }
-  getRoundedLocation() {
-    return [(this.position.x * 10 << 0) * 0.1, (this.position.y * 10 << 0) * 0.1];
-  }
-  /** Parse hex color string to normalized [r, g, b] (0–1). Cached once per particle in constructor. */
-  static parseHexNorm(hex) {
-    const r = parseInt(hex.slice(1, 3), 16) / 255;
-    const g = parseInt(hex.slice(3, 5), 16) / 255;
-    const b = parseInt(hex.slice(5, 7), 16) / 255;
-    return [r, g, b];
-  }
-  /** Deterministic pseudo-random interval from cycle number — same output for all particles in the same cycle. */
-  static deterministicInterval(cycle, min, max) {
-    const hash = Math.sin(cycle * 12.9898 + 78.233) * 43758.5453;
-    const t = hash - Math.floor(hash);
-    return min + t * (max - min);
-  }
-  dispatch(event, target) {
-    if (this.particular) {
-      this.particular.dispatchEvent(event, target);
-    }
-  }
-  destroy() {
-    this.dispatch("PARTICLE_DEAD", this);
-  }
-};
-EventDispatcher.bind(Particle);
-
 // src/particular/utils/color.ts
 function hslToHex(h, s, l) {
   const sNorm = s / 100;
@@ -811,7 +924,7 @@ function createExplosionChild(parent, config, engine, fallbackColors) {
   const speed = merged.velocity * (1 - spread + Math.random() * spread * 2);
   const velocity = Vector.fromAngle(angle, speed);
   const colors = merged.inheritColor ? [parent.color] : fallbackColors.length > 0 ? fallbackColors : [parent.color];
-  const particle = new Particle({
+  const particle = Particle.create({
     point: new Vector(parent.x, parent.y),
     velocity,
     acceleration: new Vector(0, 0),
@@ -989,7 +1102,7 @@ var Emitter = class {
     const jitter = gravityJitter ?? 0;
     const jitteredGravity = jitter > 0 ? gravity * (1 - jitter + Math.random() * jitter * 2) : gravity;
     this.lifeCycle++;
-    return new Particle({
+    return Particle.create({
       point: newPoint,
       velocity: newVelocity,
       acceleration,
@@ -4230,8 +4343,12 @@ function createImageParticles(engine, mergedConfig, container, cleanups) {
       displayH = config.height;
       displayW = config.height * aspect;
     } else {
-      displayW = Math.min(viewport.w * 0.8, 800);
+      displayW = Math.min(image.naturalWidth, viewport.w * 0.5);
       displayH = displayW / aspect;
+      if (displayH > viewport.h * 0.5) {
+        displayH = viewport.h * 0.5;
+        displayW = displayH * aspect;
+      }
     }
     const pr = mergedConfig.pixelRatio;
     const engineW = displayW / pr;
@@ -4266,7 +4383,7 @@ function createImageParticles(engine, mergedConfig, container, cleanups) {
       const px = originX + sample.nx * engineW;
       const py = originY + sample.ny * engineH;
       const homePos = new Vector(px, py);
-      const particle = new Particle({
+      const particle = Particle.create({
         color: sample.color,
         baseAlpha: sample.alpha,
         point: new Vector(px, py),
@@ -4735,8 +4852,12 @@ function createImageShatterHelper(engine, mergedConfig, container) {
       displayH = config.height;
       displayW = config.height * aspect;
     } else {
-      displayW = Math.min(viewport.w * 0.8, 800);
+      displayW = Math.min(image.naturalWidth, viewport.w * 0.5);
       displayH = displayW / aspect;
+      if (displayH > viewport.h * 0.5) {
+        displayH = viewport.h * 0.5;
+        displayW = displayH * aspect;
+      }
     }
     const pr = mergedConfig.pixelRatio;
     const engineW = displayW / pr;
@@ -4768,7 +4889,7 @@ function createImageShatterHelper(engine, mergedConfig, container) {
       const chunkSize = chunk.size / sourceCanvas.width * engineW / 2;
       if (interactive) {
         const homePos = new Vector(px, py);
-        const particle = new Particle({
+        const particle = Particle.create({
           point: new Vector(px, py),
           velocity: new Vector(0, 0),
           acceleration: new Vector(0, 0),
@@ -4797,7 +4918,7 @@ function createImageShatterHelper(engine, mergedConfig, container) {
         const speedMul = 1 + (Math.random() - 0.5) * 2 * velocitySpread;
         const distFactor = 0.5 + dist / Math.max(engineW, engineH) * 1.5;
         const speed = velocity * speedMul * distFactor;
-        const particle = new Particle({
+        const particle = Particle.create({
           point: new Vector(px, py),
           velocity: new Vector(
             Math.cos(spreadAngle) * speed,
@@ -5263,6 +5384,7 @@ exports.particlesBackgroundLayerStyle = particlesBackgroundLayerStyle;
 exports.particlesContainerLayerStyle = particlesContainerLayerStyle;
 exports.particlesDefaultZIndex = DEFAULT_Z_INDEX;
 exports.presets = presets;
+exports.setParticlePoolSize = setParticlePoolSize;
 exports.showFPSOverlay = showFPSOverlay;
 exports.startScreensaver = startScreensaver;
 exports.useParticles = useParticles;
