@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 
 import { createParticles, startScreensaver, presets } from './index';
 import type { ParticlesController, ScreensaverController, BoundaryHandle } from './index';
+import type Particular from './particular/core/particular';
 import Emitter from './particular/components/emitter';
 import { configureParticle } from './particular/core/defaults';
 import Vector from './particular/utils/vector';
@@ -104,6 +105,32 @@ function useInjectStyles(css: string) {
   }, [css]);
 }
 
+/* ─── Pause off-screen demos to save GPU/CPU ─── */
+
+function usePauseOffscreen(
+  containerRef: React.RefObject<HTMLElement | null>,
+  engineRef: React.RefObject<Particular | null>,
+): void {
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const engine = engineRef.current;
+        if (!engine) return;
+        if (entry?.isIntersecting) {
+          engine.start();
+        } else {
+          engine.stop();
+        }
+      },
+      { threshold: 0 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+}
+
 /* ─── Demo card shared styles ─── */
 
 const demoCellStyle: React.CSSProperties = {
@@ -146,7 +173,10 @@ const burstPalettes = [
 const BurstDemo: React.FC = () => {
   const ref = useRef<HTMLDivElement>(null);
   const ctrlRef = useRef<ParticlesController | null>(null);
+  const engineRef = useRef<Particular | null>(null);
   const paletteIdx = useRef(0);
+
+  usePauseOffscreen(ref, engineRef);
 
   useEffect(() => {
     const el = ref.current;
@@ -164,7 +194,8 @@ const BurstDemo: React.FC = () => {
       autoResize: true,
     });
     ctrlRef.current = ctrl;
-    return () => { ctrl.destroy(); ctrlRef.current = null; };
+    engineRef.current = ctrl.engine;
+    return () => { ctrl.destroy(); ctrlRef.current = null; engineRef.current = null; };
   }, []);
 
   return (
@@ -187,6 +218,9 @@ const BurstDemo: React.FC = () => {
 
 const MeteorDemo: React.FC = () => {
   const ref = useRef<HTMLDivElement>(null);
+  const engineRef = useRef<Particular | null>(null);
+
+  usePauseOffscreen(ref, engineRef);
 
   useEffect(() => {
     const el = ref.current;
@@ -210,7 +244,8 @@ const MeteorDemo: React.FC = () => {
       autoResize: true,
       mouseWind: { strength: 0.3, radius: 80 },
     });
-    return () => screensaver.destroy();
+    engineRef.current = screensaver.engine;
+    return () => { screensaver.destroy(); engineRef.current = null; };
   }, []);
 
   return (
@@ -225,7 +260,10 @@ const MeteorDemo: React.FC = () => {
 const ShatterDemo: React.FC = () => {
   const ref = useRef<HTMLDivElement>(null);
   const ctrlRef = useRef<ParticlesController | null>(null);
+  const engineRef = useRef<Particular | null>(null);
   const readyRef = useRef(false);
+
+  usePauseOffscreen(ref, engineRef);
 
   useEffect(() => {
     const el = ref.current;
@@ -237,6 +275,7 @@ const ShatterDemo: React.FC = () => {
       autoResize: true,
     });
     ctrlRef.current = ctrl;
+    engineRef.current = ctrl.engine;
 
     // Load image first to get natural aspect ratio
     const img = new Image();
@@ -263,7 +302,7 @@ const ShatterDemo: React.FC = () => {
     };
     img.src = vikingPng;
 
-    return () => { ctrl.destroy(); ctrlRef.current = null; readyRef.current = false; };
+    return () => { ctrl.destroy(); ctrlRef.current = null; engineRef.current = null; readyRef.current = false; };
   }, []);
 
   return (
@@ -286,6 +325,9 @@ const ShatterDemo: React.FC = () => {
 
 const TextDemo: React.FC = () => {
   const ref = useRef<HTMLDivElement>(null);
+  const engineRef = useRef<Particular | null>(null);
+
+  usePauseOffscreen(ref, engineRef);
 
   useEffect(() => {
     const el = ref.current;
@@ -297,6 +339,7 @@ const TextDemo: React.FC = () => {
       renderer: 'webgl',
       autoResize: true,
     });
+    engineRef.current = ctrl.engine;
 
     ctrl.textToParticles('Hello', {
       height: el.clientHeight * 0.45,
@@ -305,7 +348,7 @@ const TextDemo: React.FC = () => {
     });
     ctrl.addMouseForce({ track: true, strength: 2, radius: 50 });
 
-    return () => ctrl.destroy();
+    return () => { ctrl.destroy(); engineRef.current = null; };
   }, []);
 
   return (
@@ -320,6 +363,9 @@ const TextDemo: React.FC = () => {
 const GlowDemo: React.FC = () => {
   const ref = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
+  const engineRef = useRef<Particular | null>(null);
+
+  usePauseOffscreen(ref, engineRef);
 
   useEffect(() => {
     const el = ref.current;
@@ -331,8 +377,9 @@ const GlowDemo: React.FC = () => {
       renderer: 'webgl',
       autoResize: true,
     });
+    engineRef.current = ctrl.engine;
     ctrl.addContainerGlow({ element: inner });
-    return () => ctrl.destroy();
+    return () => { ctrl.destroy(); engineRef.current = null; };
   }, []);
 
   return (
@@ -364,6 +411,9 @@ const GlowDemo: React.FC = () => {
 const ScatterDemo: React.FC = () => {
   const ref = useRef<HTMLDivElement>(null);
   const ctrlRef = useRef<ParticlesController | null>(null);
+  const engineRef = useRef<Particular | null>(null);
+
+  usePauseOffscreen(ref, engineRef);
 
   useEffect(() => {
     const el = ref.current;
@@ -376,6 +426,7 @@ const ScatterDemo: React.FC = () => {
       autoResize: true,
     });
     ctrlRef.current = ctrl;
+    engineRef.current = ctrl.engine;
 
     ctrl.imageToParticles({
       image: vikingPng,
@@ -386,7 +437,7 @@ const ScatterDemo: React.FC = () => {
     });
     ctrl.addMouseForce({ track: true, strength: 2, radius: 50 });
 
-    return () => { ctrl.destroy(); ctrlRef.current = null; };
+    return () => { ctrl.destroy(); ctrlRef.current = null; engineRef.current = null; };
   }, []);
 
   return (
@@ -403,6 +454,9 @@ const ScatterDemo: React.FC = () => {
 const RiverDemo: React.FC = () => {
   const ref = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
+  const engineRef = useRef<Particular | null>(null);
+
+  usePauseOffscreen(ref, engineRef);
 
   useEffect(() => {
     const el = ref.current;
@@ -416,6 +470,7 @@ const RiverDemo: React.FC = () => {
       renderer: 'webgl',
       autoResize: true,
     });
+    engineRef.current = ctrl.engine;
 
     const pr = ctrl.engine.pixelRatio;
     const w = el.clientWidth / pr;
@@ -466,7 +521,7 @@ const RiverDemo: React.FC = () => {
     // Mouse push
     ctrl.addMouseForce({ track: true, strength: 1.5, radius: 60 });
 
-    return () => { boundary.destroy(); ctrl.destroy(); };
+    return () => { boundary.destroy(); ctrl.destroy(); engineRef.current = null; };
   }, []);
 
   return (
@@ -777,7 +832,7 @@ const WelcomeDemo: React.FC = () => {
     if (!ctrl || !heading || heading.style.visibility === 'hidden') return;
     ctrl.elementToParticles(heading, {
       shape: 'triangle',
-      resolution: 400,
+      resolution: 200,
       intro: { mode: 'ripple', duration: 600 },
     }).then(() => {
       ctrl.addMouseForce({ track: true, strength: 2, radius: 60 });

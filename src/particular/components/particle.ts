@@ -14,8 +14,10 @@ export interface TrailSegment {
   age: number;
 }
 
-// Module-level pool for expired TrailSegment objects to avoid per-frame allocations
+// Module-level pool for expired TrailSegment objects to avoid per-frame allocations.
+// Capped to prevent unbounded memory retention after heavy trail scenes.
 const freeSegments: TrailSegment[] = [];
+const _maxFreeSegments = 5000;
 
 // Module-level pool for recycled Particle objects — avoids GC pressure from short-lived particles.
 // Particles are returned here on destroy() and reused via Particle.create().
@@ -267,6 +269,14 @@ export default class Particle {
     this.shadowColor = shadowColor;
     this.shadowAlpha = shadowAlpha;
 
+    // Defensive: drain any stale trail segments left from a previous life
+    if (this.trailSegments.length > 0) {
+      for (let i = 0; i < this.trailSegments.length; i++) {
+        if (freeSegments.length < _maxFreeSegments) freeSegments.push(this.trailSegments[i]!);
+      }
+      this.trailSegments.length = 0;
+    }
+
     // Clear pooled state
     this.particular = null;
     this.image = null;
@@ -323,15 +333,27 @@ export default class Particle {
   }
 
   update(forces?: ForceSource[], dt = 1): void {
-    this.updateTrail(true, dt);
-    this.velocity.add(this.acceleration, dt);
-    this.velocity.addFriction(this.friction, dt);
-    this.velocity.addGravity(this.gravity, dt);
+    // Trail update — skip the function call entirely for non-trail particles
+    if (this.trail) this.updateTrail(true, dt);
+
+    // Inlined velocity integration — eliminates 4 function calls per particle per frame
+    this.velocity.x += this.acceleration.x * dt;
+    this.velocity.y += this.acceleration.y * dt;
+    if (this.friction > 0) {
+      const frictionFactor = Math.pow(1 - this.friction, dt);
+      this.velocity.x *= frictionFactor;
+      this.velocity.y *= frictionFactor;
+    }
+    if (this.gravity !== 0) {
+      this.velocity.y += this.gravity * dt;
+    }
 
     // External forces (attractors, mouse)
-    if (forces) {
+    if (forces && forces.length > 0) {
       for (let i = 0; i < forces.length; i++) {
-        this.velocity.add(forces[i]!.getForce(this.position), dt);
+        const f = forces[i]!.getForce(this.position);
+        this.velocity.x += f.x * dt;
+        this.velocity.y += f.y * dt;
       }
     }
 
@@ -339,14 +361,12 @@ export default class Particle {
     if (this.homePosition && this.homeConfig) {
       const dx = this.homePosition.x - this.position.x;
       const dy = this.homePosition.y - this.position.y;
-      // Use squared distance/speed to avoid 2× Math.sqrt per particle per frame
       const distSq = dx * dx + dy * dy;
       const speedSq = this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y;
       const isSettled = !this.preventSettle && distSq < this.homeThresholdSq && speedSq < this.velocityThresholdSq;
 
       // Idle pulse timer ticks when idle is enabled (monotonic, never resets) — mouse/scatter don't affect wave timing.
       // When idle is disabled, we still advance the timer so re-enabling doesn't fire a burst of missed pulses.
-      // Instead, we skip the pulse check above via the idleEnabled guard.
       if (this.homeConfig.idlePulseStrength > 0 && this.homeConfig.idlePulseIntervalMin > 0) {
         this.idleTicks += dt;
       }
@@ -360,8 +380,6 @@ export default class Particle {
         this.rotationVelocity = 0;
         this.rotation = 0;
         // Coordinated idle ripple — fire pulse AFTER zeroing velocity so impulse isn't overwritten.
-        // nextPulseAt is computed deterministically from cycle count, so all particles agree on timing.
-        // idleTicks is monotonic — never resets — so nextPulseAt accumulates across cycles.
         if (this.idleEnabled && this.homeConfig.idlePulseStrength > 0 && this.homeConfig.idlePulseIntervalMin > 0) {
           const waveDelay = this.homeDistFromCenter * 0.3;
           if (this.idleTicks >= this.nextPulseAt + waveDelay) {
@@ -369,7 +387,6 @@ export default class Particle {
             const mag = this.homeConfig.idlePulseStrength * (0.6 + Math.random() * 0.4);
             this.velocity.x = Math.cos(angle) * mag;
             this.velocity.y = Math.sin(angle) * mag;
-            // Schedule next wave — deterministic so all particles compute the same nextPulseAt
             this.pulseCycleCount++;
             this.nextPulseAt += Particle.deterministicInterval(
               this.pulseCycleCount, this.homeConfig.idlePulseIntervalMin, this.homeConfig.idlePulseIntervalMax,
@@ -381,11 +398,9 @@ export default class Particle {
         const k = this.homeConfig.springStrength * this.springMultiplier;
         this.velocity.x += dx * k * dt;
         this.velocity.y += dy * k * dt;
-        // Damping: exponential decay (same dt pattern as Vector.addFriction)
         const dampFactor = Math.pow(this.homeConfig.springDamping, dt);
         this.velocity.x *= dampFactor;
         this.velocity.y *= dampFactor;
-        // Return turbulence — small random perturbation for organic paths
         if (this.homeConfig.returnNoise > 0) {
           const noise = this.homeConfig.returnNoise * dt;
           this.velocity.x += (Math.random() - 0.5) * noise;
@@ -394,14 +409,15 @@ export default class Particle {
         // Rotation spring: dampen spin and pull rotation angle toward 0
         if (this.rotationVelocity !== 0 || this.rotation !== 0) {
           this.rotationVelocity *= dampFactor;
-          // Normalize rotation to [-180, 180] and spring toward 0
           let normRot = ((this.rotation % 360) + 540) % 360 - 180;
           this.rotationVelocity -= normRot * k * dt;
         }
       }
     }
 
-    this.position.add(this.velocity, dt);
+    // Inlined position integration
+    this.position.x += this.velocity.x * dt;
+    this.position.y += this.velocity.y * dt;
     this.rotation = this.rotation + this.rotationVelocity * dt;
 
     // Size: grow toward target, apply breathing if configured and idle is enabled
@@ -420,7 +436,11 @@ export default class Particle {
       this.alpha = Math.min(1, Math.max((this.lifeTime - this.lifeTick) / this.fadeTime, 0)) * this.baseAlpha;
       this.lifeTick += dt;
     }
-    this.dispatch('PARTICLE_UPDATE', this);
+
+    // Fast-path: skip dispatch entirely when no listeners are registered (the common case with WebGL)
+    if (this.particular && this.particular.hasEventListener('PARTICLE_UPDATE')) {
+      this.particular.dispatchEvent('PARTICLE_UPDATE', this);
+    }
   }
 
   advanceTrail(dt = 1): void {
@@ -432,7 +452,7 @@ export default class Particle {
       if (this.trailSegments.length) {
         // Return segments to pool before clearing
         for (let i = 0; i < this.trailSegments.length; i++) {
-          freeSegments.push(this.trailSegments[i]!);
+          if (freeSegments.length < _maxFreeSegments) freeSegments.push(this.trailSegments[i]!);
         }
         this.trailSegments.length = 0;
       }
@@ -447,7 +467,7 @@ export default class Particle {
       if (segment.age < maxAge) {
         this.trailSegments[writeIdx++] = segment;
       } else {
-        freeSegments.push(segment);
+        if (freeSegments.length < _maxFreeSegments) freeSegments.push(segment);
       }
     }
     this.trailSegments.length = writeIdx;
@@ -506,7 +526,7 @@ export default class Particle {
     this.dispatch('PARTICLE_DEAD', this);
     // Return trail segments to segment pool
     for (let i = 0; i < this.trailSegments.length; i++) {
-      freeSegments.push(this.trailSegments[i]!);
+      if (freeSegments.length < _maxFreeSegments) freeSegments.push(this.trailSegments[i]!);
     }
     this.trailSegments.length = 0;
     // Clear references to prevent memory leaks in pooled particles
