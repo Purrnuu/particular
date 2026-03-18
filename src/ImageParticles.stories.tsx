@@ -249,6 +249,7 @@ type Story = StoryObj<ImageParticlesStoryArgs>;
 /* ─── Stories ─── */
 
 export const TextToParticles: Story = {
+  args: { resolution: 300 },
   render: (args) => <TextToParticlesDemo {...args} />,
 };
 
