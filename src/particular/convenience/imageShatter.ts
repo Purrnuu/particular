@@ -74,11 +74,11 @@ export function createImageShatterHelper(
       displayH = config.height;
       displayW = config.height * aspect;
     } else {
-      // Default: 1:1 with original image, downscale only if larger than viewport
-      displayW = Math.min(image.naturalWidth, viewport.w * 0.9);
+      // Default: 1:1 with original image, capped at 50% of viewport for comfortable display
+      displayW = Math.min(image.naturalWidth, viewport.w * 0.5);
       displayH = displayW / aspect;
-      if (displayH > viewport.h * 0.9) {
-        displayH = viewport.h * 0.9;
+      if (displayH > viewport.h * 0.5) {
+        displayH = viewport.h * 0.5;
         displayW = displayH * aspect;
       }
     }

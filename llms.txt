@@ -189,7 +189,7 @@ Returns: { canvasRef, canvasStyle, destroy() }
 - image: string | HTMLImageElement   — REQUIRED. URL, data URI, or element
 - x?: number                        — default: center of viewport/container
 - y?: number                        — default: center of viewport/container
-- width?: number                    — default: image's natural width (1:1), downscaled if larger than 90% viewport. Calculated from height if omitted
+- width?: number                    — default: image's natural width (1:1), capped at 50% viewport. Calculated from height if omitted
 - height?: number                   — calculated from width + aspect ratio if omitted
 - resolution?: number               — particles along longest axis. Default: 400 (square), 200 (circle/triangle)
 - alphaThreshold?: number           — skip transparent pixels. Default 0.1
@@ -213,7 +213,7 @@ Extends ImageParticlesConfig (minus `image`). Position and size auto-derived fro
 - image: string | HTMLImageElement   — REQUIRED. URL, data URI, or element
 - x?: number                        — default: center of viewport/container
 - y?: number                        — default: center of viewport/container
-- width?: number                    — default: image's natural width (1:1), downscaled if larger than 90% viewport. Calculated from height if omitted
+- width?: number                    — default: image's natural width (1:1), capped at 50% viewport. Calculated from height if omitted
 - height?: number                   — calculated from width + aspect ratio if omitted
 - chunkCount?: number               — approximate number of chunks (actual = cols x rows). Default 36
 - jitter?: number                   — grid jitter (0–1). Higher = more irregular shapes. Default 0.4
