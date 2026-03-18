@@ -48,7 +48,13 @@ export function createImageShatterHelper(
     const interactive = !!homeConfig;
 
     // Load image
-    const image = await loadImage(imageSrc);
+    let image: HTMLImageElement;
+    try {
+      image = await loadImage(imageSrc);
+    } catch (err) {
+      console.warn('Particular: shatterImage failed to load image.', typeof imageSrc === 'string' ? imageSrc : '(HTMLImageElement)', err);
+      throw err;
+    }
     const aspect = image.naturalWidth / image.naturalHeight;
 
     // Smart defaults for position and size

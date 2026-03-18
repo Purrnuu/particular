@@ -53,7 +53,13 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
     // Squares pack tighter on a grid — use higher resolution. Circles/triangles need fewer.
     const resolution = resolutionOverride ?? (shape === 'square' ? 400 : 200);
 
-    const image = await loadImage(imageSrc);
+    let image: HTMLImageElement;
+    try {
+      image = await loadImage(imageSrc);
+    } catch (err) {
+      console.warn('Particular: imageToParticles failed to load image.', typeof imageSrc === 'string' ? imageSrc : '(HTMLImageElement)', err);
+      throw err;
+    }
     const aspect = image.naturalWidth / image.naturalHeight;
 
     // Smart defaults for position and size
@@ -413,7 +419,13 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
     const { hideElement, restoreElement, ...imageConfig } = merged;
 
     // Capture the element's visual appearance via manual canvas rendering
-    const capturedCanvas = captureElement(element);
+    let capturedCanvas: HTMLCanvasElement;
+    try {
+      capturedCanvas = captureElement(element);
+    } catch (err) {
+      console.warn('Particular: elementToParticles failed to capture element.', element, err);
+      throw err;
+    }
     const dataURL = canvasToDataURL(capturedCanvas);
 
     // Derive position and size from the element's bounding rect

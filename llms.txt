@@ -345,7 +345,7 @@ MouseTrailHandle: { stop(), start(), destroy() }
 - velocity: Vector                  — initial velocity direction + speed
 - spread: number                    — emission cone width in radians
 - sizeMin/sizeMax: number           — particle size range
-- velocityMultiplier: number        — scales velocity randomization. Default 6
+- velocityMultiplier: number        — each particle's speed = velocity × random(0, multiplier). Higher = more variation. Default 6
 - fadeTime: number                  — fade-out duration in ticks. Default 30
 - gravity: number                   — downward pull. Default 0.15
 - gravityJitter: number             — per-particle gravity randomness (0–1). Each particle's gravity is multiplied by a random factor in the range `1 ± gravityJitter`, giving heavier and lighter particles even at the same size. Default 0
@@ -499,5 +499,8 @@ const p = createParticles({ config: { colors: ["#ff6b6b", "#feca57", "#48dbfb"] 
 - All positions in controller methods use screen pixels (CSS pixels). Engine divides by pixelRatio internally.
 - Attractor positions use engine coordinates (screen / pixelRatio). Use addAttractor for direct control.
 - Image/text particles have spring return — they bounce back to home positions after being pushed.
-- destroy() cleans up everything: canvas (if auto-created), event listeners, resize observers, RAF loop.
+- shadow is enabled by default (`shadow: true` in base particle config). It adds visual depth but uses GPU resources. Disable with `config: { shadow: false }` if not needed. Glow-focused presets (magic, fireworks) disable it automatically.
+- destroy() cleans up everything: canvas (if auto-created), event listeners, resize observers, RAF loop. Child handles (BoundaryHandle, ContainerGlowHandle, MouseTrailHandle) are also cleaned up by controller.destroy(). Calling handle.destroy() after controller.destroy() is safe (idempotent).
+- Container elements must have `position: relative` (or absolute/fixed). A warning is logged if position is static.
+- createParticles() requires a browser environment. In SSR/Node.js, wrap the call in useEffect or guard with `typeof document !== 'undefined'`.
 - TypeScript types are included. All config interfaces are exported.

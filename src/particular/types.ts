@@ -1,6 +1,7 @@
 import Vector from './utils/vector';
 
-export type ParticleShape = 
+/** Particle rendering shape. Each shape is supported in both Canvas 2D and WebGL renderers. */
+export type ParticleShape =
   | 'circle'
   | 'rectangle'
   | 'square'
@@ -10,28 +11,39 @@ export type ParticleShape =
   | 'ring'
   | 'sparkle';
 
-export type BlendMode = 
+/** Blend mode for particle rendering. 'additive' creates glowing/fire effects, 'multiply' darkens. */
+export type BlendMode =
   | 'normal'
   | 'additive'
   | 'multiply'
   | 'screen';
 
+/** Visual effect configuration shared by all particle types. */
 export interface ShapeConfig {
+  /** Rendering shape. Default 'circle'. */
   shape?: ParticleShape;
+  /** Blend mode. Default 'normal'. Use 'additive' for glowing/fire effects. */
   blendMode?: BlendMode;
+  /** Enable glow halo around particles. Default false. Uses extra GPU resources. */
   glow?: boolean;
+  /** Glow radius in pixels. Scales with particle size. Default 10. */
   glowSize?: number;
   /** Glow color as hex string. Default '#ffffff'. */
   glowColor?: string;
   /** Glow opacity (0–1). Default 0.25. */
   glowAlpha?: number;
+  /** Enable particle trails (motion streaks). Default false. */
   trail?: boolean;
+  /** Trail max age in ticks — how many frames trail segments persist. Default 3. */
   trailLength?: number;
+  /** Trail alpha multiplier (0–1). Lower = more transparent trails. Default 0.75. */
   trailFade?: number;
+  /** Trail minimum size ratio (0–1). Trail segments shrink from full size to this ratio. Default 0.55. */
   trailShrink?: number;
   /** When true, tint image particles with particle color (WebGL). Default false = render images as-is. */
   imageTint?: boolean;
-  /** Enable drop shadow. */
+  /** Enable drop shadow. Default true in base particle config — adds visual depth but uses extra GPU resources.
+   *  Presets that don't need shadows (e.g. glow-only effects) explicitly disable this. */
   shadow?: boolean;
   /** Shadow blur radius in pixels. Default 9. */
   shadowBlur?: number;
@@ -110,23 +122,35 @@ export interface DetonateConfig extends ChildExplosionConfig {
   at: number;
 }
 
+/** Per-particle behavioral configuration — physics, lifetime, and emission parameters. */
 export interface ParticleConfig extends ShapeConfig {
+  /** Emission rate (particles per tick in continuous mode). Default 8. */
   rate?: number;
-  /** Emitter emission budget — total number of particles the emitter will create before stopping (burst mode only). */
+  /** Emitter emission budget — total number of particles the emitter will create before stopping (burst mode only).
+   *  Not to be confused with `particleLife` (individual particle lifetime). Default 30. */
   life?: number;
   /** Individual particle lifetime in ticks (~frames). Controls how long each particle lives before being removed.
    *  Fading begins at `particleLife - fadeTime` ticks. Default 100. */
   particleLife?: number;
+  /** Initial velocity vector (direction + magnitude). Default { x: 0, y: -3 } (upward). */
   velocity?: Vector;
+  /** Emission cone width in radians. Particles spawn with random direction within ±spread of velocity angle. Default 4. */
   spread?: number;
+  /** Minimum particle size. Default 3. */
   sizeMin?: number;
+  /** Maximum particle size. Default 8. */
   sizeMax?: number;
+  /** Multiplier for randomized velocity magnitude. Each particle's speed is `velocity × random(0, velocityMultiplier)`.
+   *  Higher values = more speed variation between particles. Default 6. */
   velocityMultiplier?: number;
+  /** Fade-out duration in ticks before particle is removed. Default 30. */
   fadeTime?: number;
+  /** Downward gravitational pull per tick. Default 0.15. */
   gravity?: number;
   /** Per-particle gravity randomness (0–1). Each particle's gravity is multiplied by a random factor
    *  in the range `1 ± gravityJitter`, giving heavier and lighter particles even at the same size. Default 0. */
   gravityJitter?: number;
+  /** How quickly particles grow to full size per tick. Lower = slower grow-in animation. Default 1. */
   scaleStep?: number;
   /** Width of the rectangular spawn area centered on the emitter point. Default 0 (point spawn). */
   spawnWidth?: number;
@@ -309,8 +333,12 @@ export interface BurstSettings {
   [key: string]: unknown;
 }
 
+/** Complete configuration combining engine settings and particle defaults.
+ *  User config is merged over preset defaults — user values always win. */
 export interface FullParticularConfig extends ParticularConfig, ParticleConfig {
+  /** Image icons for image particles (URL strings or HTMLImageElement). */
   icons?: (string | HTMLImageElement)[];
+  /** Rendering backend. Default 'webgl'. */
   renderer?: RendererType;
 }
 
@@ -506,4 +534,6 @@ export interface WobbleConfig {
   mouseStrength?: number;
 }
 
+/** Rendering backend. 'webgl' (default) uses WebGL2 instanced drawing for best performance.
+ *  'canvas' uses Canvas 2D — broader compatibility but slower with many particles. */
 export type RendererType = 'canvas' | 'webgl';

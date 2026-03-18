@@ -58,6 +58,21 @@ export function createParticles({
   container,
   mouseForce,
 }: CreateParticlesOptions = {}): ParticlesController {
+  // ── SSR guard ──
+  if (typeof document === 'undefined') {
+    throw new Error('Particular: createParticles() requires a browser environment (document is not defined). Wrap the call in a useEffect or check for window before calling.');
+  }
+
+  // ── Container position validation ──
+  if (container) {
+    const position = getComputedStyle(container).position;
+    if (position === 'static') {
+      console.warn(
+        'Particular: container element has position: static. The canvas will be positioned with position: absolute inside it, which requires a positioned parent (relative, absolute, or fixed). Add "position: relative" to your container.',
+      );
+    }
+  }
+
   // ── Auto-create canvas if not provided ──
 
   let canvas: HTMLCanvasElement;
