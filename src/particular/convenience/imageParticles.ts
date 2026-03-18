@@ -82,9 +82,13 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
       displayH = config.height;
       displayW = config.height * aspect;
     } else {
-      // Smart default: 80% of viewport width, capped at 800px
-      displayW = Math.min(viewport.w * 0.8, 800);
+      // Default: 1:1 with original image, downscale only if larger than viewport
+      displayW = Math.min(image.naturalWidth, viewport.w * 0.9);
       displayH = displayW / aspect;
+      if (displayH > viewport.h * 0.9) {
+        displayH = viewport.h * 0.9;
+        displayW = displayH * aspect;
+      }
     }
 
     // Convert to engine coordinates

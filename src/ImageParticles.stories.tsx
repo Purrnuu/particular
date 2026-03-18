@@ -188,9 +188,6 @@ const TextToParticlesDemo: React.FC<ImageParticlesStoryArgs> = (args) => {
     controllerRef.current = controller;
 
     controller.textToParticles('Particular', {
-      x: window.innerWidth / 2,
-      y: window.innerHeight / 2,
-      width: Math.min(window.innerWidth * 0.8, 800),
       resolution: args.resolution,
       shape: args.particleShape,
       homeConfig: buildHomeConfig(args),
@@ -256,140 +253,92 @@ export const TextToParticles: Story = {
 };
 
 export const Heart: Story = {
-  render: (args) => {
-    const size = Math.min(window.innerWidth, window.innerHeight) * 0.7;
-    return (
-      <ImageDemo
-        {...args}
-        buildImage={() => ({
-          image: canvasToDataURL(createHeartImage(400)),
-          x: window.innerWidth / 2,
-          y: window.innerHeight / 2,
-          width: size,
-          height: size,
-        })}
-      />
-    );
-  },
+  render: (args) => (
+    <ImageDemo
+      {...args}
+      buildImage={() => ({
+        image: canvasToDataURL(createHeartImage(400)),
+      })}
+    />
+  ),
 };
 
 export const WoltLogo: Story = {
-  render: (args) => {
-    const w = Math.min(window.innerWidth * 0.7, 700);
-    return (
-      <ImageDemo
-        {...args}
-        buildImage={() => ({
-          image: woltLogoSvg,
-          x: window.innerWidth / 2,
-          y: window.innerHeight / 2,
-          width: w,
-        })}
-        background="#0a0a1a"
-      />
-    );
-  },
+  render: (args) => (
+    <ImageDemo
+      {...args}
+      buildImage={() => ({
+        image: woltLogoSvg,
+      })}
+      background="#0a0a1a"
+    />
+  ),
 };
 
 export const Viking: Story = {
-  render: (args) => {
-    const size = Math.min(window.innerWidth, window.innerHeight) * 0.7;
-    return (
-      <ImageDemo
-        {...args}
-        buildImage={() => ({
-          image: vikingPng,
-          x: window.innerWidth / 2,
-          y: window.innerHeight / 2,
-          width: size,
-          height: size,
-        })}
-        background="#1a1a2e"
-      />
-    );
-  },
+  render: (args) => (
+    <ImageDemo
+      {...args}
+      buildImage={() => ({
+        image: vikingPng,
+      })}
+      background="#1a1a2e"
+    />
+  ),
 };
 
 export const IntroScatter: Story = {
   name: 'Intro — Scatter',
-  render: (args) => {
-    const size = Math.min(window.innerWidth, window.innerHeight) * 0.7;
-    return (
-      <ImageDemo
-        {...args}
-        buildImage={() => ({
-          image: vikingPng,
-          x: window.innerWidth / 2,
-          y: window.innerHeight / 2,
-          width: size,
-          height: size,
-          intro: { mode: 'scatter' },
-        })}
-        background="#1a1a2e"
-      />
-    );
-  },
+  render: (args) => (
+    <ImageDemo
+      {...args}
+      buildImage={() => ({
+        image: vikingPng,
+        intro: { mode: 'scatter' },
+      })}
+      background="#1a1a2e"
+    />
+  ),
 };
 
 export const IntroScaleIn: Story = {
   name: 'Intro — Scale In',
-  render: (args) => {
-    const size = Math.min(window.innerWidth, window.innerHeight) * 0.7;
-    return (
-      <ImageDemo
-        {...args}
-        buildImage={() => ({
-          image: vikingPng,
-          x: window.innerWidth / 2,
-          y: window.innerHeight / 2,
-          width: size,
-          height: size,
-          intro: { mode: 'scaleIn' },
-        })}
-        background="#1a1a2e"
-      />
-    );
-  },
+  render: (args) => (
+    <ImageDemo
+      {...args}
+      buildImage={() => ({
+        image: vikingPng,
+        intro: { mode: 'scaleIn' },
+      })}
+      background="#1a1a2e"
+    />
+  ),
 };
 
 export const IntroRipple: Story = {
   name: 'Intro — Ripple',
-  render: (args) => {
-    const size = Math.min(window.innerWidth, window.innerHeight) * 0.7;
-    return (
-      <ImageDemo
-        {...args}
-        buildImage={() => ({
-          image: vikingPng,
-          x: window.innerWidth / 2,
-          y: window.innerHeight / 2,
-          width: size,
-          height: size,
-          intro: { mode: 'ripple' },
-        })}
-        background="#1a1a2e"
-      />
-    );
-  },
+  render: (args) => (
+    <ImageDemo
+      {...args}
+      buildImage={() => ({
+        image: vikingPng,
+        intro: { mode: 'ripple' },
+      })}
+      background="#1a1a2e"
+    />
+  ),
 };
 
 export const IntroPaint: Story = {
   name: 'Intro — Paint',
-  render: (args) => {
-    const size = Math.min(window.innerWidth, window.innerHeight) * 0.7;
-    return (
-      <ImageDemo
-        {...args}
-        buildImage={() => ({
-          image: vikingPng,
-          x: window.innerWidth / 2,
-          y: window.innerHeight / 2,
-          width: size,
-          height: size,
-          intro: { mode: 'paint' },
-        })}
-        background="#1a1a2e"
-      />
-    );
-  },
+  render: (args) => (
+    <ImageDemo
+      {...args}
+      buildImage={() => ({
+        image: vikingPng,
+        intro: { mode: 'paint' },
+      })}
+      background="#1a1a2e"
+    />
+  ),
 };
