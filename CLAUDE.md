@@ -121,6 +121,17 @@ src/particular/utils/elementCapture.ts   # Manual Canvas 2D element capture for 
 src/particular/utils/imageChunker.ts    # Jittered-grid polygon chunker for image shatter (buildJitteredGrid, clipPolygon, generateImageChunks)
 ```
 
+### Tests
+```
+tests/embed.test.ts                      # Smoke tests: IIFE global + React hook mount
+tests/vector.test.ts                     # Vector math: magnitude, add, friction (pow), gravity, normalize, angle
+tests/attractor.test.ts                  # Attractor force: falloff, attract/repel, direction, radius boundary
+tests/mouseForce.test.ts                 # MouseForce: velocity tracking, decay, force falloff, speed capping
+tests/defaults.test.ts                   # Config merge: configureParticular, configureParticle, default key existence
+tests/particle.test.ts                   # Particle physics: pool lifecycle, velocity integration, friction, gravity, forces, alpha fade, home spring, size, trail
+tests/emitter.test.ts                    # Emission: rate accumulation, lifecycle budget, bounds, continuous mode
+```
+
 ## Modification Checklists
 
 ### Adding a new particle effect field
