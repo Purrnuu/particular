@@ -1,6 +1,7 @@
 import EventDispatcher, { type IEventDispatcher } from '../utils/eventDispatcher';
 import { defaultParticular } from './defaults';
 import { destroy } from '../utils/genericUtils';
+import { setParticlePoolSize } from '../components/particle';
 import type Emitter from '../components/emitter';
 import type Attractor from '../components/attractor';
 import type MouseForce from '../components/mouseForce';
@@ -42,12 +43,14 @@ export default class Particular implements IEventDispatcher {
     maxCount = defaultParticular.maxCount,
     continuous = defaultParticular.continuous,
     pixelRatio = defaultParticular.pixelRatio,
+    particlePoolSize = defaultParticular.particlePoolSize,
     container,
   }: ParticularConfig): void {
     this.maxCount = maxCount;
     this.continuous = continuous;
     this.pixelRatio = pixelRatio;
     this.container = container ?? null;
+    setParticlePoolSize(particlePoolSize);
     this.update();
   }
 

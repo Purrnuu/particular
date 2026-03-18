@@ -20,7 +20,16 @@ const freeSegments: TrailSegment[] = [];
 // Module-level pool for recycled Particle objects — avoids GC pressure from short-lived particles.
 // Particles are returned here on destroy() and reused via Particle.create().
 const _particlePool: Particle[] = [];
-const MAX_POOL_SIZE = 2000;
+let _maxPoolSize = 2000;
+
+/** Set the maximum number of dead particles kept in the reuse pool. */
+export function setParticlePoolSize(size: number): void {
+  _maxPoolSize = Math.max(0, size);
+  // Shrink pool if new limit is smaller
+  if (_particlePool.length > _maxPoolSize) {
+    _particlePool.length = _maxPoolSize;
+  }
+}
 
 export default class Particle {
   position: Vector;
@@ -506,7 +515,7 @@ export default class Particle {
     this.homePosition = null;
     this.homeConfig = null;
     // Return to particle pool for reuse
-    if (_particlePool.length < MAX_POOL_SIZE) {
+    if (_particlePool.length < _maxPoolSize) {
       _particlePool.push(this);
     }
   }

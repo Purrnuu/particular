@@ -23,6 +23,7 @@ export const defaultParticular: Required<Omit<ParticularConfig, 'container'>> = 
   autoStart: false,
   continuous: false,
   webglMaxInstances: 4096,
+  particlePoolSize: 2000,
 };
 
 export const defaultParticle: Required<Omit<ParticleConfig, 'detonate'>> = {

@@ -3,7 +3,7 @@ export { default as ParticularWrapper } from './particular/ParticularWrapper';
 export { withParticles } from './particular/ParticularWrapper';
 export { default as Vector } from './particular/utils/vector';
 export { default as Emitter } from './particular/components/emitter';
-export { default as Particle } from './particular/components/particle';
+export { default as Particle, setParticlePoolSize } from './particular/components/particle';
 export { default as Attractor } from './particular/components/attractor';
 export { default as MouseForce } from './particular/components/mouseForce';
 export { default as CanvasRenderer } from './particular/renderers/canvasRenderer';

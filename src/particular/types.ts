@@ -64,6 +64,9 @@ export interface ParticularConfig {
   continuous?: boolean;
   /** WebGL: max particles per draw call (default 4096). Increase for fewer draw calls with many particles. */
   webglMaxInstances?: number;
+  /** Max dead particles kept in the reuse pool (default 2000). Higher values reduce GC pressure
+   *  in scenes with heavy particle turnover; lower values reduce idle memory usage. */
+  particlePoolSize?: number;
   /** Container element for container-aware mode. When set, the canvas sizes to the container
    *  and coordinates are relative to the container instead of the viewport.
    *  Omit for full-viewport overlay mode (default). */

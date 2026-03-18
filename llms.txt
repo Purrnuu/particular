@@ -336,6 +336,14 @@ MouseTrailHandle: { stop(), start(), destroy() }
 - idlePulseIntervalMin?: number     — min ticks between pulses. Default 300
 - idlePulseIntervalMax?: number     — max ticks between pulses. Default 1800
 
+### Engine Config Fields (ParticularConfig)
+- maxCount: number                   — max alive particles. Default 500
+- pixelRatio: number                 — canvas pixel ratio. Default 2
+- continuous: boolean                — keep emitters alive after burst. Default false
+- particlePoolSize: number           — max dead particles kept in reuse pool. Default 2000. Higher = less GC, more idle memory
+- webglMaxInstances: number          — WebGL max particles per draw call. Default 4096
+- container: HTMLElement             — container-aware mode element
+
 ### Key Particle Config Fields
 - shape: "circle" | "rectangle" | "square" | "roundedRectangle" | "triangle" | "star" | "ring" | "sparkle"
 - blendMode: "normal" | "additive" | "multiply" | "screen"
