@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import {
-  useParticles,
-  useScreensaver,
   createParticles,
   startScreensaver,
+  createHeartImage,
+  canvasToDataURL,
   configureParticle,
   Emitter,
   Vector,
@@ -12,49 +12,7 @@ import {
 } from "particular";
 import vikingPng from "../../../src/icons/viking.png";
 
-// ── Shared Styles ────────────────────────────────────────────────────────────
-
-const pageStyle = {
-  minHeight: "100vh",
-  background: "#0b1020",
-  color: "#fff",
-  fontFamily: "Inter, system-ui, -apple-system, sans-serif",
-};
-
-const navStyle = {
-  position: "fixed",
-  top: 0,
-  left: 0,
-  right: 0,
-  zIndex: 20000,
-  display: "flex",
-  gap: 4,
-  padding: 12,
-  background: "rgba(11,16,32,0.85)",
-  backdropFilter: "blur(8px)",
-  flexWrap: "wrap",
-};
-
-const btnStyle = (active) => ({
-  fontSize: "0.85rem",
-  padding: "6px 14px",
-  borderRadius: 8,
-  border: active ? "1px solid #4a6cc0" : "1px solid #2e3552",
-  background: active ? "#2a4080" : "#121a33",
-  color: "#fff",
-  cursor: "pointer",
-});
-
-const hintStyle = {
-  textAlign: "center",
-  pointerEvents: "none",
-  userSelect: "none",
-  opacity: 0.5,
-  color: "#fff",
-  paddingTop: "85vh",
-};
-
-// ── Showcase Styles ──────────────────────────────────────────────────────────
+/* ─── Shared Styles ─── */
 
 const cardStyle = {
   background: "rgba(255, 255, 255, 0.05)",
@@ -72,7 +30,7 @@ const headingStyle = {
   letterSpacing: "0.02em",
 };
 
-const bodyTextStyle = {
+const bodyStyle = {
   fontSize: "0.82rem",
   lineHeight: 1.5,
   color: "rgba(255, 255, 255, 0.55)",
@@ -92,10 +50,12 @@ const sectionSubStyle = {
   maxWidth: 520,
 };
 
+/* ─── Palettes ─── */
+
 const subtleSnowColors = ["#555566", "#606070", "#6a6a7a", "#757585", "#808090"];
 const mutedRiverColors = ["#3a4a4f", "#455558", "#4f6065", "#5a6b70", "#647578"];
 
-// ── Responsive CSS (injected once) ───────────────────────────────────────────
+/* ─── Responsive CSS (injected once) ─── */
 
 const RESPONSIVE_CSS = `
 .showcase-features-grid {
@@ -119,6 +79,17 @@ const RESPONSIVE_CSS = `
   .showcase-features-grid { grid-template-columns: 1fr; }
   .showcase-section-heading { font-size: 1.2rem; }
 }
+.showcase-demos-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+@media (max-width: 900px) {
+  .showcase-demos-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 480px) {
+  .showcase-demos-grid { grid-template-columns: 1fr; }
+}
 `;
 
 function useInjectStyles(css) {
@@ -133,28 +104,407 @@ function useInjectStyles(css) {
   }, [css]);
 }
 
-// ── Demo: Showcase (full landing page) ───────────────────────────────────────
+/* ─── Demo card shared styles ─── */
 
-function ShowcaseDemo() {
+const demoCellStyle = {
+  position: "relative",
+  height: 280,
+  overflow: "hidden",
+  background: "rgba(255, 255, 255, 0.02)",
+  border: "1px solid rgba(255, 255, 255, 0.06)",
+  borderRadius: 16,
+  cursor: "pointer",
+};
+
+const DemoLabel = ({ title, desc }) => (
+  <div style={{
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: "12px 16px",
+    background: "linear-gradient(transparent, rgba(0,0,0,0.6))",
+    zIndex: 10001,
+    pointerEvents: "none",
+  }}>
+    <div style={{ ...headingStyle, fontSize: "0.85rem", marginBottom: 2 }}>{title}</div>
+    <div style={{ ...bodyStyle, fontSize: "0.75rem" }}>{desc}</div>
+  </div>
+);
+
+/* ─── Demo: Click Burst (rotating palettes) ─── */
+
+const burstPalettes = [
+  { colors: ["#b33600", "#cc4a00", "#e86100", "#f57c00", "#ff9500", "#ffad33"], glow: "#ff9500" },
+  { colors: ["#a5d8ff", "#74c0fc", "#4dabf7", "#d0bfff", "#b197fc", "#9775fa"], glow: "#74c0fc" },
+  { colors: ["#006b3f", "#00a85e", "#1edd80", "#4deda0", "#96f2c8", "#c3fae8"], glow: "#1edd80" },
+  { colors: ["#ff4757", "#ff6b81", "#ff8fa3", "#ffa8b8", "#ffc9d3", "#ffe0e6"], glow: "#ff6b81" },
+  { colors: ["#ffd699", "#ffcc66", "#ffad33", "#ff9500", "#f57c00", "#e86100"], glow: "#ffcc66" },
+  { colors: ["#d0bfff", "#b197fc", "#9775fa", "#845ef7", "#7048e8", "#5f3dc4"], glow: "#9775fa" },
+];
+
+function BurstDemo() {
+  const ref = useRef(null);
+  const ctrlRef = useRef(null);
+  const paletteIdx = useRef(0);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ctrl = createParticles({
+      container: el,
+      preset: "magic",
+      config: { maxCount: 200, zIndex: 1, sizeMin: 2, sizeMax: 7 },
+      renderer: "webgl",
+      autoResize: true,
+    });
+    ctrlRef.current = ctrl;
+    return () => { ctrl.destroy(); ctrlRef.current = null; };
+  }, []);
+
+  return (
+    <div ref={ref} style={demoCellStyle} onClick={(e) => {
+      const palette = burstPalettes[paletteIdx.current % burstPalettes.length];
+      paletteIdx.current++;
+      ctrlRef.current?.burst({
+        x: e.clientX,
+        y: e.clientY,
+        colors: palette.colors,
+        glowColor: palette.glow,
+      });
+    }}>
+      <DemoLabel title="Click Burst" desc="Click for magic" />
+    </div>
+  );
+}
+
+/* ─── Demo: Meteors ─── */
+
+function MeteorDemo() {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const screensaver = startScreensaver({
+      container: el,
+      preset: "meteors",
+      config: {
+        maxCount: 40,
+        rate: 0.25,
+        shape: "star",
+        sizeMin: 2,
+        sizeMax: 5,
+        particleLife: 200,
+        velocity: Vector.fromAngle(95, 2),
+        spread: Math.PI * 0.08,
+        trailLength: 10,
+        zIndex: 1,
+      },
+      renderer: "webgl",
+      autoResize: true,
+      mouseWind: { strength: 0.3, radius: 80 },
+    });
+    return () => screensaver.destroy();
+  }, []);
+
+  return (
+    <div ref={ref} style={demoCellStyle}>
+      <DemoLabel title="Meteors" desc="Tiny shooting stars" />
+    </div>
+  );
+}
+
+/* ─── Demo: Image Shatter ─── */
+
+function ShatterDemo() {
+  const ref = useRef(null);
+  const ctrlRef = useRef(null);
+  const readyRef = useRef(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ctrl = createParticles({
+      container: el,
+      config: { maxCount: 200, continuous: true, zIndex: 1 },
+      renderer: "webgl",
+      autoResize: true,
+    });
+    ctrlRef.current = ctrl;
+
+    const img = new Image();
+    img.onload = () => {
+      const aspect = img.naturalWidth / img.naturalHeight;
+      const maxW = el.clientWidth * 0.55;
+      const maxH = el.clientHeight * 0.55;
+      let w = maxW;
+      let h = w / aspect;
+      if (h > maxH) { h = maxH; w = h * aspect; }
+
+      ctrl.shatterImage({
+        image: vikingPng,
+        width: w,
+        height: h,
+        chunkCount: 20,
+        jitter: 0.35,
+        homeConfig: { springStrength: 0.06, springDamping: 0.85, returnNoise: 0.2 },
+      }).then(() => { readyRef.current = true; });
+    };
+    img.src = vikingPng;
+
+    return () => { ctrl.destroy(); ctrlRef.current = null; readyRef.current = false; };
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      style={demoCellStyle}
+      onMouseEnter={() => {
+        if (!ctrlRef.current || !readyRef.current) return;
+        ctrlRef.current.scatter({ velocity: 4, rotation: 2 });
+        ctrlRef.current.startWobble({ track: ref.current });
+      }}
+      onMouseLeave={() => ctrlRef.current?.stopWobble()}
+    >
+      <DemoLabel title="Image Shatter" desc="Hover to shatter" />
+    </div>
+  );
+}
+
+/* ─── Demo: Text Particles ─── */
+
+function TextDemo() {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ctrl = createParticles({
+      container: el,
+      preset: "imageText",
+      config: { maxCount: 2000, continuous: true, zIndex: 1 },
+      renderer: "webgl",
+      autoResize: true,
+    });
+    ctrl.textToParticles("Hello", {
+      height: el.clientHeight * 0.45,
+      resolution: 100,
+      shape: "circle",
+    });
+    ctrl.addMouseForce({ track: true, strength: 2, radius: 50 });
+    return () => ctrl.destroy();
+  }, []);
+
+  return (
+    <div ref={ref} style={demoCellStyle}>
+      <DemoLabel title="Text Particles" desc="Interactive mouse force" />
+    </div>
+  );
+}
+
+/* ─── Demo: Container Glow ─── */
+
+function GlowDemo() {
+  const ref = useRef(null);
+  const innerRef = useRef(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    const inner = innerRef.current;
+    if (!el || !inner) return;
+    const ctrl = createParticles({
+      container: el,
+      config: { maxCount: 100, continuous: true, zIndex: 1 },
+      renderer: "webgl",
+      autoResize: true,
+    });
+    ctrl.addContainerGlow({ element: inner });
+    return () => ctrl.destroy();
+  }, []);
+
+  return (
+    <div ref={ref} style={demoCellStyle}>
+      <div ref={innerRef} style={{
+        position: "absolute",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        padding: "16px 28px",
+        background: "rgba(255,255,255,0.05)",
+        border: "1px solid rgba(255,255,255,0.1)",
+        borderRadius: 12,
+        color: "#fff",
+        fontSize: "0.9rem",
+        fontWeight: 600,
+        pointerEvents: "none",
+        zIndex: 1,
+      }}>
+        Glowing
+      </div>
+      <DemoLabel title="Container Glow" desc="Particle halo" />
+    </div>
+  );
+}
+
+/* ─── Demo: Image Particles (scatter intro + mouse + triangles) ─── */
+
+function ScatterDemo() {
+  const ref = useRef(null);
+  const ctrlRef = useRef(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ctrl = createParticles({
+      container: el,
+      preset: "imageText",
+      config: { maxCount: 4000, continuous: true, zIndex: 1 },
+      renderer: "webgl",
+      autoResize: true,
+    });
+    ctrlRef.current = ctrl;
+
+    ctrl.imageToParticles({
+      image: vikingPng,
+      height: el.clientHeight * 0.6,
+      resolution: 150,
+      shape: "triangle",
+      intro: { mode: "scatter", duration: 1000 },
+    });
+    ctrl.addMouseForce({ track: true, strength: 2, radius: 50 });
+
+    return () => { ctrl.destroy(); ctrlRef.current = null; };
+  }, []);
+
+  return (
+    <div ref={ref} style={demoCellStyle} onClick={() => {
+      ctrlRef.current?.scatter({ velocity: 8, rotation: 3 });
+    }}>
+      <DemoLabel title="Image Particles" desc="Click to scatter" />
+    </div>
+  );
+}
+
+/* ─── Demo: River (full-width, particles flow around inner card) ─── */
+
+function RiverDemo() {
+  const ref = useRef(null);
+  const innerRef = useRef(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    const inner = innerRef.current;
+    if (!el || !inner) return;
+
+    const ctrl = createParticles({
+      container: el,
+      preset: "river",
+      config: { maxCount: 200, continuous: true, zIndex: 1 },
+      renderer: "webgl",
+      autoResize: true,
+    });
+
+    const pr = ctrl.engine.pixelRatio;
+    const w = el.clientWidth / pr;
+    const h = el.clientHeight / pr;
+
+    const riverConfig = configureParticle({
+      ...presets.Ambient.river,
+      rate: 2,
+      velocity: Vector.fromAngle(0, 1.2),
+      sizeMin: 0.5,
+      sizeMax: 2.5,
+      particleLife: 250,
+      fadeTime: 80,
+      glow: true,
+      glowSize: 6,
+      glowAlpha: 0.2,
+      trail: true,
+      trailLength: 5,
+      trailFade: 0.5,
+      trailShrink: 0.45,
+      colors: mutedRiverColors,
+    });
+    const emitter = new Emitter({
+      point: new Vector(0, h / 2),
+      ...riverConfig,
+      spawnWidth: 0,
+      spawnHeight: h * 0.6,
+      icons: [],
+    });
+    ctrl.engine.addEmitter(emitter);
+    emitter.isEmitting = true;
+    emitter.emit();
+
+    const curve = [
+      { x: 0.20, y: h * 0.35 },
+      { x: 0.45, y: h * 0.65 },
+      { x: 0.70, y: h * 0.35 },
+      { x: 0.90, y: h * 0.55 },
+    ];
+    for (const pt of curve) {
+      ctrl.addAttractor({ x: w * pt.x, y: pt.y, strength: 0.15, radius: w * 0.3 });
+    }
+
+    const boundary = ctrl.addBoundary({ element: inner, strength: -2, radius: 15 });
+    ctrl.addMouseForce({ track: true, strength: 1.5, radius: 60 });
+
+    return () => { boundary.destroy(); ctrl.destroy(); };
+  }, []);
+
+  return (
+    <div ref={ref} style={{
+      position: "relative",
+      height: 200,
+      background: "rgba(255, 255, 255, 0.02)",
+      border: "1px solid rgba(255, 255, 255, 0.06)",
+      borderRadius: 16,
+    }}>
+      <div ref={innerRef} style={{
+        position: "absolute",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        padding: "14px 24px",
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: 12,
+        color: "rgba(255,255,255,0.5)",
+        fontSize: "0.85rem",
+        fontWeight: 600,
+        pointerEvents: "none",
+        zIndex: 1,
+        whiteSpace: "nowrap",
+      }}>
+        Particles flow around elements
+      </div>
+    </div>
+  );
+}
+
+/* ─── Main Showcase ─── */
+
+export default function App() {
   useInjectStyles(RESPONSIVE_CSS);
   const containerRef = useRef(null);
   const snowCanvasRef = useRef(null);
   const textCanvasRef = useRef(null);
-  const riverCanvasRef = useRef(null);
   const fireworksCanvasRef = useRef(null);
-  const riverDividerRef = useRef(null);
+  const ctaContainerRef = useRef(null);
+  const ctaBadgeRef = useRef(null);
+  const gallerySectionRef = useRef(null);
+  const galleryHeadingRef = useRef(null);
+  const galleryCtrlRef = useRef(null);
   const cardRefs = useRef([]);
   const snowControllerRef = useRef(null);
   const textControllerRef = useRef(null);
   const firedFireworksRef = useRef(false);
   let cardIndex = 0;
 
-  const setCardRef = useCallback(
-    (index) => (el) => {
-      if (el) cardRefs.current[index] = el;
-    },
-    [],
-  );
+  const setCardRef = useCallback((index) => (el) => {
+    if (el) cardRefs.current[index] = el;
+  }, []);
 
   // Snow screensaver
   useEffect(() => {
@@ -168,7 +518,7 @@ function ShowcaseDemo() {
       preset: "snow",
       config: {
         rate: 0.6,
-        maxCount: 300,
+        maxCount: 800,
         particleLife: 1200,
         colors: subtleSnowColors,
         glow: false,
@@ -181,32 +531,48 @@ function ShowcaseDemo() {
 
     snowControllerRef.current = screensaver.controller;
 
+    // Mouse trail
+    screensaver.controller.addMouseTrail({
+      target: container,
+      rate: 1,
+      sizeMin: 0.8,
+      sizeMax: 2.5,
+      particleLife: 35,
+      fadeTime: 20,
+      velocity: 0.8,
+      spread: 0.5,
+      colors: ["#a5d8ff", "#74c0fc", "#d0bfff", "#b197fc", "#99e9f2", "#c3fae8"],
+      glow: true,
+      glowSize: 6,
+      glowAlpha: 0.25,
+      glowColor: "#b197fc",
+      blendMode: "normal",
+      trail: false,
+      minSpeed: 0.8,
+    });
+
     return () => {
       screensaver.destroy();
       snowControllerRef.current = null;
     };
   }, []);
 
-  // Boundaries — snow flows around cards
+  // Boundaries — snow flows around all cards
   useEffect(() => {
     const ctrl = snowControllerRef.current;
     if (!ctrl) return;
 
-    const handles = [];
     const timer = setTimeout(() => {
       for (const card of cardRefs.current) {
         if (!card) continue;
-        handles.push(ctrl.addBoundary({ element: card, strength: -1.5, radius: 10 }));
+        ctrl.addBoundary({ element: card, strength: -1.5, radius: 10 });
       }
     }, 100);
 
-    return () => {
-      clearTimeout(timer);
-      for (const h of handles) h.destroy();
-    };
+    return () => clearTimeout(timer);
   }, []);
 
-  // Text particles
+  // Text particles — hero
   useEffect(() => {
     const canvas = textCanvasRef.current;
     const container = containerRef.current;
@@ -240,75 +606,7 @@ function ShowcaseDemo() {
     };
   }, []);
 
-  // River
-  useEffect(() => {
-    const canvas = riverCanvasRef.current;
-    const container = containerRef.current;
-    const divider = riverDividerRef.current;
-    if (!canvas || !container || !divider) return;
-
-    const controller = createParticles({
-      canvas,
-      container,
-      preset: "river",
-      config: { maxCount: 300 },
-      renderer: "webgl",
-      autoResize: true,
-    });
-
-    const pr = controller.engine.pixelRatio;
-    const w = container.clientWidth / pr;
-    const dividerY = divider.offsetTop / pr;
-
-    const riverConfig = configureParticle({
-      ...presets.Ambient.river,
-      rate: 1.5,
-      velocity: Vector.fromAngle(0, 0.8),
-      sizeMin: 0.5,
-      sizeMax: 2,
-      particleLife: 300,
-      fadeTime: 100,
-      glow: false,
-      trail: true,
-      trailLength: 4,
-      trailFade: 0.6,
-      trailShrink: 0.5,
-      colors: mutedRiverColors,
-    });
-    const riverEmitter = new Emitter({
-      point: new Vector(0, dividerY),
-      ...riverConfig,
-      spawnWidth: 0,
-      spawnHeight: 20 / pr,
-      icons: [],
-    });
-    controller.engine.addEmitter(riverEmitter);
-    riverEmitter.isEmitting = true;
-    riverEmitter.emit();
-
-    // S-curve attractors
-    const curve = [
-      { x: 0.2, y: dividerY - 12 / pr },
-      { x: 0.4, y: dividerY + 12 / pr },
-      { x: 0.6, y: dividerY - 12 / pr },
-      { x: 0.8, y: dividerY + 12 / pr },
-    ];
-    for (const pt of curve) {
-      controller.addAttractor({ x: w * pt.x, y: pt.y, strength: 0.2, radius: w * 0.35 });
-    }
-
-    // Edge repulsors
-    for (let fx = 0.1; fx <= 0.9; fx += 0.2) {
-      controller.addAttractor({ x: w * fx, y: dividerY - 45 / pr, strength: -0.25, radius: 40 / pr });
-      controller.addAttractor({ x: w * fx, y: dividerY + 45 / pr, strength: -0.25, radius: 40 / pr });
-    }
-
-    controller.addMouseForce({ track: true, strength: 1.5, radius: 60 });
-
-    return () => controller.destroy();
-  }, []);
-
-  // Fireworks — scroll triggered
+  // Fireworks — scroll to bottom
   useEffect(() => {
     const canvas = fireworksCanvasRef.current;
     const container = containerRef.current;
@@ -318,7 +616,7 @@ function ShowcaseDemo() {
       canvas,
       container,
       preset: "fireworksShow",
-      config: { maxCount: 500, continuous: false },
+      config: { maxCount: 2000, continuous: false },
       renderer: "webgl",
       autoResize: true,
     });
@@ -327,9 +625,9 @@ function ShowcaseDemo() {
       if (firedFireworksRef.current) return;
       const scrollBottom = window.scrollY + window.innerHeight;
       const totalHeight = document.documentElement.scrollHeight;
+
       if (scrollBottom >= totalHeight - 150) {
         firedFireworksRef.current = true;
-
         const pr = controller.engine.pixelRatio;
         const w = container.clientWidth / pr;
         const h = container.clientHeight / pr;
@@ -337,27 +635,43 @@ function ShowcaseDemo() {
         const fwConfig = configureParticle({
           ...presets.Ambient.fireworksShow,
           rate: 1,
-          life: 2,
+          life: 3,
         });
 
-        [0.35, 0.55, 0.7].forEach((xFrac, i) => {
+        const wave1 = [0.15, 0.35, 0.55, 0.75, 0.9];
+        const wave2 = [0.25, 0.45, 0.65, 0.85];
+
+        wave1.forEach((xFrac, i) => {
           setTimeout(() => {
             const emitter = new Emitter({
               point: new Vector(w * xFrac, h),
               ...fwConfig,
-              spawnWidth: w * 0.08,
+              spawnWidth: w * 0.06,
               spawnHeight: 0,
               icons: [],
             });
             controller.engine.addEmitter(emitter);
             emitter.isEmitting = true;
             emitter.emit();
-          }, i * 800);
+          }, i * 400);
         });
 
-        setTimeout(() => {
-          firedFireworksRef.current = false;
-        }, 8000);
+        wave2.forEach((xFrac, i) => {
+          setTimeout(() => {
+            const emitter = new Emitter({
+              point: new Vector(w * xFrac, h),
+              ...fwConfig,
+              spawnWidth: w * 0.06,
+              spawnHeight: 0,
+              icons: [],
+            });
+            controller.engine.addEmitter(emitter);
+            emitter.isEmitting = true;
+            emitter.emit();
+          }, 2200 + i * 500);
+        });
+
+        setTimeout(() => { firedFireworksRef.current = false; }, 10000);
       }
     };
 
@@ -368,7 +682,66 @@ function ShowcaseDemo() {
     };
   }, []);
 
-  // E to scatter
+  // CTA container glow
+  useEffect(() => {
+    const container = ctaContainerRef.current;
+    const badge = ctaBadgeRef.current;
+    if (!container || !badge) return;
+
+    const ctrl = createParticles({
+      container,
+      config: { maxCount: 80, continuous: true, zIndex: 1 },
+      renderer: "webgl",
+      autoResize: true,
+    });
+    ctrl.addContainerGlow({
+      element: badge,
+      colors: ["#ffad33", "#ff9500", "#f57c00", "#e86100", "#ffcc66", "#ffd699"],
+      rate: 0.6,
+      sizeMin: 0.5,
+      sizeMax: 2,
+      particleLife: 50,
+      fadeTime: 25,
+      velocity: 0.5,
+      spread: 0.4,
+      shape: "sparkle",
+      glow: true,
+      glowColor: "#ff9500",
+      glowAlpha: 0.35,
+      glowSize: 8,
+      blendMode: "additive",
+    });
+    return () => ctrl.destroy();
+  }, []);
+
+  // Gallery section controller — for easter egg
+  useEffect(() => {
+    const section = gallerySectionRef.current;
+    if (!section) return;
+    const ctrl = createParticles({
+      container: section,
+      config: { maxCount: 3000, continuous: true, zIndex: 2 },
+      renderer: "webgl",
+      autoResize: true,
+    });
+    galleryCtrlRef.current = ctrl;
+    return () => { ctrl.destroy(); galleryCtrlRef.current = null; };
+  }, []);
+
+  const handleGalleryHeadingClick = useCallback(() => {
+    const ctrl = galleryCtrlRef.current;
+    const heading = galleryHeadingRef.current;
+    if (!ctrl || !heading || heading.style.visibility === "hidden") return;
+    ctrl.elementToParticles(heading, {
+      shape: "triangle",
+      resolution: 400,
+      intro: { mode: "ripple", duration: 600 },
+    }).then(() => {
+      ctrl.addMouseForce({ track: true, strength: 2, radius: 60 });
+    });
+  }, []);
+
+  // E to scatter hero text
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "e" || e.key === "E") textControllerRef.current?.scatter({ velocity: 12 });
@@ -378,16 +751,16 @@ function ShowcaseDemo() {
   }, []);
 
   const features = [
-    { icon: "⚡", title: "Lightning Fast", body: "WebGL2 instanced rendering pushes thousands of particles at 60fps." },
-    { icon: "🎨", title: "Beautiful Defaults", body: "Curated presets that look stunning out of the box." },
-    { icon: "🔧", title: "Fully Configurable", body: "Every parameter is tunable. Physics, visuals, timing." },
-    { icon: "📦", title: "Tiny Bundle", body: "Tree-shakeable ESM with zero runtime dependencies." },
-    { icon: "🌐", title: "Container Aware", body: "Fill the viewport or live inside any HTML element." },
-    { icon: "🧲", title: "Force Fields", body: "Attractors, mouse forces, and element boundaries." },
+    { icon: "\uD83C\uDFA8", title: "Beautiful by Default", body: "Curated presets and smart defaults that look stunning out of the box. Zero config required." },
+    { icon: "\u26A1", title: "Lightning Fast", body: "WebGL2 instanced rendering pushes thousands of particles at 60fps with minimal overhead." },
+    { icon: "\uD83D\uDDE8\uFE0F", title: "Text & Image to Particles", body: "Dissolve any text or image into thousands of particles that spring back together." },
+    { icon: "\uD83E\uDDE9", title: "Shatter & Scatter", body: "Break images into polygon chunks or scatter particles outward, then reassemble." },
+    { icon: "\uD83D\uDCE6", title: "Container Aware", body: "Turn any DOM element into an effect container. Particles flow around and inside elements automatically." },
+    { icon: "\uD83D\uDD2E", title: "Interactive Effects", body: "Mouse forces, hover reactions, click bursts, and wobble physics respond to user input." },
   ];
 
   const steps = [
-    { num: "01", title: "Install", body: "npm install particular — zero dependencies, tree-shakeable." },
+    { num: "01", title: "Install", body: "npm install particular \u2014 zero dependencies, tree-shakeable." },
     { num: "02", title: "Create", body: "One call to createParticles() or useParticles() to get started." },
     { num: "03", title: "Customize", body: "Choose a preset, add forces, boundaries, and interactions." },
   ];
@@ -404,43 +777,77 @@ function ShowcaseDemo() {
     >
       <canvas ref={snowCanvasRef} style={particlesContainerLayerStyle} />
       <canvas ref={textCanvasRef} style={particlesContainerLayerStyle} />
-      <canvas ref={riverCanvasRef} style={particlesContainerLayerStyle} />
       <canvas ref={fireworksCanvasRef} style={particlesContainerLayerStyle} />
 
       {/* Hero */}
-      <section className="showcase-hero-section" style={{ position: "relative", zIndex: 1, textAlign: "center", pointerEvents: "none", userSelect: "none" }}>
+      <section
+        className="showcase-hero-section"
+        style={{ position: "relative", zIndex: 1, textAlign: "center", pointerEvents: "none", userSelect: "none" }}
+      >
         <div style={{ paddingTop: "58vh" }}>
           <p style={{ ...sectionSubStyle, fontSize: "1.1rem", margin: "0 auto 20px" }}>
-            A particle engine for the modern web.
+            Turn text, images, and DOM elements into interactive particles.
             <br />
-            Beautiful defaults, zero config, endless possibilities.
+            Beautiful by default. Lightning fast. Zero config.
           </p>
-          <p style={{ color: "rgba(255,255,255,0.2)", fontSize: "0.8rem" }}>Touch or move mouse to push particles</p>
+          <p style={{ color: "rgba(255,255,255,0.2)", fontSize: "0.8rem" }}>
+            Touch or move mouse to push particles
+          </p>
         </div>
-        <div style={{ position: "absolute", bottom: 40, left: 0, right: 0, color: "rgba(255,255,255,0.25)", fontSize: "0.85rem" }}>Scroll down</div>
+        <div style={{ position: "absolute", bottom: 40, left: 0, right: 0, color: "rgba(255,255,255,0.25)", fontSize: "0.85rem" }}>
+          Scroll down
+        </div>
       </section>
 
       {/* Features */}
       <section style={{ padding: "80px 24px", maxWidth: 900, margin: "0 auto", position: "relative", zIndex: 1 }}>
         <div style={{ textAlign: "center", marginBottom: 48 }}>
-          <h2 className="showcase-section-heading" style={sectionHeadingStyle}>Why Particular?</h2>
-          <p style={{ ...sectionSubStyle, margin: "0 auto" }}>Everything you need for production-quality particle effects.</p>
+          <h2 className="showcase-section-heading" style={sectionHeadingStyle}>What it does</h2>
+          <p style={{ ...sectionSubStyle, margin: "0 auto" }}>
+            Everything you need to bring interfaces to life with particles.
+          </p>
         </div>
         <div className="showcase-features-grid">
           {features.map((feat, i) => (
             <div key={i} ref={setCardRef(cardIndex++)} style={{ ...cardStyle, textAlign: "center" }}>
               <div style={{ fontSize: "2rem", marginBottom: 10 }}>{feat.icon}</div>
               <div style={headingStyle}>{feat.title}</div>
-              <div style={bodyTextStyle}>{feat.body}</div>
+              <div style={bodyStyle}>{feat.body}</div>
             </div>
           ))}
         </div>
       </section>
 
-      <div ref={riverDividerRef} style={{ height: 1 }} />
+      {/* Interactive Gallery */}
+      <section ref={gallerySectionRef} style={{ padding: "80px 24px", maxWidth: 900, margin: "0 auto", position: "relative", zIndex: 1 }}>
+        <div style={{ textAlign: "center", marginBottom: 48 }}>
+          <h2
+            ref={galleryHeadingRef}
+            className="showcase-section-heading"
+            style={{ ...sectionHeadingStyle, cursor: "pointer" }}
+            onClick={handleGalleryHeadingClick}
+          >
+            Interactive Gallery
+          </h2>
+          <p style={{ ...sectionSubStyle, margin: "0 auto" }}>
+            Click, hover, and play with every effect.
+          </p>
+        </div>
+        <div className="showcase-demos-grid">
+          <BurstDemo />
+          <MeteorDemo />
+          <ShatterDemo />
+          <TextDemo />
+          <GlowDemo />
+          <ScatterDemo />
+        </div>
+        <div style={{ marginTop: 20 }}>
+          <RiverDemo />
+        </div>
+      </section>
 
       {/* CTA */}
-      <section style={{ padding: "60px 24px", position: "relative", zIndex: 1 }}>
+      <section ref={ctaContainerRef} style={{ padding: "60px 24px", position: "relative", zIndex: 1 }}>
         <div
           ref={setCardRef(cardIndex++)}
           style={{
@@ -451,11 +858,18 @@ function ShowcaseDemo() {
             textAlign: "center",
             margin: "0 auto",
             maxWidth: 700,
+            position: "relative",
+            zIndex: 1,
           }}
         >
-          <h2 className="showcase-section-heading" style={{ ...sectionHeadingStyle, fontSize: "1.5rem" }}>Ready to add particles to your project?</h2>
-          <p style={{ ...sectionSubStyle, margin: "0 auto 24px" }}>Get started in under a minute with our React hooks or vanilla API.</p>
+          <h2 className="showcase-section-heading" style={{ ...sectionHeadingStyle, fontSize: "1.5rem" }}>
+            Ready to add particles to your project?
+          </h2>
+          <p style={{ ...sectionSubStyle, margin: "0 auto 24px" }}>
+            Get started in under a minute with our React hooks or vanilla API.
+          </p>
           <div
+            ref={ctaBadgeRef}
             style={{
               display: "inline-block",
               padding: "12px 32px",
@@ -485,7 +899,7 @@ function ShowcaseDemo() {
               </div>
               <div>
                 <div style={headingStyle}>{step.title}</div>
-                <div style={bodyTextStyle}>{step.body}</div>
+                <div style={bodyStyle}>{step.body}</div>
               </div>
             </div>
           ))}
@@ -494,190 +908,10 @@ function ShowcaseDemo() {
 
       {/* Footer */}
       <section style={{ padding: "100px 24px", textAlign: "center", position: "relative", zIndex: 1 }}>
-        <p style={{ color: "rgba(255,255,255,0.15)", fontSize: "0.85rem" }}>Particles flow around every element on this page.</p>
+        <p style={{ color: "rgba(255,255,255,0.15)", fontSize: "0.85rem" }}>
+          Particles flow around every element on this page.
+        </p>
       </section>
     </div>
-  );
-}
-
-// ── Demo 1: Click Burst (useParticles hook) ──────────────────────────────────
-
-function BurstDemo() {
-  const { canvasRef, canvasStyle, burstFromEvent } = useParticles({
-    preset: "magic",
-    renderer: "webgl",
-  });
-
-  return (
-    <>
-      <canvas ref={canvasRef} style={canvasStyle} />
-      <div style={{ ...pageStyle, display: "grid", placeItems: "center", paddingTop: 60 }}>
-        <div style={{ textAlign: "center" }}>
-          <h2>Click Burst</h2>
-          <p style={{ opacity: 0.6, margin: "8px 0 24px" }}>Tap or click anywhere for particle bursts</p>
-          <button onClick={burstFromEvent} style={btnStyle(false)}>
-            Or click this button
-          </button>
-        </div>
-      </div>
-    </>
-  );
-}
-
-// ── Demo 2: Screensaver (useScreensaver hook) ───────────────────────────────
-
-function ScreensaverDemo() {
-  const { canvasRef, canvasStyle } = useScreensaver({
-    preset: "snow",
-    renderer: "webgl",
-  });
-
-  return (
-    <>
-      <canvas ref={canvasRef} style={canvasStyle} />
-      <div style={{ ...pageStyle, display: "grid", placeItems: "center", paddingTop: 60 }}>
-        <div style={{ textAlign: "center" }}>
-          <h2>Snowfall Screensaver</h2>
-          <p style={{ opacity: 0.6 }}>Drag to push snowflakes</p>
-        </div>
-      </div>
-    </>
-  );
-}
-
-// ── Demo 3: Text → Particles (createParticles + textToParticles) ─────────────
-
-function TextDemo() {
-  const canvasRef = useRef(null);
-  const controllerRef = useRef(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const controller = createParticles({
-      canvas,
-      preset: "imageText",
-      renderer: "webgl",
-      autoResize: true,
-    });
-    controllerRef.current = controller;
-
-    controller.textToParticles("Particular", {
-      x: window.innerWidth / 2,
-      y: window.innerHeight / 2,
-      width: Math.min(window.innerWidth * 0.8, 800),
-    });
-
-    controller.addMouseForce({ track: true, strength: 3, radius: 80 });
-
-    return () => {
-      controller.destroy();
-      controllerRef.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === "e" || e.key === "E") controllerRef.current?.scatter({ velocity: 12 });
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
-  return (
-    <>
-      <canvas
-        ref={canvasRef}
-        style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 10000 }}
-      />
-      <div style={pageStyle}>
-        <p style={hintStyle}>Touch or move mouse to push particles</p>
-      </div>
-    </>
-  );
-}
-
-// ── Demo 4: Image → Particles (createParticles + imageToParticles) ───────────
-
-function ImageDemo() {
-  const canvasRef = useRef(null);
-  const controllerRef = useRef(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const controller = createParticles({
-      canvas,
-      preset: "imageShape",
-      renderer: "webgl",
-      autoResize: true,
-    });
-    controllerRef.current = controller;
-
-    const size = Math.min(window.innerWidth, window.innerHeight) * 0.7;
-    controller.imageToParticles({
-      image: vikingPng,
-      x: window.innerWidth / 2,
-      y: window.innerHeight / 2,
-      width: size,
-      height: size,
-    });
-
-    controller.addMouseForce({ track: true, strength: 3, radius: 80 });
-
-    return () => {
-      controller.destroy();
-      controllerRef.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === "e" || e.key === "E") controllerRef.current?.scatter({ velocity: 12 });
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
-  return (
-    <>
-      <canvas
-        ref={canvasRef}
-        style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 10000 }}
-      />
-      <div style={pageStyle}>
-        <p style={hintStyle}>Touch or move mouse to push particles</p>
-      </div>
-    </>
-  );
-}
-
-// ── App: Tab Navigation ──────────────────────────────────────────────────────
-
-const demos = [
-  { id: "showcase", label: "Showcase", component: ShowcaseDemo },
-  { id: "burst", label: "Click Burst", component: BurstDemo },
-  { id: "screensaver", label: "Screensaver", component: ScreensaverDemo },
-  { id: "text", label: "Text \u2192 Particles", component: TextDemo },
-  { id: "image", label: "Image \u2192 Particles", component: ImageDemo },
-];
-
-export default function App() {
-  const [active, setActive] = useState("showcase");
-  const ActiveDemo = demos.find((d) => d.id === active)?.component || ShowcaseDemo;
-
-  return (
-    <>
-      <nav style={navStyle}>
-        {demos.map((d) => (
-          <button key={d.id} onClick={() => setActive(d.id)} style={btnStyle(d.id === active)}>
-            {d.label}
-          </button>
-        ))}
-      </nav>
-      <ActiveDemo key={active} />
-    </>
   );
 }

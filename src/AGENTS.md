@@ -75,6 +75,7 @@ Implementation notes:
 - `Particle.shadowLightOrigin` stores spawn/burst origin for directional shadowing.
 - `Emitter.createParticle()` forwards all glow/shadow fields from emitter config.
 - Particle alpha decays over time, clamped to valid range.
+- **`gravityJitter`**: Per-particle gravity randomness (0–1). Applied in `Emitter.createParticle()`: `gravity * (1 - jitter + Math.random() * jitter * 2)`. At `gravityJitter: 0.5`, each particle gets gravity between 50%–150% of the base value, breaking uniform fall speeds. Used by snow (0.5), confetti (0.2), magic (0.15), fireworks (0.2), meteors (0.3), fireworksShow (0.15). Default 0.
 - **`life` vs `particleLife`**: `life` (default 30) = emitter emission budget (burst only). `particleLife` (default 100) = individual particle lifetime in ticks. Each particle lives `[particleLife * 0.75, particleLife]` ticks. Fading begins at `lifeTime - fadeTime`.
 - **Permanent particles**: Particles with `homePosition` are truly permanent — they skip `lifeTick` increment entirely and alpha stays at `baseAlpha` (no fade). `particleLife: Infinity` is also supported: the constructor detects it and sets `lifeTime = Infinity` directly (skipping `getRandomInt`). The magic number `99999` has been replaced with `Infinity` in defaults and convenience methods.
 - **`preventSettle` flag**: `Particle.preventSettle` (boolean, default `false`). When `true`, the `isSettled` check in `update()` always returns `false`, so the spring path always runs and particles never hard-snap to home. Used by `startWobble()` to keep particles in continuous motion under external nudges.
@@ -158,12 +159,12 @@ Usage: `{ ...presets.Burst.confetti, ...presets.Colors.finland }` to override co
 Curated and intentionally limited. Polish over quantity.
 
 - `presets.Burst.confetti` — colorful rectangle confetti (muted colors, friction for flutter)
-- `presets.Burst.magic` — signature look (circle, coolBlue, trails)
-- `presets.Burst.fireworks` — energetic circles with trailing streaks (normal blend)
-- `presets.Burst.fireworksDetonation` — narrow upward launch that auto-detonates into colorful sub-bursts at 70% lifetime
-- `presets.Ambient.snow` — gentle snowfall (continuous, low rate, long life)
-- `presets.Ambient.meteors` — bright diagonal streaks with glowing trails, accelerating as they fall
-- `presets.Ambient.fireworksShow` — continuous fireworks screensaver: triangle rockets launch from bottom, auto-detonate into trailing circle bursts (vivid palette)
+- `presets.Burst.magic` — glowing sparkles with soft trails, additive blending, blue/purple palette, gravityJitter 0.15
+- `presets.Burst.fireworks` — glowing sparkles with trailing streaks, additive blending, orange glow, gravityJitter 0.2
+- `presets.Burst.fireworksDetonation` — narrow upward launch, sparkle shape, additive blending, auto-detonates into glowing sparkle sub-bursts at 70% lifetime, gravityJitter 0.15
+- `presets.Ambient.snow` — gentle snowfall (continuous, low rate, long life, gravityJitter 0.5 for natural drift)
+- `presets.Ambient.meteors` — bright diagonal streaks with glowing trails, accelerating as they fall, gravityJitter 0.3
+- `presets.Ambient.fireworksShow` — continuous fireworks screensaver: sparkle rockets launch from bottom, auto-detonate into trailing sparkle bursts (vivid palette), gravityJitter 0.15
 - `presets.Ambient.river` — horizontal water stream with cyan glow and short trails, designed for use with attractors (water palette)
 - `presets.Images.showcase` — tuned for icon/image particles
 - `presets.ImageParticles.text` — high-fidelity text as tiny square particles

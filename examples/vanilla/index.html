@@ -3,25 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Particular — Vanilla Examples</title>
+    <title>Particular — Vanilla Showcase</title>
     <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
-      html, body { width: 100%; min-height: 100%; background: #0b1020; color: #fff; font-family: Inter, system-ui, -apple-system, sans-serif; }
-      canvas.fixed-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 10000; }
-      nav { position: fixed; top: 0; left: 0; right: 0; z-index: 20000; display: flex; gap: 4px; padding: 12px; background: rgba(11,16,32,0.85); backdrop-filter: blur(8px); flex-wrap: wrap; }
-      nav button {
-        font-size: 0.85rem; padding: 6px 14px; border-radius: 8px;
-        border: 1px solid #2e3552; background: #121a33; color: #fff; cursor: pointer;
-        transition: background 0.15s;
-      }
-      nav button:hover { background: #1a2440; }
-      nav button.active { background: #2a4080; border-color: #4a6cc0; }
-      .demo { min-height: 100vh; display: grid; place-items: center; padding-top: 60px; }
-      .hint { text-align: center; pointer-events: none; user-select: none; opacity: 0.6; }
-      .hint h2 { font-size: 1.4rem; margin-bottom: 0.3rem; }
-      .hint p { font-size: 0.9rem; }
+      html, body { width: 100%; min-height: 100%; background: #070b14; color: #fff; font-family: Inter, system-ui, -apple-system, sans-serif; }
 
-      /* Showcase styles */
+      /* Showcase layout */
       .showcase-wrap { position: relative; min-height: 100vh; background: linear-gradient(180deg, #070b14 0%, #0a1628 30%, #0d1b2a 60%, #0a0a1a 100%); }
       .showcase-wrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
       .showcase-hero { height: 100vh; height: 100dvh; position: relative; z-index: 1; text-align: center; pointer-events: none; user-select: none; }
@@ -29,10 +16,14 @@
       .showcase-sub p { font-size: 1.1rem; line-height: 1.6; color: rgba(255,255,255,0.45); max-width: 520px; margin: 0 auto 20px; }
       .showcase-sub .hint-text { color: rgba(255,255,255,0.2); font-size: 0.8rem; }
       .showcase-scroll-hint { position: absolute; bottom: 40px; left: 0; right: 0; color: rgba(255,255,255,0.25); font-size: 0.85rem; text-align: center; }
+
+      /* Sections */
       .showcase-section { position: relative; z-index: 1; padding: 80px 24px; max-width: 900px; margin: 0 auto; }
       .showcase-section-center { text-align: center; margin-bottom: 48px; }
       .showcase-section h2 { font-size: 1.8rem; font-weight: 700; color: #fff; margin-bottom: 12px; }
       .showcase-section .sub { font-size: 0.95rem; line-height: 1.6; color: rgba(255,255,255,0.45); max-width: 520px; margin: 0 auto; }
+
+      /* Feature cards */
       .showcase-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; pointer-events: none; }
       .showcase-card {
         background: rgba(255,255,255,0.05); backdrop-filter: blur(12px);
@@ -41,10 +32,38 @@
       .showcase-card .icon { font-size: 2rem; margin-bottom: 10px; }
       .showcase-card .title { font-size: 0.95rem; font-weight: 600; margin-bottom: 8px; letter-spacing: 0.02em; }
       .showcase-card .body { font-size: 0.82rem; line-height: 1.5; color: rgba(255,255,255,0.55); }
+
+      /* Demo cells */
+      .demos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+      .demo-cell {
+        position: relative; height: 280px; overflow: hidden;
+        background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 16px; cursor: pointer;
+      }
+      .demo-label {
+        position: absolute; bottom: 0; left: 0; right: 0; padding: 12px 16px;
+        background: linear-gradient(transparent, rgba(0,0,0,0.6)); z-index: 10001; pointer-events: none;
+      }
+      .demo-label .title { font-size: 0.85rem; font-weight: 600; margin-bottom: 2px; letter-spacing: 0.02em; }
+      .demo-label .desc { font-size: 0.75rem; line-height: 1.5; color: rgba(255,255,255,0.55); }
+
+      /* River box */
+      .river-box {
+        position: relative; height: 200px; margin-top: 20px;
+        background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px;
+      }
+      .river-inner {
+        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        padding: 14px 24px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 12px; color: rgba(255,255,255,0.5); font-size: 0.85rem; font-weight: 600;
+        pointer-events: none; z-index: 1; white-space: nowrap;
+      }
+
+      /* CTA */
       .showcase-cta { padding: 60px 24px; position: relative; z-index: 1; }
       .showcase-cta-inner {
         background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 20px; padding: 48px 32px; text-align: center; margin: 0 auto; max-width: 700px;
+        border-radius: 20px; padding: 48px 32px; text-align: center; margin: 0 auto; max-width: 700px; position: relative;
       }
       .showcase-cta h2 { font-size: 1.5rem; font-weight: 700; color: #fff; margin-bottom: 12px; }
       .showcase-cta .sub { font-size: 0.95rem; line-height: 1.6; color: rgba(255,255,255,0.45); max-width: 520px; margin: 0 auto 24px; }
@@ -53,435 +72,577 @@
         background: rgba(116,192,252,0.12); border: 1px solid rgba(116,192,252,0.25);
         border-radius: 10px; color: #74c0fc; font-weight: 600; font-size: 0.9rem;
       }
+
+      /* Steps */
       .showcase-steps { padding: 80px 24px; max-width: 700px; margin: 0 auto; position: relative; z-index: 1; }
-      .showcase-steps .step {
+      .showcase-steps-center { text-align: center; margin-bottom: 48px; }
+      .showcase-steps-center h2 { font-size: 1.8rem; font-weight: 700; color: #fff; margin-bottom: 12px; }
+      .step {
         display: flex; gap: 20px; align-items: center; margin-bottom: 20px;
         background: rgba(255,255,255,0.05); backdrop-filter: blur(12px);
         border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 28px 24px;
       }
-      .showcase-steps .step-num { font-size: 2rem; font-weight: 800; color: rgba(116,192,252,0.35); flex-shrink: 0; width: 56px; text-align: center; }
-      .showcase-steps .step .title { font-size: 0.95rem; font-weight: 600; margin-bottom: 8px; letter-spacing: 0.02em; }
-      .showcase-steps .step .body { font-size: 0.82rem; line-height: 1.5; color: rgba(255,255,255,0.55); }
+      .step-num { font-size: 2rem; font-weight: 800; color: rgba(116,192,252,0.35); flex-shrink: 0; width: 56px; text-align: center; }
+      .step .title { font-size: 0.95rem; font-weight: 600; margin-bottom: 8px; letter-spacing: 0.02em; }
+      .step .body { font-size: 0.82rem; line-height: 1.5; color: rgba(255,255,255,0.55); }
+
       .showcase-footer { padding: 100px 24px; text-align: center; position: relative; z-index: 1; }
       .showcase-footer p { color: rgba(255,255,255,0.15); font-size: 0.85rem; }
 
+      /* Glow inner element */
+      .glow-inner {
+        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        padding: 16px 28px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 12px; color: #fff; font-size: 0.9rem; font-weight: 600;
+        pointer-events: none; z-index: 1;
+      }
+
       /* Responsive */
+      @media (max-width: 900px) { .demos-grid { grid-template-columns: repeat(2, 1fr); } }
       @media (max-width: 768px) {
         .showcase-grid { grid-template-columns: repeat(2, 1fr); }
-        .showcase-section h2, .showcase-cta h2 { font-size: 1.4rem; }
+        .showcase-section h2, .showcase-cta h2, .showcase-steps-center h2 { font-size: 1.4rem; }
         .showcase-sub p { font-size: 0.95rem; }
-        nav button { font-size: 0.75rem; padding: 5px 10px; }
       }
       @media (max-width: 480px) {
-        .showcase-grid { grid-template-columns: 1fr; }
-        .showcase-section h2, .showcase-cta h2 { font-size: 1.2rem; }
+        .showcase-grid, .demos-grid { grid-template-columns: 1fr; }
+        .showcase-section h2, .showcase-cta h2, .showcase-steps-center h2 { font-size: 1.2rem; }
         .showcase-sub p { font-size: 0.85rem; }
       }
     </style>
   </head>
   <body>
-    <canvas id="particles" class="fixed-canvas"></canvas>
+    <div class="showcase-wrap" id="showcase-container">
+      <!-- Canvases for page-wide effects -->
+      <canvas id="snow-canvas"></canvas>
+      <canvas id="text-canvas"></canvas>
+      <canvas id="fireworks-canvas"></canvas>
 
-    <nav id="nav">
-      <button data-demo="showcase" class="active">Showcase</button>
-      <button data-demo="burst">Click Burst</button>
-      <button data-demo="screensaver">Screensaver</button>
-      <button data-demo="text">Text → Particles</button>
-      <button data-demo="image">Image → Particles</button>
-    </nav>
+      <!-- Hero -->
+      <section class="showcase-hero">
+        <div class="showcase-sub">
+          <p>Turn text, images, and DOM elements into interactive particles.<br/>Beautiful by default. Lightning fast. Zero config.</p>
+          <p class="hint-text">Touch or move mouse to push particles</p>
+        </div>
+        <div class="showcase-scroll-hint">Scroll down</div>
+      </section>
 
-    <!-- Simple demo content (shared by burst/screensaver/text/image) -->
-    <div class="demo" id="simple-demo">
-      <div class="hint" id="hint">
-        <h2>Click anywhere</h2>
-        <p>Magic preset — click to create particle bursts</p>
-      </div>
-    </div>
+      <!-- Features -->
+      <section class="showcase-section">
+        <div class="showcase-section-center">
+          <h2>What it does</h2>
+          <p class="sub">Everything you need to bring interfaces to life with particles.</p>
+        </div>
+        <div class="showcase-grid" id="features-grid"></div>
+      </section>
 
-    <!-- Showcase demo content -->
-    <div id="showcase-demo" style="display:none;">
-      <div class="showcase-wrap" id="showcase-container">
-        <canvas id="snow-canvas"></canvas>
-        <canvas id="text-canvas"></canvas>
-        <canvas id="river-canvas"></canvas>
-        <canvas id="fireworks-canvas"></canvas>
-
-        <section class="showcase-hero">
-          <div class="showcase-sub">
-            <p>A particle engine for the modern web.<br/>Beautiful defaults, zero config, endless possibilities.</p>
-            <p class="hint-text">Touch or move mouse to push particles</p>
+      <!-- Interactive Gallery -->
+      <section class="showcase-section" id="gallery-section">
+        <div class="showcase-section-center">
+          <h2 id="gallery-heading" style="cursor:pointer">Interactive Gallery</h2>
+          <p class="sub">Click, hover, and play with every effect.</p>
+        </div>
+        <div class="demos-grid">
+          <div class="demo-cell" id="demo-burst">
+            <div class="demo-label"><div class="title">Click Burst</div><div class="desc">Click for magic</div></div>
           </div>
-          <div class="showcase-scroll-hint">Scroll down</div>
-        </section>
-
-        <section class="showcase-section">
-          <div class="showcase-section-center">
-            <h2>Why Particular?</h2>
-            <p class="sub">Everything you need for production-quality particle effects.</p>
+          <div class="demo-cell" id="demo-meteors">
+            <div class="demo-label"><div class="title">Meteors</div><div class="desc">Tiny shooting stars</div></div>
           </div>
-          <div class="showcase-grid" id="features-grid"></div>
-        </section>
-
-        <div id="river-divider" style="height:1px;"></div>
-
-        <div class="showcase-cta">
-          <div class="showcase-cta-inner" id="cta-card">
-            <h2>Ready to add particles to your project?</h2>
-            <p class="sub">Get started in under a minute with our React hooks or vanilla API.</p>
-            <div class="install-badge">npm install particular</div>
+          <div class="demo-cell" id="demo-shatter">
+            <div class="demo-label"><div class="title">Image Shatter</div><div class="desc">Hover to shatter</div></div>
+          </div>
+          <div class="demo-cell" id="demo-text">
+            <div class="demo-label"><div class="title">Text Particles</div><div class="desc">Interactive mouse force</div></div>
+          </div>
+          <div class="demo-cell" id="demo-glow">
+            <div class="glow-inner" id="glow-inner">Glowing</div>
+            <div class="demo-label"><div class="title">Container Glow</div><div class="desc">Particle halo</div></div>
+          </div>
+          <div class="demo-cell" id="demo-scatter">
+            <div class="demo-label"><div class="title">Image Particles</div><div class="desc">Click to scatter</div></div>
           </div>
         </div>
+        <!-- River -->
+        <div class="river-box" id="demo-river">
+          <div class="river-inner" id="river-inner">Particles flow around elements</div>
+        </div>
+      </section>
 
-        <section class="showcase-steps" id="steps-section"></section>
-
-        <section class="showcase-footer">
-          <p>Particles flow around every element on this page.</p>
-        </section>
+      <!-- CTA -->
+      <div class="showcase-cta" id="cta-container">
+        <div class="showcase-cta-inner" id="cta-card">
+          <h2>Ready to add particles to your project?</h2>
+          <p class="sub">Get started in under a minute with our React hooks or vanilla API.</p>
+          <div class="install-badge" id="install-badge">npm install particular</div>
+        </div>
       </div>
+
+      <!-- Steps -->
+      <section class="showcase-steps" id="steps-section"></section>
+
+      <!-- Footer -->
+      <section class="showcase-footer">
+        <p>Particles flow around every element on this page.</p>
+      </section>
     </div>
 
     <script src="../../dist/particular.global.js"></script>
     <script>
       const { createParticles, startScreensaver, createHeartImage, canvasToDataURL, configureParticle, Emitter, Vector, presets } = window.Particular;
-      const canvas = document.getElementById("particles");
-      const hint = document.getElementById("hint");
-      const nav = document.getElementById("nav");
-      const simpleDemoEl = document.getElementById("simple-demo");
-      const showcaseDemoEl = document.getElementById("showcase-demo");
 
-      let currentCleanup = null;
+      // ── Palettes ──────────────────────────────────────────────────────────
+      const subtleSnowColors = ['#555566', '#606070', '#6a6a7a', '#757585', '#808090'];
+      const mutedRiverColors = ['#3a4a4f', '#455558', '#4f6065', '#5a6b70', '#647578'];
 
-      // ── Populate Showcase DOM ─────────────────────────────────────────────
-      const features = [
-        { icon: '⚡', title: 'Lightning Fast', body: 'WebGL2 instanced rendering pushes thousands of particles at 60fps.' },
-        { icon: '🎨', title: 'Beautiful Defaults', body: 'Curated presets that look stunning out of the box.' },
-        { icon: '🔧', title: 'Fully Configurable', body: 'Every parameter is tunable. Physics, visuals, timing.' },
-        { icon: '📦', title: 'Tiny Bundle', body: 'Tree-shakeable ESM with zero runtime dependencies.' },
-        { icon: '🌐', title: 'Container Aware', body: 'Fill the viewport or live inside any HTML element.' },
-        { icon: '🧲', title: 'Force Fields', body: 'Attractors, mouse forces, and element boundaries.' },
+      const burstPalettes = [
+        { colors: ['#b33600', '#cc4a00', '#e86100', '#f57c00', '#ff9500', '#ffad33'], glow: '#ff9500' },
+        { colors: ['#a5d8ff', '#74c0fc', '#4dabf7', '#d0bfff', '#b197fc', '#9775fa'], glow: '#74c0fc' },
+        { colors: ['#006b3f', '#00a85e', '#1edd80', '#4deda0', '#96f2c8', '#c3fae8'], glow: '#1edd80' },
+        { colors: ['#ff4757', '#ff6b81', '#ff8fa3', '#ffa8b8', '#ffc9d3', '#ffe0e6'], glow: '#ff6b81' },
+        { colors: ['#ffd699', '#ffcc66', '#ffad33', '#ff9500', '#f57c00', '#e86100'], glow: '#ffcc66' },
+        { colors: ['#d0bfff', '#b197fc', '#9775fa', '#845ef7', '#7048e8', '#5f3dc4'], glow: '#9775fa' },
       ];
-      const featGrid = document.getElementById("features-grid");
+
+      // ── Populate features grid ────────────────────────────────────────────
+      const features = [
+        { icon: '\uD83C\uDFA8', title: 'Beautiful by Default', body: 'Curated presets and smart defaults that look stunning out of the box. Zero config required.' },
+        { icon: '\u26A1', title: 'Lightning Fast', body: 'WebGL2 instanced rendering pushes thousands of particles at 60fps with minimal overhead.' },
+        { icon: '\uD83D\uDDE8\uFE0F', title: 'Text & Image to Particles', body: 'Dissolve any text or image into thousands of particles that spring back together.' },
+        { icon: '\uD83E\uDDE9', title: 'Shatter & Scatter', body: 'Break images into polygon chunks or scatter particles outward, then reassemble.' },
+        { icon: '\uD83D\uDCE6', title: 'Container Aware', body: 'Turn any DOM element into an effect container. Particles flow around and inside elements automatically.' },
+        { icon: '\uD83D\uDD2E', title: 'Interactive Effects', body: 'Mouse forces, hover reactions, click bursts, and wobble physics respond to user input.' },
+      ];
+      const featGrid = document.getElementById('features-grid');
       features.forEach(f => {
-        const card = document.createElement("div");
-        card.className = "showcase-card";
+        const card = document.createElement('div');
+        card.className = 'showcase-card';
         card.innerHTML = `<div class="icon">${f.icon}</div><div class="title">${f.title}</div><div class="body">${f.body}</div>`;
         featGrid.appendChild(card);
       });
 
+      // ── Populate steps ────────────────────────────────────────────────────
       const steps = [
-        { num: '01', title: 'Install', body: 'npm install particular — zero dependencies, tree-shakeable.' },
+        { num: '01', title: 'Install', body: 'npm install particular \u2014 zero dependencies, tree-shakeable.' },
         { num: '02', title: 'Create', body: 'One call to createParticles() or useParticles() to get started.' },
         { num: '03', title: 'Customize', body: 'Choose a preset, add forces, boundaries, and interactions.' },
       ];
-      const stepsSection = document.getElementById("steps-section");
-      const stepsCenterDiv = document.createElement("div");
-      stepsCenterDiv.className = "showcase-section-center";
-      stepsCenterDiv.innerHTML = "<h2>Three Steps</h2>";
+      const stepsSection = document.getElementById('steps-section');
+      const stepsCenterDiv = document.createElement('div');
+      stepsCenterDiv.className = 'showcase-steps-center';
+      stepsCenterDiv.innerHTML = '<h2>Three Steps</h2>';
       stepsSection.appendChild(stepsCenterDiv);
       steps.forEach(s => {
-        const step = document.createElement("div");
-        step.className = "step";
+        const step = document.createElement('div');
+        step.className = 'step';
         step.innerHTML = `<div class="step-num">${s.num}</div><div><div class="title">${s.title}</div><div class="body">${s.body}</div></div>`;
         stepsSection.appendChild(step);
       });
 
-      // Gather all showcase cards for boundaries
-      function getAllShowcaseCards() {
-        return [...document.querySelectorAll(".showcase-card, .showcase-cta-inner, .showcase-steps .step")];
+      // Gather all boundary-able cards
+      function getAllCards() {
+        return [...document.querySelectorAll('.showcase-card, .showcase-cta-inner, .step')];
       }
 
-      // ── Demo: Showcase ────────────────────────────────────────────────────
-      function startShowcaseDemo() {
-        simpleDemoEl.style.display = "none";
-        showcaseDemoEl.style.display = "";
-        canvas.style.display = "none";
+      // ── References ────────────────────────────────────────────────────────
+      const container = document.getElementById('showcase-container');
+      const snowCanvas = document.getElementById('snow-canvas');
+      const textCanvas = document.getElementById('text-canvas');
+      const fireworksCanvas = document.getElementById('fireworks-canvas');
 
-        const container = document.getElementById("showcase-container");
-        const snowCanvas = document.getElementById("snow-canvas");
-        const textCanvas = document.getElementById("text-canvas");
-        const riverCanvas = document.getElementById("river-canvas");
-        const fireworksCanvas = document.getElementById("fireworks-canvas");
-        const riverDivider = document.getElementById("river-divider");
+      // ── Snow screensaver ──────────────────────────────────────────────────
+      const screensaver = startScreensaver({
+        canvas: snowCanvas,
+        container,
+        preset: 'snow',
+        config: {
+          rate: 0.6,
+          maxCount: 800,
+          particleLife: 1200,
+          colors: subtleSnowColors,
+          glow: false,
+          sizeMin: 1,
+          sizeMax: 3,
+        },
+        renderer: 'webgl',
+        autoResize: true,
+      });
 
-        const subtleSnowColors = ['#555566', '#606070', '#6a6a7a', '#757585', '#808090'];
-        const mutedRiverColors = ['#3a4a4f', '#455558', '#4f6065', '#5a6b70', '#647578'];
+      // Mouse trail
+      screensaver.controller.addMouseTrail({
+        target: container,
+        rate: 1,
+        sizeMin: 0.8,
+        sizeMax: 2.5,
+        particleLife: 35,
+        fadeTime: 20,
+        velocity: 0.8,
+        spread: 0.5,
+        colors: ['#a5d8ff', '#74c0fc', '#d0bfff', '#b197fc', '#99e9f2', '#c3fae8'],
+        glow: true,
+        glowSize: 6,
+        glowAlpha: 0.25,
+        glowColor: '#b197fc',
+        blendMode: 'normal',
+        trail: false,
+        minSpeed: 0.8,
+      });
 
-        const cleanups = [];
+      // Boundaries — snow flows around cards
+      setTimeout(() => {
+        for (const card of getAllCards()) {
+          screensaver.controller.addBoundary({ element: card, strength: -1.5, radius: 10 });
+        }
+      }, 100);
 
-        // Snow screensaver — container-aware, flows through the scrolling page
-        const screensaver = startScreensaver({
-          canvas: snowCanvas,
-          container,
-          preset: 'snow',
+      // ── Hero text particles ───────────────────────────────────────────────
+      const textController = createParticles({
+        canvas: textCanvas,
+        container,
+        preset: 'imageText',
+        renderer: 'webgl',
+        autoResize: true,
+      });
+
+      textController.textToParticles('Particular', {
+        x: container.clientWidth / 2,
+        y: window.innerHeight * 0.38,
+        width: Math.min(container.clientWidth * 0.75, 800),
+        intro: { mode: 'scatter', duration: 1200 },
+      });
+
+      textController.addMouseForce({ track: true, strength: 3, radius: 80 });
+
+      // ── Demo: Click Burst (rotating palettes) ─────────────────────────────
+      (function initBurstDemo() {
+        const el = document.getElementById('demo-burst');
+        let paletteIdx = 0;
+
+        const ctrl = createParticles({
+          container: el,
+          preset: 'magic',
+          config: { maxCount: 200, zIndex: 1, sizeMin: 2, sizeMax: 7 },
+          renderer: 'webgl',
+          autoResize: true,
+        });
+
+        el.addEventListener('click', (e) => {
+          const palette = burstPalettes[paletteIdx % burstPalettes.length];
+          paletteIdx++;
+          ctrl.burst({ x: e.clientX, y: e.clientY, colors: palette.colors, glowColor: palette.glow });
+        });
+      })();
+
+      // ── Demo: Meteors ─────────────────────────────────────────────────────
+      (function initMeteorDemo() {
+        const el = document.getElementById('demo-meteors');
+        startScreensaver({
+          container: el,
+          preset: 'meteors',
           config: {
-            rate: 0.6,
-            maxCount: 300,
-            particleLife: 1200,
-            colors: subtleSnowColors,
-            glow: false,
-            sizeMin: 1,
-            sizeMax: 3,
+            maxCount: 40,
+            rate: 0.25,
+            shape: 'star',
+            sizeMin: 2,
+            sizeMax: 5,
+            particleLife: 200,
+            velocity: Vector.fromAngle(95, 2),
+            spread: Math.PI * 0.08,
+            trailLength: 10,
+            zIndex: 1,
           },
           renderer: 'webgl',
           autoResize: true,
+          mouseWind: { strength: 0.3, radius: 80 },
         });
-        cleanups.push(() => screensaver.destroy());
+      })();
 
-        // Boundaries — snow flows around cards
-        setTimeout(() => {
-          const cards = getAllShowcaseCards();
-          for (const card of cards) {
-            const handle = screensaver.controller.addBoundary({ element: card, strength: -1.5, radius: 10 });
-            cleanups.push(() => handle.destroy());
-          }
-        }, 100);
+      // ── Demo: Image Shatter ───────────────────────────────────────────────
+      (function initShatterDemo() {
+        const el = document.getElementById('demo-shatter');
+        let shatterReady = false;
 
-        // Text particles — "Particular" hero
-        const textController = createParticles({
-          canvas: textCanvas,
-          container,
+        const ctrl = createParticles({
+          container: el,
+          config: { maxCount: 200, continuous: true, zIndex: 1 },
+          renderer: 'webgl',
+          autoResize: true,
+        });
+
+        // Use a heart shape as shatter source (no external image needed)
+        const heartCanvas = createHeartImage(200);
+        const heartUrl = canvasToDataURL(heartCanvas);
+
+        const img = new Image();
+        img.onload = () => {
+          const aspect = img.naturalWidth / img.naturalHeight;
+          const maxW = el.clientWidth * 0.55;
+          const maxH = el.clientHeight * 0.55;
+          let w = maxW;
+          let h = w / aspect;
+          if (h > maxH) { h = maxH; w = h * aspect; }
+
+          ctrl.shatterImage({
+            image: heartUrl,
+            width: w,
+            height: h,
+            chunkCount: 20,
+            jitter: 0.35,
+            homeConfig: { springStrength: 0.06, springDamping: 0.85, returnNoise: 0.2 },
+          }).then(() => { shatterReady = true; });
+        };
+        img.src = heartUrl;
+
+        el.addEventListener('mouseenter', () => {
+          if (!shatterReady) return;
+          ctrl.scatter({ velocity: 4, rotation: 2 });
+          ctrl.startWobble({ track: el });
+        });
+        el.addEventListener('mouseleave', () => ctrl.stopWobble());
+      })();
+
+      // ── Demo: Text Particles ──────────────────────────────────────────────
+      (function initTextDemo() {
+        const el = document.getElementById('demo-text');
+        const ctrl = createParticles({
+          container: el,
           preset: 'imageText',
+          config: { maxCount: 2000, continuous: true, zIndex: 1 },
+          renderer: 'webgl',
+          autoResize: true,
+        });
+        ctrl.textToParticles('Hello', {
+          height: el.clientHeight * 0.45,
+          resolution: 100,
+          shape: 'circle',
+        });
+        ctrl.addMouseForce({ track: true, strength: 2, radius: 50 });
+      })();
+
+      // ── Demo: Container Glow ──────────────────────────────────────────────
+      (function initGlowDemo() {
+        const el = document.getElementById('demo-glow');
+        const inner = document.getElementById('glow-inner');
+        const ctrl = createParticles({
+          container: el,
+          config: { maxCount: 100, continuous: true, zIndex: 1 },
+          renderer: 'webgl',
+          autoResize: true,
+        });
+        ctrl.addContainerGlow({ element: inner });
+      })();
+
+      // ── Demo: Image Particles (scatter + mouse) ───────────────────────────
+      (function initScatterDemo() {
+        const el = document.getElementById('demo-scatter');
+        const ctrl = createParticles({
+          container: el,
+          preset: 'imageText',
+          config: { maxCount: 4000, continuous: true, zIndex: 1 },
           renderer: 'webgl',
           autoResize: true,
         });
 
-        const w = container.clientWidth;
-        const heroH = window.innerHeight;
+        const heartCanvas = createHeartImage(200);
+        const heartUrl = canvasToDataURL(heartCanvas);
 
-        textController.textToParticles('Particular', {
-          x: w / 2,
-          y: heroH * 0.38,
-          width: Math.min(w * 0.75, 800),
-          intro: { mode: 'scatter', duration: 1200 },
+        ctrl.imageToParticles({
+          image: heartUrl,
+          height: el.clientHeight * 0.6,
+          resolution: 150,
+          shape: 'triangle',
+          intro: { mode: 'scatter', duration: 1000 },
         });
+        ctrl.addMouseForce({ track: true, strength: 2, radius: 50 });
 
-        textController.addMouseForce({ track: true, strength: 3, radius: 80 });
-        cleanups.push(() => textController.destroy());
+        el.addEventListener('click', () => ctrl.scatter({ velocity: 8, rotation: 3 }));
+      })();
 
-        // River — flows between features and CTA
-        const riverController = createParticles({
-          canvas: riverCanvas,
-          container,
+      // ── Demo: River ───────────────────────────────────────────────────────
+      (function initRiverDemo() {
+        const el = document.getElementById('demo-river');
+        const inner = document.getElementById('river-inner');
+
+        const ctrl = createParticles({
+          container: el,
           preset: 'river',
-          config: { maxCount: 300 },
+          config: { maxCount: 200, continuous: true, zIndex: 1 },
           renderer: 'webgl',
           autoResize: true,
         });
 
-        const pr = riverController.engine.pixelRatio;
-        const ew = container.clientWidth / pr;
-        const dividerY = riverDivider.offsetTop / pr;
+        const pr = ctrl.engine.pixelRatio;
+        const w = el.clientWidth / pr;
+        const h = el.clientHeight / pr;
 
         const riverConfig = configureParticle({
           ...presets.Ambient.river,
-          rate: 1.5,
-          velocity: Vector.fromAngle(0, 0.8),
+          rate: 2,
+          velocity: Vector.fromAngle(0, 1.2),
           sizeMin: 0.5,
-          sizeMax: 2,
-          particleLife: 300,
-          fadeTime: 100,
-          glow: false,
+          sizeMax: 2.5,
+          particleLife: 250,
+          fadeTime: 80,
+          glow: true,
+          glowSize: 6,
+          glowAlpha: 0.2,
           trail: true,
-          trailLength: 4,
-          trailFade: 0.6,
-          trailShrink: 0.5,
+          trailLength: 5,
+          trailFade: 0.5,
+          trailShrink: 0.45,
           colors: mutedRiverColors,
         });
-        const riverEmitter = new Emitter({
-          point: new Vector(0, dividerY),
+        const emitter = new Emitter({
+          point: new Vector(0, h / 2),
           ...riverConfig,
           spawnWidth: 0,
-          spawnHeight: 20 / pr,
+          spawnHeight: h * 0.6,
           icons: [],
         });
-        riverController.engine.addEmitter(riverEmitter);
-        riverEmitter.isEmitting = true;
-        riverEmitter.emit();
+        ctrl.engine.addEmitter(emitter);
+        emitter.isEmitting = true;
+        emitter.emit();
 
         // S-curve attractors
         const curve = [
-          { x: 0.20, y: dividerY - 12 / pr },
-          { x: 0.40, y: dividerY + 12 / pr },
-          { x: 0.60, y: dividerY - 12 / pr },
-          { x: 0.80, y: dividerY + 12 / pr },
+          { x: 0.20, y: h * 0.35 },
+          { x: 0.45, y: h * 0.65 },
+          { x: 0.70, y: h * 0.35 },
+          { x: 0.90, y: h * 0.55 },
         ];
         for (const pt of curve) {
-          riverController.addAttractor({ x: ew * pt.x, y: pt.y, strength: 0.2, radius: ew * 0.35 });
+          ctrl.addAttractor({ x: w * pt.x, y: pt.y, strength: 0.15, radius: w * 0.3 });
         }
 
-        // Edge repulsors
-        for (let fx = 0.1; fx <= 0.9; fx += 0.2) {
-          riverController.addAttractor({ x: ew * fx, y: dividerY - 45 / pr, strength: -0.25, radius: 40 / pr });
-          riverController.addAttractor({ x: ew * fx, y: dividerY + 45 / pr, strength: -0.25, radius: 40 / pr });
-        }
+        ctrl.addBoundary({ element: inner, strength: -2, radius: 15 });
+        ctrl.addMouseForce({ track: true, strength: 1.5, radius: 60 });
+      })();
 
-        riverController.addMouseForce({ track: true, strength: 1.5, radius: 60 });
-        cleanups.push(() => riverController.destroy());
+      // ── CTA glow ──────────────────────────────────────────────────────────
+      (function initCtaGlow() {
+        const ctaContainer = document.getElementById('cta-container');
+        const badge = document.getElementById('install-badge');
+        const ctrl = createParticles({
+          container: ctaContainer,
+          config: { maxCount: 80, continuous: true, zIndex: 1 },
+          renderer: 'webgl',
+          autoResize: true,
+        });
+        ctrl.addContainerGlow({
+          element: badge,
+          colors: ['#ffad33', '#ff9500', '#f57c00', '#e86100', '#ffcc66', '#ffd699'],
+          rate: 0.6,
+          sizeMin: 0.5,
+          sizeMax: 2,
+          particleLife: 50,
+          fadeTime: 25,
+          velocity: 0.5,
+          spread: 0.4,
+          shape: 'sparkle',
+          glow: true,
+          glowColor: '#ff9500',
+          glowAlpha: 0.35,
+          glowSize: 8,
+          blendMode: 'additive',
+        });
+      })();
 
-        // Fireworks — triggered on scroll to bottom
+      // ── Gallery heading easter egg ────────────────────────────────────────
+      (function initGalleryEasterEgg() {
+        const section = document.getElementById('gallery-section');
+        const heading = document.getElementById('gallery-heading');
+
+        const ctrl = createParticles({
+          container: section,
+          config: { maxCount: 3000, continuous: true, zIndex: 2 },
+          renderer: 'webgl',
+          autoResize: true,
+        });
+
+        heading.addEventListener('click', () => {
+          if (heading.style.visibility === 'hidden') return;
+          ctrl.elementToParticles(heading, {
+            shape: 'triangle',
+            resolution: 400,
+            intro: { mode: 'ripple', duration: 600 },
+          }).then(() => {
+            ctrl.addMouseForce({ track: true, strength: 2, radius: 60 });
+          });
+        });
+      })();
+
+      // ── Fireworks on scroll to bottom ─────────────────────────────────────
+      (function initFireworks() {
         const fwController = createParticles({
           canvas: fireworksCanvas,
           container,
           preset: 'fireworksShow',
-          config: { maxCount: 500, continuous: false },
+          config: { maxCount: 2000, continuous: false },
           renderer: 'webgl',
           autoResize: true,
         });
 
         let firedFireworks = false;
-        const onScroll = () => {
+
+        window.addEventListener('scroll', () => {
           if (firedFireworks) return;
           const scrollBottom = window.scrollY + window.innerHeight;
           const totalHeight = document.documentElement.scrollHeight;
+
           if (scrollBottom >= totalHeight - 150) {
             firedFireworks = true;
-            const fwPr = fwController.engine.pixelRatio;
-            const fwW = container.clientWidth / fwPr;
-            const fwH = container.clientHeight / fwPr;
+            const pr = fwController.engine.pixelRatio;
+            const w = container.clientWidth / pr;
+            const h = container.clientHeight / pr;
+
             const fwConfig = configureParticle({
               ...presets.Ambient.fireworksShow,
               rate: 1,
-              life: 2,
+              life: 3,
             });
-            [0.35, 0.55, 0.7].forEach((xFrac, i) => {
+
+            const wave1 = [0.15, 0.35, 0.55, 0.75, 0.9];
+            const wave2 = [0.25, 0.45, 0.65, 0.85];
+
+            wave1.forEach((xFrac, i) => {
               setTimeout(() => {
                 const emitter = new Emitter({
-                  point: new Vector(fwW * xFrac, fwH),
+                  point: new Vector(w * xFrac, h),
                   ...fwConfig,
-                  spawnWidth: fwW * 0.08,
+                  spawnWidth: w * 0.06,
                   spawnHeight: 0,
                   icons: [],
                 });
                 fwController.engine.addEmitter(emitter);
                 emitter.isEmitting = true;
                 emitter.emit();
-              }, i * 800);
+              }, i * 400);
             });
-            setTimeout(() => { firedFireworks = false; }, 8000);
+
+            wave2.forEach((xFrac, i) => {
+              setTimeout(() => {
+                const emitter = new Emitter({
+                  point: new Vector(w * xFrac, h),
+                  ...fwConfig,
+                  spawnWidth: w * 0.06,
+                  spawnHeight: 0,
+                  icons: [],
+                });
+                fwController.engine.addEmitter(emitter);
+                emitter.isEmitting = true;
+                emitter.emit();
+              }, 2200 + i * 500);
+            });
+
+            setTimeout(() => { firedFireworks = false; }, 10000);
           }
-        };
-        window.addEventListener('scroll', onScroll, { passive: true });
-        cleanups.push(() => {
-          window.removeEventListener('scroll', onScroll);
-          fwController.destroy();
-        });
+        }, { passive: true });
+      })();
 
-        // Keyboard: E to scatter text particles
-        const onKey = (e) => {
-          if (e.key === 'e' || e.key === 'E') textController.scatter({ velocity: 12 });
-        };
-        window.addEventListener('keydown', onKey);
-        cleanups.push(() => window.removeEventListener('keydown', onKey));
-
-        return () => {
-          for (const fn of cleanups) fn();
-          showcaseDemoEl.style.display = "none";
-          simpleDemoEl.style.display = "";
-          canvas.style.display = "";
-        };
-      }
-
-      // ── Demo: Click Burst ──────────────────────────────────────────────
-      function startBurstDemo() {
-        const controller = createParticles({
-          canvas,
-          preset: "magic",
-          renderer: "webgl",
-          autoResize: true,
-        });
-        controller.attachClickBurst(document);
-        hint.innerHTML = '<h2>Tap anywhere</h2><p>Magic preset — tap or click to create particle bursts</p>';
-        canvas.style.pointerEvents = "";
-        return () => controller.destroy();
-      }
-
-      // ── Demo: Screensaver ──────────────────────────────────────────────
-      function startScreensaverDemo() {
-        const screensaver = startScreensaver({
-          canvas,
-          preset: "snow",
-          renderer: "webgl",
-          autoResize: true,
-        });
-        hint.innerHTML = '<h2>Snowfall</h2><p>Ambient screensaver — drag to push snowflakes</p>';
-        canvas.style.pointerEvents = "";
-        return () => screensaver.destroy();
-      }
-
-      // ── Demo: Text → Particles ─────────────────────────────────────────
-      function startTextDemo() {
-        const controller = createParticles({
-          canvas,
-          preset: "imageText",
-          renderer: "webgl",
-          autoResize: true,
-        });
-
-        controller.textToParticles("Particular", {
-          x: window.innerWidth / 2,
-          y: window.innerHeight / 2,
-          width: Math.min(window.innerWidth * 0.8, 800),
-        });
-
-        controller.addMouseForce({ track: true, strength: 3, radius: 80 });
-
-        hint.innerHTML = '<h2>&nbsp;</h2><p>Touch or move mouse to push particles</p>';
-        canvas.style.pointerEvents = "";
-
-        const onKey = (e) => {
-          if (e.key === "e" || e.key === "E") controller.scatter({ velocity: 12 });
-        };
-        window.addEventListener("keydown", onKey);
-        return () => { window.removeEventListener("keydown", onKey); controller.destroy(); };
-      }
-
-      // ── Demo: Image → Particles ────────────────────────────────────────
-      function startImageDemo() {
-        const controller = createParticles({
-          canvas,
-          preset: "imageShape",
-          renderer: "webgl",
-          autoResize: true,
-        });
-
-        const size = Math.min(window.innerWidth, window.innerHeight) * 0.6;
-        controller.imageToParticles({
-          image: canvasToDataURL(createHeartImage(400)),
-          x: window.innerWidth / 2,
-          y: window.innerHeight / 2,
-          width: size,
-          height: size,
-          shape: "circle",
-        });
-
-        controller.addMouseForce({ track: true, strength: 3, radius: 80 });
-
-        hint.innerHTML = '<h2>&nbsp;</h2><p>Touch or move mouse to push particles</p>';
-        canvas.style.pointerEvents = "";
-
-        const onKey = (e) => {
-          if (e.key === "e" || e.key === "E") controller.scatter({ velocity: 12 });
-        };
-        window.addEventListener("keydown", onKey);
-        return () => { window.removeEventListener("keydown", onKey); controller.destroy(); };
-      }
-
-      // ── Navigation ─────────────────────────────────────────────────────
-      const demos = { showcase: startShowcaseDemo, burst: startBurstDemo, screensaver: startScreensaverDemo, text: startTextDemo, image: startImageDemo };
-
-      function switchDemo(name) {
-        if (currentCleanup) currentCleanup();
-        currentCleanup = demos[name]();
-        nav.querySelectorAll("button").forEach((btn) => btn.classList.toggle("active", btn.dataset.demo === name));
-      }
-
-      nav.addEventListener("click", (e) => {
-        const btn = e.target.closest("[data-demo]");
-        if (btn) switchDemo(btn.dataset.demo);
+      // ── Keyboard: E to scatter hero text ──────────────────────────────────
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'e' || e.key === 'E') textController.scatter({ velocity: 12 });
       });
-
-      // Start with showcase
-      switchDemo("showcase");
     </script>
   </body>
 </html>

@@ -347,6 +347,7 @@ MouseTrailHandle: { stop(), start(), destroy() }
 - velocityMultiplier: number        — scales velocity randomization. Default 6
 - fadeTime: number                  — fade-out duration in ticks. Default 30
 - gravity: number                   — downward pull. Default 0.15
+- gravityJitter: number             — per-particle gravity randomness (0–1). Each particle's gravity is multiplied by a random factor in the range `1 ± gravityJitter`, giving heavier and lighter particles even at the same size. Default 0
 - colors: string[]                  — hex color palette. Empty = auto-generated harmonious palette
 - trail: boolean                    — enable trail rendering
 - trailLength: number               — max trail segments
@@ -359,13 +360,13 @@ MouseTrailHandle: { stop(), start(), destroy() }
 
 | Name                  | Type    | Description                                          |
 |-----------------------|---------|------------------------------------------------------|
-| "magic"               | Burst   | Soft trailing circles, cool blue palette (default)   |
+| "magic"               | Burst   | Glowing sparkles with soft trails, additive blending (default) |
 | "confetti"            | Burst   | Colorful rectangle confetti, muted colors            |
-| "fireworks"           | Burst   | Energetic circles with trailing streaks              |
-| "fireworksDetonation" | Burst   | Narrow launch, auto-explodes into sub-bursts         |
-| "snow"                | Ambient | Gentle snowfall, continuous                          |
+| "fireworks"           | Burst   | Glowing sparkles with trailing streaks, additive     |
+| "fireworksDetonation" | Burst   | Narrow launch, auto-explodes into glowing sub-bursts |
+| "snow"                | Ambient | Gentle snowfall, continuous, gravity jitter for natural drift |
 | "meteors"             | Ambient | Bright diagonal streaks with glowing trails          |
-| "fireworksShow"       | Ambient | Continuous fireworks — rockets launch and detonate   |
+| "fireworksShow"       | Ambient | Continuous fireworks — sparkle rockets launch and detonate |
 | "river"               | Ambient | Horizontal water stream for use with attractors      |
 | "imageText"           | Image   | Tiny square particles for text rendering             |
 | "imageShape"          | Image   | Circle particles with glow for image/icon rendering  |
