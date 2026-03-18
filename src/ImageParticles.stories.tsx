@@ -264,6 +264,7 @@ export const Heart: Story = {
 };
 
 export const WoltLogo: Story = {
+  args: { particleShape: 'triangle' },
   render: (args) => (
     <ImageDemo
       {...args}
