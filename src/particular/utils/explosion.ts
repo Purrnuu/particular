@@ -2,15 +2,15 @@ import Vector from './vector';
 import { getRandomInt } from './math';
 import Particle from '../components/particle';
 import { defaultExplosionChild } from '../core/defaults';
-import type { ChildExplosionConfig } from '../types';
+import type { ChildExplosionConfig, ParticleShape, BlendMode } from '../types';
 import type Particular from '../core/particular';
 
 export interface ParentSnapshot {
   x: number;
   y: number;
   color: string;
-  shape: string;
-  blendMode: string;
+  shape: ParticleShape;
+  blendMode: BlendMode;
 }
 
 /**
@@ -47,8 +47,8 @@ export function createExplosionChild(
     gravity: merged.gravity,
     scaleStep: merged.scaleStep,
     fadeTime: merged.fadeTime,
-    shape: merged.shape !== defaultExplosionChild.shape ? merged.shape : (parent.shape as any),
-    blendMode: merged.blendMode !== defaultExplosionChild.blendMode ? merged.blendMode : (parent.blendMode as any),
+    shape: merged.shape !== defaultExplosionChild.shape ? merged.shape : parent.shape,
+    blendMode: merged.blendMode !== defaultExplosionChild.blendMode ? merged.blendMode : parent.blendMode,
     glow: merged.glow,
     glowSize: merged.glowSize,
     glowColor: merged.glowColor,

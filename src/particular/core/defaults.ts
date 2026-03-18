@@ -237,8 +237,8 @@ export function configureParticular(
 }
 
 export function configureParticle<T extends Partial<ParticleConfig>>(
-  settings?: T,
-  configuration?: ParticleConfig
+  overrides?: T,
+  base?: ParticleConfig
 ): ParticleDefaults & T {
-  return { ...defaultParticle, ...configuration, ...settings } as any;
+  return { ...defaultParticle, ...base, ...overrides } as ParticleDefaults & T;
 }

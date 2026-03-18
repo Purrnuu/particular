@@ -168,6 +168,7 @@ Returns:
 - elementToParticles(element, config?) → void
 - shatterImage(config) → void
 - shatterText(text, config?) → void
+- setIdleEffect(enabled) → void
 
 ### useScreensaver(options?) → UseScreensaverResult (React hook)
 

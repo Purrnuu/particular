@@ -9,7 +9,7 @@ import {
 import { startScreensaver } from './convenience/screensaver';
 import type { ScreensaverController } from './convenience/types';
 import { getParticlesBackgroundLayerStyle, getParticlesContainerLayerStyle } from './canvasStyles';
-import type { FullParticularConfig, MouseForceConfig, RendererType, ExplodeOptions, ImageParticlesConfig, TextImageConfig, ElementParticlesConfig } from './types';
+import type { FullParticularConfig, MouseForceConfig, RendererType, ExplodeOptions, ImageParticlesConfig, TextImageConfig, ElementParticlesConfig, ImageShatterConfig, WobbleConfig } from './types';
 import type { PresetName } from './presets';
 
 export interface UseParticlesOptions {
@@ -41,13 +41,21 @@ export interface UseParticlesResult {
     overrides?: Partial<FullParticularConfig>,
   ) => void;
   explode: (options?: ExplodeOptions) => void;
-  scatter: (options?: { velocity?: number }) => void;
+  scatter: (options?: { velocity?: number; rotation?: number }) => void;
+  startWobble: (config?: WobbleConfig) => void;
+  stopWobble: () => void;
   imageToParticles: (config: ImageParticlesConfig) => void;
   textToParticles: (
     text: string,
     config?: Omit<ImageParticlesConfig, 'image'> & { textConfig?: Omit<TextImageConfig, 'text'> },
   ) => void;
   elementToParticles: (element: HTMLElement, config?: ElementParticlesConfig) => void;
+  shatterImage: (config: ImageShatterConfig) => void;
+  shatterText: (
+    text: string,
+    config?: Omit<ImageShatterConfig, 'image'> & { textConfig?: Omit<TextImageConfig, 'text'> },
+  ) => void;
+  setIdleEffect: (enabled: boolean) => void;
 }
 
 /**
@@ -129,8 +137,16 @@ export function useParticles({
     controllerRef.current?.explode(options);
   }, []);
 
-  const scatter = useCallback((options?: { velocity?: number }) => {
+  const scatter = useCallback((options?: { velocity?: number; rotation?: number }) => {
     controllerRef.current?.scatter(options);
+  }, []);
+
+  const startWobble = useCallback((config?: WobbleConfig) => {
+    controllerRef.current?.startWobble(config);
+  }, []);
+
+  const stopWobble = useCallback(() => {
+    controllerRef.current?.stopWobble();
   }, []);
 
   const imageToParticles = useCallback((config: ImageParticlesConfig) => {
@@ -154,6 +170,24 @@ export function useParticles({
     [],
   );
 
+  const shatterImage = useCallback((config: ImageShatterConfig) => {
+    controllerRef.current?.shatterImage(config);
+  }, []);
+
+  const shatterText = useCallback(
+    (
+      text: string,
+      config?: Omit<ImageShatterConfig, 'image'> & { textConfig?: Omit<TextImageConfig, 'text'> },
+    ) => {
+      controllerRef.current?.shatterText(text, config);
+    },
+    [],
+  );
+
+  const setIdleEffect = useCallback((enabled: boolean) => {
+    controllerRef.current?.setIdleEffect(enabled);
+  }, []);
+
   return {
     canvasRef,
     canvasStyle,
@@ -162,9 +196,14 @@ export function useParticles({
     burstFromEvent,
     explode,
     scatter,
+    startWobble,
+    stopWobble,
     imageToParticles,
     textToParticles,
     elementToParticles,
+    shatterImage,
+    shatterText,
+    setIdleEffect,
   };
 }
 

@@ -20,8 +20,8 @@ export function createEffects(engine: Particular, mergedConfig: MergedConfig) {
       x: p.position.x,
       y: p.position.y,
       color: p.color,
-      shape: p.shape as string,
-      blendMode: p.blendMode as string,
+      shape: p.shape,
+      blendMode: p.blendMode,
     }));
 
     if (destroyParents) {
