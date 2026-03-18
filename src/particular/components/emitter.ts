@@ -138,6 +138,7 @@ export default class Emitter {
       velocityMultiplier,
       particleLife,
       gravity,
+      gravityJitter,
       scaleStep,
       fadeTime,
       spawnWidth,
@@ -176,6 +177,10 @@ export default class Emitter {
     newVelocity.add({ x: 0, y: -((sizeMax - size) / 15) * velocityMultiplier });
     const friction = frictionBase + frictionSize * size;
     const acceleration = new Vector(0, accelBase + accelerationSize * size);
+    const jitter = gravityJitter ?? 0;
+    const jitteredGravity = jitter > 0
+      ? gravity * (1 - jitter + Math.random() * jitter * 2)
+      : gravity;
 
     this.lifeCycle++;
 
@@ -186,7 +191,7 @@ export default class Emitter {
       friction,
       size,
       particleLife,
-      gravity,
+      gravity: jitteredGravity,
       scaleStep,
       fadeTime,
       shape,

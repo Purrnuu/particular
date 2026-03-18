@@ -36,6 +36,7 @@ export const defaultParticle: Required<Omit<ParticleConfig, 'detonate'>> = {
   velocityMultiplier: 6,
   fadeTime: 30,
   gravity: 0.15,
+  gravityJitter: 0,
   scaleStep: 1,
   spawnWidth: 0,
   spawnHeight: 0,

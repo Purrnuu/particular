@@ -124,6 +124,9 @@ export interface ParticleConfig extends ShapeConfig {
   velocityMultiplier?: number;
   fadeTime?: number;
   gravity?: number;
+  /** Per-particle gravity randomness (0–1). Each particle's gravity is multiplied by a random factor
+   *  in the range `1 ± gravityJitter`, giving heavier and lighter particles even at the same size. Default 0. */
+  gravityJitter?: number;
   scaleStep?: number;
   /** Width of the rectangular spawn area centered on the emitter point. Default 0 (point spawn). */
   spawnWidth?: number;
