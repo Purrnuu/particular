@@ -531,7 +531,9 @@ export default class WebGLRenderer {
         ghost.blendMode = particle.blendMode;
         ghost.image = particle.image;
         ghost.imageTint = particle.imageTint;
-        ghost.shadowLightOrigin = particle.shadowLightOrigin;
+        // Trails never get glow or shadow — reset on every reuse for safety
+        ghost.glow = false;
+        ghost.shadow = false;
         expanded.push(ghost);
       }
     }

@@ -160,8 +160,8 @@ function Snow() {
 |------|------|-------------|
 | `"magic"` | Burst | Soft trailing circles with cool blue palette |
 | `"confetti"` | Burst | Colorful rectangle confetti with muted colors |
-| `"fireworks"` | Burst | Energetic circles with trailing streaks |
-| `"fireworksDetonation"` | Burst | Narrow launch that auto-explodes into sub-bursts |
+| `"fireworks"` | Burst | Energetic triangles with trailing streaks |
+| `"fireworksDetonation"` | Burst | Trailing triangle rockets that auto-explode into sub-bursts |
 | `"snow"` | Ambient | Gentle snowfall drifting across the viewport |
 | `"meteors"` | Ambient | Bright diagonal streaks with glowing trails |
 | `"fireworksShow"` | Ambient | Continuous fireworks — rockets launch and auto-detonate |

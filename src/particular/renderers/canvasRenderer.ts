@@ -217,9 +217,9 @@ export default class CanvasRenderer {
     ghost.shape = particle.shape;
     ghost.blendMode = particle.blendMode;
     ghost.image = particle.image;
-    ghost.glowColor = particle.glowColor;
-    ghost.glowAlpha = particle.glowAlpha;
-    ghost.glowSize = particle.glowSize;
+    // Trails never get glow or shadow — reset on every reuse for safety
+    ghost.glow = false;
+    ghost.shadow = false;
     // Update cached rounded location
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ghostAny = ghost as any;

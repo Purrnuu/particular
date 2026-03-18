@@ -74,9 +74,9 @@ const Burst = {
     colors: ['#a5d8ff', '#74c0fc', '#4dabf7', '#d0bfff', '#b197fc', '#9775fa'],
   } satisfies FullParticularConfig,
 
-  /** Cinematic fireworks: glowing sparkles with bright trailing bloom */
+  /** Cinematic fireworks: glowing triangles with bright trailing bloom */
   fireworks: {
-    shape: 'sparkle' as const,
+    shape: 'triangle' as const,
     blendMode: 'additive' as const,
     glow: true,
     glowSize: 8,
@@ -105,7 +105,7 @@ const Burst = {
 
   /** Fireworks with timed detonation: narrow upward launch that auto-explodes into colorful sub-bursts */
   fireworksDetonation: {
-    shape: 'sparkle' as const,
+    shape: 'triangle' as const,
     blendMode: 'additive' as const,
     glow: true,
     glowSize: 8,
@@ -125,6 +125,10 @@ const Burst = {
     scaleStep: 1.15,
     maxCount: 3000,
     particleLife: 80,
+    trail: true,
+    trailLength: 6,
+    trailFade: 0.3,
+    trailShrink: 0.5,
     detonate: {
       at: 0.7,
       childCount: 8,
@@ -137,11 +141,7 @@ const Burst = {
       sizeMax: 4,
       fadeTime: 18,
       inheritColor: true,
-      shape: 'sparkle',
-      glow: true,
-      glowSize: 6,
-      glowColor: '#74c0fc',
-      glowAlpha: 0.3,
+      shape: 'triangle',
       trail: true,
       trailLength: 4,
       trailFade: 0.5,
@@ -239,7 +239,7 @@ const Ambient = {
   } satisfies FullParticularConfig,
   /** Fireworks show: gentle rockets launch from the bottom and auto-explode into colorful bursts */
   fireworksShow: {
-    shape: 'sparkle' as const,
+    shape: 'triangle' as const,
     blendMode: 'additive' as const,
     glow: true,
     glowSize: 8,
@@ -278,11 +278,7 @@ const Ambient = {
       sizeMax: 3,
       fadeTime: 20,
       inheritColor: true,
-      shape: 'sparkle',
-      glow: true,
-      glowSize: 6,
-      glowColor: '#ff9500',
-      glowAlpha: 0.3,
+      shape: 'triangle',
       trail: true,
       trailLength: 4,
       trailFade: 0.5,

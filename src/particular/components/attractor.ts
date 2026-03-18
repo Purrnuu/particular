@@ -3,6 +3,9 @@ import type { AttractorConfig, ParticleShape, BlendMode } from '../types';
 import { defaultAttractor } from '../core/defaults';
 import type Particle from './particle';
 
+// Reusable force vector — safe because getForce result is consumed immediately by velocity.add()
+const _tempForce = new Vector(0, 0);
+
 export default class Attractor {
   position: Vector;
   strength: number;
@@ -49,19 +52,21 @@ export default class Attractor {
   }
 
   getForce(particlePosition: Vector): Vector {
-    const force = new Vector(this.position.x, this.position.y);
-    force.subtract(particlePosition);
+    const dx = this.position.x - particlePosition.x;
+    const dy = this.position.y - particlePosition.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
 
-    const dist = force.getMagnitude();
     if (dist === 0 || dist > this.radius) {
-      return new Vector(0, 0);
+      _tempForce.x = 0;
+      _tempForce.y = 0;
+      return _tempForce;
     }
 
-    force.normalize();
-    const falloff = 1 - dist / this.radius;
-    force.scale(this.strength * falloff);
-
-    return force;
+    // Combine normalize + scale: (dx/dist) * strength * falloff
+    const scale = this.strength * (1 - dist / this.radius) / dist;
+    _tempForce.x = dx * scale;
+    _tempForce.y = dy * scale;
+    return _tempForce;
   }
 
   /** Returns a lightweight Particle-compatible object for use by renderers. */

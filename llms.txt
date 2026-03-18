@@ -363,11 +363,11 @@ MouseTrailHandle: { stop(), start(), destroy() }
 |-----------------------|---------|------------------------------------------------------|
 | "magic"               | Burst   | Glowing sparkles with soft trails, additive blending (default) |
 | "confetti"            | Burst   | Colorful rectangle confetti, muted colors            |
-| "fireworks"           | Burst   | Glowing sparkles with trailing streaks, additive     |
-| "fireworksDetonation" | Burst   | Narrow launch, auto-explodes into glowing sub-bursts |
+| "fireworks"           | Burst   | Glowing triangles with trailing streaks, additive    |
+| "fireworksDetonation" | Burst   | Trailing triangle rockets, auto-explode into sub-bursts |
 | "snow"                | Ambient | Gentle snowfall, continuous, gravity jitter for natural drift |
 | "meteors"             | Ambient | Bright diagonal streaks with glowing trails          |
-| "fireworksShow"       | Ambient | Continuous fireworks — sparkle rockets launch and detonate |
+| "fireworksShow"       | Ambient | Continuous fireworks — triangle rockets launch and detonate |
 | "river"               | Ambient | Horizontal water stream for use with attractors      |
 | "imageText"           | Image   | Tiny square particles for text rendering             |
 | "imageShape"          | Image   | Circle particles with glow for image/icon rendering  |

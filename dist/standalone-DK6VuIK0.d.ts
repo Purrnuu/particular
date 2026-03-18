@@ -640,6 +640,7 @@ declare class Emitter {
     particular: Particular | null;
     lifeCycle: number;
     private emitAccumulator;
+    private _newChildren;
     constructor(configuration: EmitterConfiguration);
     emit(dt?: number): void;
     assignParticular(particular: Particular): void;
@@ -910,7 +911,7 @@ declare const presetRegistry: {
         colors: string[];
     };
     readonly fireworks: {
-        shape: "sparkle";
+        shape: "triangle";
         blendMode: "additive";
         glow: true;
         glowSize: number;
@@ -936,7 +937,7 @@ declare const presetRegistry: {
         colors: string[];
     };
     readonly fireworksDetonation: {
-        shape: "sparkle";
+        shape: "triangle";
         blendMode: "additive";
         glow: true;
         glowSize: number;
@@ -955,6 +956,10 @@ declare const presetRegistry: {
         scaleStep: number;
         maxCount: number;
         particleLife: number;
+        trail: true;
+        trailLength: number;
+        trailFade: number;
+        trailShrink: number;
         detonate: {
             at: number;
             childCount: number;
@@ -967,11 +972,7 @@ declare const presetRegistry: {
             sizeMax: number;
             fadeTime: number;
             inheritColor: true;
-            shape: "sparkle";
-            glow: true;
-            glowSize: number;
-            glowColor: string;
-            glowAlpha: number;
+            shape: "triangle";
             trail: true;
             trailLength: number;
             trailFade: number;
@@ -1098,7 +1099,7 @@ declare const presetRegistry: {
         colors: string[];
     };
     readonly fireworksShow: {
-        shape: "sparkle";
+        shape: "triangle";
         blendMode: "additive";
         glow: true;
         glowSize: number;
@@ -1136,11 +1137,7 @@ declare const presetRegistry: {
             sizeMax: number;
             fadeTime: number;
             inheritColor: true;
-            shape: "sparkle";
-            glow: true;
-            glowSize: number;
-            glowColor: string;
-            glowAlpha: number;
+            shape: "triangle";
             trail: true;
             trailLength: number;
             trailFade: number;
@@ -1197,9 +1194,9 @@ declare const presets: {
             trailShrink: number;
             colors: string[];
         };
-        /** Cinematic fireworks: glowing sparkles with bright trailing bloom */
+        /** Cinematic fireworks: glowing triangles with bright trailing bloom */
         readonly fireworks: {
-            shape: "sparkle";
+            shape: "triangle";
             blendMode: "additive";
             glow: true;
             glowSize: number;
@@ -1226,7 +1223,7 @@ declare const presets: {
         };
         /** Fireworks with timed detonation: narrow upward launch that auto-explodes into colorful sub-bursts */
         readonly fireworksDetonation: {
-            shape: "sparkle";
+            shape: "triangle";
             blendMode: "additive";
             glow: true;
             glowSize: number;
@@ -1245,6 +1242,10 @@ declare const presets: {
             scaleStep: number;
             maxCount: number;
             particleLife: number;
+            trail: true;
+            trailLength: number;
+            trailFade: number;
+            trailShrink: number;
             detonate: {
                 at: number;
                 childCount: number;
@@ -1257,11 +1258,7 @@ declare const presets: {
                 sizeMax: number;
                 fadeTime: number;
                 inheritColor: true;
-                shape: "sparkle";
-                glow: true;
-                glowSize: number;
-                glowColor: string;
-                glowAlpha: number;
+                shape: "triangle";
                 trail: true;
                 trailLength: number;
                 trailFade: number;
@@ -1372,7 +1369,7 @@ declare const presets: {
         };
         /** Fireworks show: gentle rockets launch from the bottom and auto-explode into colorful bursts */
         readonly fireworksShow: {
-            shape: "sparkle";
+            shape: "triangle";
             blendMode: "additive";
             glow: true;
             glowSize: number;
@@ -1410,11 +1407,7 @@ declare const presets: {
                 sizeMax: number;
                 fadeTime: number;
                 inheritColor: true;
-                shape: "sparkle";
-                glow: true;
-                glowSize: number;
-                glowColor: string;
-                glowAlpha: number;
+                shape: "triangle";
                 trail: true;
                 trailLength: number;
                 trailFade: number;
@@ -1543,7 +1536,7 @@ declare const presets: {
         colors: string[];
     };
     readonly fireworks: {
-        shape: "sparkle";
+        shape: "triangle";
         blendMode: "additive";
         glow: true;
         glowSize: number;
@@ -1569,7 +1562,7 @@ declare const presets: {
         colors: string[];
     };
     readonly fireworksDetonation: {
-        shape: "sparkle";
+        shape: "triangle";
         blendMode: "additive";
         glow: true;
         glowSize: number;
@@ -1588,6 +1581,10 @@ declare const presets: {
         scaleStep: number;
         maxCount: number;
         particleLife: number;
+        trail: true;
+        trailLength: number;
+        trailFade: number;
+        trailShrink: number;
         detonate: {
             at: number;
             childCount: number;
@@ -1600,11 +1597,7 @@ declare const presets: {
             sizeMax: number;
             fadeTime: number;
             inheritColor: true;
-            shape: "sparkle";
-            glow: true;
-            glowSize: number;
-            glowColor: string;
-            glowAlpha: number;
+            shape: "triangle";
             trail: true;
             trailLength: number;
             trailFade: number;
@@ -1731,7 +1724,7 @@ declare const presets: {
         colors: string[];
     };
     readonly fireworksShow: {
-        shape: "sparkle";
+        shape: "triangle";
         blendMode: "additive";
         glow: true;
         glowSize: number;
@@ -1769,11 +1762,7 @@ declare const presets: {
             sizeMax: number;
             fadeTime: number;
             inheritColor: true;
-            shape: "sparkle";
-            glow: true;
-            glowSize: number;
-            glowColor: string;
-            glowAlpha: number;
+            shape: "triangle";
             trail: true;
             trailLength: number;
             trailFade: number;

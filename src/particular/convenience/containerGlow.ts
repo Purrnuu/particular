@@ -158,8 +158,15 @@ export function createContainerGlowHelper(
     // Pulse modulation via engine update event
     engine.addEventListener(Particular.UPDATE, onUpdate);
 
-    // Auto-rebuild on element/container resize
-    const ro = new ResizeObserver(rebuild);
+    // Auto-rebuild on element/container resize (debounced with rAF)
+    let rebuildRafId = 0;
+    const ro = new ResizeObserver(() => {
+      if (rebuildRafId) return;
+      rebuildRafId = requestAnimationFrame(() => {
+        rebuildRafId = 0;
+        rebuild();
+      });
+    });
     ro.observe(element);
     if (container) ro.observe(container);
 
@@ -192,6 +199,7 @@ export function createContainerGlowHelper(
       destroy: () => {
         engine.removeEventListener(Particular.UPDATE, onUpdate);
         ro.disconnect();
+        if (rebuildRafId) cancelAnimationFrame(rebuildRafId);
         scrollTarget.removeEventListener('scroll', onScroll);
         if (scrollRafId) cancelAnimationFrame(scrollRafId);
         for (const em of emitters) {

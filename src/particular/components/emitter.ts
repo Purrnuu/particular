@@ -14,6 +14,7 @@ export default class Emitter {
   particular: Particular | null = null;
   lifeCycle = 0;
   private emitAccumulator = 0;
+  private _newChildren: Particle[] = [];
 
   constructor(configuration: EmitterConfiguration) {
     if (!configuration.colors || configuration.colors.length === 0) {
@@ -47,24 +48,26 @@ export default class Emitter {
   }
 
   update(boundsX: number, boundsY: number, forces?: ForceSource[], dt = 1): void {
-    const currentParticles: Particle[] = [];
+    let writeIdx = 0;
     const detonate = this.configuration.detonate;
-    const newChildren: Particle[] = [];
+    const newChildren = this._newChildren;
+    newChildren.length = 0;
 
-    for (const particle of this.particles) {
+    for (let i = 0; i < this.particles.length; i++) {
+      const particle = this.particles[i]!;
       const pos = particle.position;
       if (pos.x < 0 || pos.x > boundsX || pos.y < -boundsY || pos.y > boundsY) {
         // Particles with a home position are never killed by bounds — they'll spring back
         if (particle.homePosition) {
           particle.update(forces, dt);
-          currentParticles.push(particle);
+          this.particles[writeIdx++] = particle;
           continue;
         }
         const hasTrail = particle.trail && particle.trailSegments.length > 0;
         if (hasTrail) {
           particle.advanceTrail(dt);
           if (particle.trailSegments.length > 0) {
-            currentParticles.push(particle);
+            this.particles[writeIdx++] = particle;
           } else {
             particle.destroy();
           }
@@ -86,7 +89,7 @@ export default class Emitter {
         const childCount = detonate.childCount ?? 5;
         const budget = Math.max(0, this.particular.maxCount - this.particular.getCount() - newChildren.length);
         const toSpawn = Math.min(childCount, budget);
-        for (let i = 0; i < toSpawn; i++) {
+        for (let j = 0; j < toSpawn; j++) {
           const child = createExplosionChild(
             {
               x: particle.position.x,
@@ -103,7 +106,7 @@ export default class Emitter {
           newChildren.push(child);
         }
         particle.destroy();
-        continue; // parent dies — don't push to currentParticles
+        continue; // parent dies
       }
 
       const trailActive = particle.trail && particle.trailSegments.length > 0;
@@ -111,18 +114,17 @@ export default class Emitter {
 
       // Keep particle alive until trail has fully faded out.
       if (!fadedOut || trailActive) {
-        currentParticles.push(particle);
+        this.particles[writeIdx++] = particle;
       } else {
         particle.destroy();
       }
     }
 
-    if (newChildren.length > 0) {
-      for (let i = 0; i < newChildren.length; i++) {
-        currentParticles.push(newChildren[i]!);
-      }
+    // Trim dead particles and append detonation children
+    this.particles.length = writeIdx;
+    for (let i = 0; i < newChildren.length; i++) {
+      this.particles.push(newChildren[i]!);
     }
-    this.particles = currentParticles;
     this.isEmitting = this.particular?.continuous ? true : this.lifeCycle < this.configuration.life;
   }
 

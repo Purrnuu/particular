@@ -2,6 +2,9 @@ import Vector from '../utils/vector';
 import type { ForceSource, MouseForceConfig } from '../types';
 import { defaultMouseForce } from '../core/defaults';
 
+// Reusable force vector — safe because getForce result is consumed immediately by velocity.add()
+const _tempForce = new Vector(0, 0);
+
 export default class MouseForce implements ForceSource {
   position: Vector;
   velocity: Vector;
@@ -135,12 +138,16 @@ export default class MouseForce implements ForceSource {
     const dist = Math.sqrt(dx * dx + dy * dy);
 
     if (dist === 0 || dist > this.radius) {
-      return new Vector(0, 0);
+      _tempForce.x = 0;
+      _tempForce.y = 0;
+      return _tempForce;
     }
 
-    const speed = this.velocity.getMagnitude();
+    const speed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y);
     if (speed < 0.01) {
-      return new Vector(0, 0);
+      _tempForce.x = 0;
+      _tempForce.y = 0;
+      return _tempForce;
     }
 
     const linearFalloff = 1 - dist / this.radius;
@@ -149,10 +156,10 @@ export default class MouseForce implements ForceSource {
       : Math.pow(linearFalloff, this.falloff);
     const speedFactor = Math.min(speed, this.maxSpeed) / this.maxSpeed;
 
-    const force = new Vector(this.velocity.x, this.velocity.y);
-    force.normalize();
-    force.scale(this.strength * distanceFalloff * speedFactor);
-
-    return force;
+    // Combine normalize + scale: (vel/speed) * strength * falloff * speedFactor
+    const scale = this.strength * distanceFalloff * speedFactor / speed;
+    _tempForce.x = this.velocity.x * scale;
+    _tempForce.y = this.velocity.y * scale;
+    return _tempForce;
   }
 }

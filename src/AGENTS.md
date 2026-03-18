@@ -160,11 +160,11 @@ Curated and intentionally limited. Polish over quantity.
 
 - `presets.Burst.confetti` — colorful rectangle confetti (muted colors, friction for flutter)
 - `presets.Burst.magic` — glowing sparkles with soft trails, additive blending, blue/purple palette, gravityJitter 0.15
-- `presets.Burst.fireworks` — glowing sparkles with trailing streaks, additive blending, orange glow, gravityJitter 0.2
-- `presets.Burst.fireworksDetonation` — narrow upward launch, sparkle shape, additive blending, auto-detonates into glowing sparkle sub-bursts at 70% lifetime, gravityJitter 0.15
+- `presets.Burst.fireworks` — glowing triangles with trailing streaks, additive blending, orange glow, gravityJitter 0.2
+- `presets.Burst.fireworksDetonation` — narrow upward launch, triangle shape, additive blending, trailing rockets auto-detonate into triangle sub-bursts at 70% lifetime, gravityJitter 0.15
 - `presets.Ambient.snow` — gentle snowfall (continuous, low rate, long life, gravityJitter 0.5 for natural drift)
 - `presets.Ambient.meteors` — bright diagonal streaks with glowing trails, accelerating as they fall, gravityJitter 0.3
-- `presets.Ambient.fireworksShow` — continuous fireworks screensaver: sparkle rockets launch from bottom, auto-detonate into trailing sparkle bursts (vivid palette), gravityJitter 0.15
+- `presets.Ambient.fireworksShow` — continuous fireworks screensaver: triangle rockets launch from bottom, auto-detonate into trailing triangle bursts (vivid palette), gravityJitter 0.15
 - `presets.Ambient.river` — horizontal water stream with cyan glow and short trails, designed for use with attractors (water palette)
 - `presets.Images.showcase` — tuned for icon/image particles
 - `presets.ImageParticles.text` — high-fidelity text as tiny square particles
@@ -552,6 +552,10 @@ Per-frame allocations eliminated via index-based pools and array reuse:
 - **DrawBatch pool** (webglRenderer): Batch objects and their `particles` arrays are pooled and reused. The result array is also reused.
 - **TrailSegment recycling** (particle.ts): A module-level `freeSegments` free list collects expired segments during in-place compaction. New segments pop from the free list before falling back to allocation.
 - **Engine array reuse** (particular.ts): `getAllParticles()` fills a cached array instead of `concat()`. Combined forces array is cached. Dead emitter cleanup uses in-place compaction instead of `filter()`.
+- **Force vector reuse** (attractor.ts, mouseForce.ts): `getForce()` returns a module-level reusable `_tempForce` vector instead of `new Vector()` per call. Safe because `velocity.add()` consumes the result immediately. On scroll-heavy pages with ~390 attractors × 600 particles, this eliminates ~234K+ Vector allocations per frame. Math is also inlined (normalize + scale combined into a single division).
+- **Emitter in-place compaction** (emitter.ts): `update()` uses write-index compaction on `this.particles` instead of allocating a new `currentParticles` array each frame. Detonation children use a cached `_newChildren` array.
+- **ContainerGlow resize debounce** (containerGlow.ts): `ResizeObserver` callback is rAF-debounced to coalesce multiple resize events per frame, matching boundary.ts behavior.
+- **Trail ghost glow/shadow reset** (canvasRenderer.ts, webglRenderer.ts): Trail ghost objects explicitly set `glow = false` and `shadow = false` on every reuse, preventing expensive canvas `shadowBlur` or WebGL batch breaks on trail segments.
 
 ## Stable Public API
 

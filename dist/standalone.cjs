@@ -838,6 +838,7 @@ var Emitter = class {
     this.particular = null;
     this.lifeCycle = 0;
     this.emitAccumulator = 0;
+    this._newChildren = [];
     if (!configuration.colors || configuration.colors.length === 0) {
       this.configuration = { ...configuration, colors: generateHarmoniousPalette() };
     } else {
@@ -862,22 +863,24 @@ var Emitter = class {
     this.particular = particular;
   }
   update(boundsX, boundsY, forces, dt = 1) {
-    const currentParticles = [];
+    let writeIdx = 0;
     const detonate = this.configuration.detonate;
-    const newChildren = [];
-    for (const particle of this.particles) {
+    const newChildren = this._newChildren;
+    newChildren.length = 0;
+    for (let i = 0; i < this.particles.length; i++) {
+      const particle = this.particles[i];
       const pos = particle.position;
       if (pos.x < 0 || pos.x > boundsX || pos.y < -boundsY || pos.y > boundsY) {
         if (particle.homePosition) {
           particle.update(forces, dt);
-          currentParticles.push(particle);
+          this.particles[writeIdx++] = particle;
           continue;
         }
         const hasTrail = particle.trail && particle.trailSegments.length > 0;
         if (hasTrail) {
           particle.advanceTrail(dt);
           if (particle.trailSegments.length > 0) {
-            currentParticles.push(particle);
+            this.particles[writeIdx++] = particle;
           } else {
             particle.destroy();
           }
@@ -891,7 +894,7 @@ var Emitter = class {
         const childCount = detonate.childCount ?? 5;
         const budget = Math.max(0, this.particular.maxCount - this.particular.getCount() - newChildren.length);
         const toSpawn = Math.min(childCount, budget);
-        for (let i = 0; i < toSpawn; i++) {
+        for (let j = 0; j < toSpawn; j++) {
           const child = createExplosionChild(
             {
               x: particle.position.x,
@@ -913,17 +916,15 @@ var Emitter = class {
       const trailActive = particle.trail && particle.trailSegments.length > 0;
       const fadedOut = particle.alpha <= 0 && particle.lifeTick >= particle.lifeTime;
       if (!fadedOut || trailActive) {
-        currentParticles.push(particle);
+        this.particles[writeIdx++] = particle;
       } else {
         particle.destroy();
       }
     }
-    if (newChildren.length > 0) {
-      for (let i = 0; i < newChildren.length; i++) {
-        currentParticles.push(newChildren[i]);
-      }
+    this.particles.length = writeIdx;
+    for (let i = 0; i < newChildren.length; i++) {
+      this.particles.push(newChildren[i]);
     }
-    this.particles = currentParticles;
     this.isEmitting = this.particular?.continuous ? true : this.lifeCycle < this.configuration.life;
   }
   isAlive() {
@@ -1016,6 +1017,7 @@ var Emitter = class {
 };
 
 // src/particular/components/attractor.ts
+var _tempForce = new Vector(0, 0);
 var Attractor = class {
   constructor(config) {
     this._resolvedImage = null;
@@ -1041,16 +1043,18 @@ var Attractor = class {
     }
   }
   getForce(particlePosition) {
-    const force = new Vector(this.position.x, this.position.y);
-    force.subtract(particlePosition);
-    const dist = force.getMagnitude();
+    const dx = this.position.x - particlePosition.x;
+    const dy = this.position.y - particlePosition.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist === 0 || dist > this.radius) {
-      return new Vector(0, 0);
+      _tempForce.x = 0;
+      _tempForce.y = 0;
+      return _tempForce;
     }
-    force.normalize();
-    const falloff = 1 - dist / this.radius;
-    force.scale(this.strength * falloff);
-    return force;
+    const scale = this.strength * (1 - dist / this.radius) / dist;
+    _tempForce.x = dx * scale;
+    _tempForce.y = dy * scale;
+    return _tempForce;
   }
   /** Returns a lightweight Particle-compatible object for use by renderers. */
   toDrawable() {
@@ -1088,6 +1092,7 @@ var Attractor = class {
 };
 
 // src/particular/components/mouseForce.ts
+var _tempForce2 = new Vector(0, 0);
 var MouseForce = class {
   constructor(config = {}) {
     this._trackListener = null;
@@ -1200,19 +1205,23 @@ var MouseForce = class {
     const dy = particlePosition.y - this.position.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist === 0 || dist > this.radius) {
-      return new Vector(0, 0);
+      _tempForce2.x = 0;
+      _tempForce2.y = 0;
+      return _tempForce2;
     }
-    const speed = this.velocity.getMagnitude();
+    const speed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y);
     if (speed < 0.01) {
-      return new Vector(0, 0);
+      _tempForce2.x = 0;
+      _tempForce2.y = 0;
+      return _tempForce2;
     }
     const linearFalloff = 1 - dist / this.radius;
     const distanceFalloff = this.falloff === 1 ? linearFalloff : Math.pow(linearFalloff, this.falloff);
     const speedFactor = Math.min(speed, this.maxSpeed) / this.maxSpeed;
-    const force = new Vector(this.velocity.x, this.velocity.y);
-    force.normalize();
-    force.scale(this.strength * distanceFalloff * speedFactor);
-    return force;
+    const scale = this.strength * distanceFalloff * speedFactor / speed;
+    _tempForce2.x = this.velocity.x * scale;
+    _tempForce2.y = this.velocity.y * scale;
+    return _tempForce2;
   }
 };
 
@@ -1391,9 +1400,8 @@ var CanvasRenderer = class {
     ghost.shape = particle.shape;
     ghost.blendMode = particle.blendMode;
     ghost.image = particle.image;
-    ghost.glowColor = particle.glowColor;
-    ghost.glowAlpha = particle.glowAlpha;
-    ghost.glowSize = particle.glowSize;
+    ghost.glow = false;
+    ghost.shadow = false;
     const ghostAny = ghost;
     ghostAny._roundedLoc[0] = (segment.x * 10 << 0) * 0.1;
     ghostAny._roundedLoc[1] = (segment.y * 10 << 0) * 0.1;
@@ -2130,7 +2138,8 @@ var WebGLRenderer = class {
         ghost.blendMode = particle.blendMode;
         ghost.image = particle.image;
         ghost.imageTint = particle.imageTint;
-        ghost.shadowLightOrigin = particle.shadowLightOrigin;
+        ghost.glow = false;
+        ghost.shadow = false;
         expanded.push(ghost);
       }
     }
@@ -2472,9 +2481,9 @@ var Burst = {
     trailShrink: 0.5,
     colors: ["#a5d8ff", "#74c0fc", "#4dabf7", "#d0bfff", "#b197fc", "#9775fa"]
   },
-  /** Cinematic fireworks: glowing sparkles with bright trailing bloom */
+  /** Cinematic fireworks: glowing triangles with bright trailing bloom */
   fireworks: {
-    shape: "sparkle",
+    shape: "triangle",
     blendMode: "additive",
     glow: true,
     glowSize: 8,
@@ -2501,7 +2510,7 @@ var Burst = {
   },
   /** Fireworks with timed detonation: narrow upward launch that auto-explodes into colorful sub-bursts */
   fireworksDetonation: {
-    shape: "sparkle",
+    shape: "triangle",
     blendMode: "additive",
     glow: true,
     glowSize: 8,
@@ -2520,6 +2529,10 @@ var Burst = {
     scaleStep: 1.15,
     maxCount: 3e3,
     particleLife: 80,
+    trail: true,
+    trailLength: 6,
+    trailFade: 0.3,
+    trailShrink: 0.5,
     detonate: {
       at: 0.7,
       childCount: 8,
@@ -2532,11 +2545,7 @@ var Burst = {
       sizeMax: 4,
       fadeTime: 18,
       inheritColor: true,
-      shape: "sparkle",
-      glow: true,
-      glowSize: 6,
-      glowColor: "#74c0fc",
-      glowAlpha: 0.3,
+      shape: "triangle",
       trail: true,
       trailLength: 4,
       trailFade: 0.5,
@@ -2629,7 +2638,7 @@ var Ambient = {
   },
   /** Fireworks show: gentle rockets launch from the bottom and auto-explode into colorful bursts */
   fireworksShow: {
-    shape: "sparkle",
+    shape: "triangle",
     blendMode: "additive",
     glow: true,
     glowSize: 8,
@@ -2667,11 +2676,7 @@ var Ambient = {
       sizeMax: 3,
       fadeTime: 20,
       inheritColor: true,
-      shape: "sparkle",
-      glow: true,
-      glowSize: 6,
-      glowColor: "#ff9500",
-      glowAlpha: 0.3,
+      shape: "triangle",
       trail: true,
       trailLength: 4,
       trailFade: 0.5,
@@ -3138,7 +3143,14 @@ function createContainerGlowHelper(engine, container, cleanups) {
     };
     rebuild();
     engine.addEventListener(Particular.UPDATE, onUpdate);
-    const ro = new ResizeObserver(rebuild);
+    let rebuildRafId = 0;
+    const ro = new ResizeObserver(() => {
+      if (rebuildRafId) return;
+      rebuildRafId = requestAnimationFrame(() => {
+        rebuildRafId = 0;
+        rebuild();
+      });
+    });
     ro.observe(element);
     if (container) ro.observe(container);
     let scrollRafId = 0;
@@ -3166,6 +3178,7 @@ function createContainerGlowHelper(engine, container, cleanups) {
       destroy: () => {
         engine.removeEventListener(Particular.UPDATE, onUpdate);
         ro.disconnect();
+        if (rebuildRafId) cancelAnimationFrame(rebuildRafId);
         scrollTarget.removeEventListener("scroll", onScroll);
         if (scrollRafId) cancelAnimationFrame(scrollRafId);
         for (const em of emitters) {
