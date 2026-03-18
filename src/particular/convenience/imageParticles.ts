@@ -6,6 +6,7 @@ import Vector from '../utils/vector';
 import { loadImage, sampleImagePixels } from '../utils/pixelSampler';
 import { createTextImage, canvasToDataURL } from '../utils/imageSource';
 import { captureElement } from '../utils/elementCapture';
+import { getViewportSize, watchResize } from './resize';
 import type { ImageParticlesConfig, TextImageConfig, ElementParticlesConfig, IntroMode } from '../types';
 import type { PixelSample } from '../utils/pixelSampler';
 
@@ -16,13 +17,6 @@ import type { PixelSample } from '../utils/pixelSampler';
  * spring-return home positions and idle animations.
  */
 export function createImageParticles(engine: Particular, mergedConfig: MergedConfig, container?: HTMLElement, cleanups?: Array<() => void>) {
-  /** Resolve viewport/container dimensions for smart defaults. */
-  const getViewportSize = () => {
-    if (container) {
-      return { w: container.clientWidth, h: container.clientHeight };
-    }
-    return { w: window.innerWidth, h: window.innerHeight };
-  };
 
   const imageToParticles = async (config: ImageParticlesConfig): Promise<Emitter> => {
     const merged = { ...defaultImageParticles, ...config };
@@ -63,7 +57,7 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
     const aspect = image.naturalWidth / image.naturalHeight;
 
     // Smart defaults for position and size
-    const viewport = getViewportSize();
+    const viewport = getViewportSize(container);
 
     // Default x/y to center of viewport/container
     const x = config.x ?? viewport.w / 2;
@@ -352,57 +346,35 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
       engine.addEmitter(collector);
     }
 
-    // Auto-center: re-run the effect on resize, scaling position/size proportionally
+    // Auto-center: re-run the effect on resize, scaling position/size proportionally.
     const autoCenter = config.autoCenter ?? true;
     if (autoCenter) {
-      let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-      // Use visible viewport for scale ratios — positions are relative to the
-      // visible screen, not the full scrollable container height.
-      const initialW = window.innerWidth;
-      const initialH = window.innerHeight;
+      watchResize((scaleX, scaleY) => {
+        // Remove old particles
+        const idx = engine.emitters.indexOf(collector);
+        if (idx !== -1) engine.emitters.splice(idx, 1);
+        collector.particles.length = 0;
 
-      const onResize = () => {
-        if (debounceTimer) clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-          const scaleX = window.innerWidth / initialW;
-          const scaleY = window.innerHeight / initialH;
-          if (Math.abs(scaleX - 1) < 0.01 && Math.abs(scaleY - 1) < 0.01) return;
+        // Re-run with scaled position/size, no intro, no recursive autoCenter.
+        // Scale explicit x/y/width/height proportionally when present.
+        // When omitted, smart defaults recalculate from the new viewport.
+        const scaledConfig: ImageParticlesConfig = {
+          ...config,
+          intro: undefined,
+          autoCenter: false,
+        };
+        if (config.x != null) scaledConfig.x = config.x * scaleX;
+        if (config.y != null) scaledConfig.y = config.y * scaleY;
+        if (config.width != null) scaledConfig.width = config.width * scaleX;
+        if (config.height != null) scaledConfig.height = config.height * scaleY;
 
-          // Remove old particles
-          const idx = engine.emitters.indexOf(collector);
-          if (idx !== -1) engine.emitters.splice(idx, 1);
-          collector.particles.length = 0;
-
-          // Re-run with scaled position/size, no intro, no recursive autoCenter
-          const scaledConfig: ImageParticlesConfig = {
-            ...config,
-            intro: undefined,
-            autoCenter: false,
-          };
-          // Scale x/y proportionally if they were provided
-          if (config.x != null) scaledConfig.x = config.x * scaleX;
-          if (config.y != null) scaledConfig.y = config.y * scaleY;
-          // Drop width/height so smart defaults recalculate from new viewport
-          delete scaledConfig.width;
-          delete scaledConfig.height;
-
-          imageToParticles(scaledConfig).then((newCollector) => {
-            collector.particles.push(...newCollector.particles);
-            const newIdx = engine.emitters.indexOf(newCollector);
-            if (newIdx !== -1) engine.emitters.splice(newIdx, 1);
-            engine.addEmitter(collector);
-          });
-        }, 200);
-      };
-
-      if (container) {
-        const ro = new ResizeObserver(onResize);
-        ro.observe(container);
-        cleanups?.push(() => { ro.disconnect(); if (debounceTimer) clearTimeout(debounceTimer); });
-      } else {
-        window.addEventListener('resize', onResize);
-        cleanups?.push(() => { window.removeEventListener('resize', onResize); if (debounceTimer) clearTimeout(debounceTimer); });
-      }
+        imageToParticles(scaledConfig).then((newCollector) => {
+          collector.particles.push(...newCollector.particles);
+          const newIdx = engine.emitters.indexOf(newCollector);
+          if (newIdx !== -1) engine.emitters.splice(newIdx, 1);
+          engine.addEmitter(collector);
+        });
+      }, { container, cleanups });
     }
 
     return collector;
@@ -420,6 +392,18 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
     });
   };
 
+  /** Read element position/size relative to the container (or viewport). */
+  const readElementRect = (element: HTMLElement) => {
+    const rect = element.getBoundingClientRect();
+    const containerRect = container?.getBoundingClientRect();
+    return {
+      x: rect.left + rect.width / 2 - (containerRect?.left ?? 0),
+      y: rect.top + rect.height / 2 - (containerRect?.top ?? 0),
+      width: rect.width,
+      height: rect.height,
+    };
+  };
+
   /** Capture any HTML element and replace it with particles at the same position. */
   const elementToParticles = async (
     element: HTMLElement,
@@ -433,13 +417,14 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
     const dataURL = canvasToDataURL(capturedCanvas);
 
     // Derive position and size from the element's bounding rect
-    const rect = element.getBoundingClientRect();
-    const containerRect = container?.getBoundingClientRect();
-    const x = imageConfig.x ?? (rect.left + rect.width / 2 - (containerRect?.left ?? 0));
-    const y = imageConfig.y ?? (rect.top + rect.height / 2 - (containerRect?.top ?? 0));
-    const width = imageConfig.width ?? rect.width;
-    const height = imageConfig.height ?? rect.height;
+    const elemRect = readElementRect(element);
+    const x = imageConfig.x ?? elemRect.x;
+    const y = imageConfig.y ?? elemRect.y;
+    const width = imageConfig.width ?? elemRect.width;
+    const height = imageConfig.height ?? elemRect.height;
 
+    // Disable imageToParticles' built-in autoCenter — we handle resize ourselves
+    // by re-reading the element's bounding rect (visibility:hidden preserves layout).
     const emitter = await imageToParticles({
       ...imageConfig,
       image: dataURL,
@@ -447,6 +432,7 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
       y,
       width,
       height,
+      autoCenter: false,
     });
 
     // Hide the original element so particles replace it visually
@@ -457,6 +443,52 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
     // Register cleanup to restore the element when the engine is destroyed
     if (restoreElement && hideElement) {
       cleanups?.push(() => { element.style.visibility = ''; });
+    }
+
+    // Element-aware resize: re-read the element's bounding rect on resize
+    // (visibility:hidden preserves layout so getBoundingClientRect() is accurate)
+    if (imageConfig.autoCenter !== false) {
+      let lastX = x;
+      let lastY = y;
+      let lastW = width;
+      let lastH = height;
+
+      watchResize(() => {
+        const newRect = readElementRect(element);
+        const newX = imageConfig.x ?? newRect.x;
+        const newY = imageConfig.y ?? newRect.y;
+        const newW = imageConfig.width ?? newRect.width;
+        const newH = imageConfig.height ?? newRect.height;
+
+        // Skip if position/size barely changed
+        if (Math.abs(newX - lastX) < 1 && Math.abs(newY - lastY) < 1 &&
+            Math.abs(newW - lastW) < 1 && Math.abs(newH - lastH) < 1) return;
+        lastX = newX;
+        lastY = newY;
+        lastW = newW;
+        lastH = newH;
+
+        // Remove old particles
+        const idx = engine.emitters.indexOf(emitter);
+        if (idx !== -1) engine.emitters.splice(idx, 1);
+        emitter.particles.length = 0;
+
+        imageToParticles({
+          ...imageConfig,
+          image: dataURL,
+          x: newX,
+          y: newY,
+          width: newW,
+          height: newH,
+          autoCenter: false,
+          intro: undefined,
+        }).then((newCollector) => {
+          emitter.particles.push(...newCollector.particles);
+          const newIdx = engine.emitters.indexOf(newCollector);
+          if (newIdx !== -1) engine.emitters.splice(newIdx, 1);
+          engine.addEmitter(emitter);
+        });
+      }, { container, cleanups, skipSmallChanges: false });
     }
 
     return emitter;

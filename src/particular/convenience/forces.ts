@@ -1,6 +1,7 @@
 import Attractor from '../components/attractor';
 import MouseForce from '../components/mouseForce';
 import type Particular from '../core/particular';
+import { getViewportSize } from './resize';
 import type { AttractorConfig, MouseForceConfig } from '../types';
 
 /**
@@ -26,10 +27,9 @@ export function createForces(
     config?: Partial<Omit<AttractorConfig, 'x' | 'y'>>,
   ): Attractor[] => {
     const pixelRatio = engine.pixelRatio;
-    const sourceW = container ? container.clientWidth : window.innerWidth;
-    const sourceH = container ? container.clientHeight : window.innerHeight;
-    const viewW = sourceW / pixelRatio;
-    const viewH = sourceH / pixelRatio;
+    const vp = getViewportSize(container);
+    const viewW = vp.w / pixelRatio;
+    const viewH = vp.h / pixelRatio;
     const marginX = viewW * 0.1;
     const marginY = viewH * 0.1;
     const result: Attractor[] = [];

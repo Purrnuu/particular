@@ -1,5 +1,3 @@
-import { forEach, filter } from 'lodash-es';
-
 import EventDispatcher, { type IEventDispatcher } from '../utils/eventDispatcher';
 import { defaultParticular } from './defaults';
 import { destroy } from '../utils/genericUtils';
@@ -132,9 +130,9 @@ export default class Particular implements IEventDispatcher {
 
   updateEmitters(dt = 1): void {
     if (this.getCount() <= this.maxCount) {
-      forEach(this.emitters, (emitter) => {
+      for (const emitter of this.emitters) {
         emitter.emit(dt);
-      });
+      }
     }
 
     for (const mf of this.mouseForces) {
@@ -146,11 +144,11 @@ export default class Particular implements IEventDispatcher {
         ? [...this.attractors, ...this.mouseForces]
         : this.attractors;
 
-    forEach(this.emitters, (emitter) => {
+    for (const emitter of this.emitters) {
       emitter.update(this.width, this.height, forces, dt);
-    });
+    }
 
-    this.emitters = filter(this.emitters, (emitter) => {
+    this.emitters = this.emitters.filter((emitter) => {
       if (this.continuous || emitter.isAlive()) {
         return true;
       }
@@ -164,7 +162,11 @@ export default class Particular implements IEventDispatcher {
   }
 
   getCount(): number {
-    return this.getAllParticles().length;
+    let count = 0;
+    for (let i = 0; i < this.emitters.length; i++) {
+      count += this.emitters[i]!.particles.length;
+    }
+    return count;
   }
 
   getAllParticles(): Particle[] {

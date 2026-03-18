@@ -1,10 +1,8 @@
-import { forEach } from 'lodash-es';
-
 let images: HTMLImageElement[] = [];
 
 export function processImages(icons: (string | HTMLImageElement)[]): HTMLImageElement[] {
   images = [];
-  forEach(icons, (icon) => {
+  for (const icon of icons) {
     if (typeof icon === 'string') {
       const imageObject = new Image();
       imageObject.src = icon;
@@ -12,6 +10,6 @@ export function processImages(icons: (string | HTMLImageElement)[]): HTMLImageEl
     } else {
       images.push(icon);
     }
-  });
+  }
   return images;
 }

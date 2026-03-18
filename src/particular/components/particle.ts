@@ -31,6 +31,10 @@ export default class Particle {
   fadeTime: number;
   alpha: number;
   color: string;
+  /** Cached normalized RGB (0–1) parsed from color hex, for renderer hot paths. */
+  colorR: number;
+  colorG: number;
+  colorB: number;
   particular: Particular | null = null;
   image: string | HTMLImageElement | null = null;
   isDetonationChild = false;
@@ -147,7 +151,11 @@ export default class Particle {
       ?? (colors && colors.length > 0
         ? colors[Math.floor(Math.random() * colors.length)]!
         : '#888888');
-    
+    const parsed = Particle.parseHexNorm(this.color);
+    this.colorR = parsed[0];
+    this.colorG = parsed[1];
+    this.colorB = parsed[2];
+
     // Shape configuration
     this.shape = shape;
     this.blendMode = blendMode;
@@ -307,9 +315,15 @@ export default class Particle {
     }
 
     const maxAge = Math.max(1, Math.floor(this.trailLength));
-    this.trailSegments = this.trailSegments
-      .map((segment) => ({ ...segment, age: segment.age + dt }))
-      .filter((segment) => segment.age < maxAge);
+    let writeIdx = 0;
+    for (let i = 0; i < this.trailSegments.length; i++) {
+      const segment = this.trailSegments[i]!;
+      segment.age += dt;
+      if (segment.age < maxAge) {
+        this.trailSegments[writeIdx++] = segment;
+      }
+    }
+    this.trailSegments.length = writeIdx;
 
     if (!addCurrentPoint) return;
 
@@ -332,6 +346,14 @@ export default class Particle {
 
   getRoundedLocation(): [number, number] {
     return [((this.position.x * 10) << 0) * 0.1, ((this.position.y * 10) << 0) * 0.1];
+  }
+
+  /** Parse hex color string to normalized [r, g, b] (0–1). Cached once per particle in constructor. */
+  private static parseHexNorm(hex: string): [number, number, number] {
+    const r = parseInt(hex.slice(1, 3), 16) / 255;
+    const g = parseInt(hex.slice(3, 5), 16) / 255;
+    const b = parseInt(hex.slice(5, 7), 16) / 255;
+    return [r, g, b];
   }
 
   /** Deterministic pseudo-random interval from cycle number — same output for all particles in the same cycle. */

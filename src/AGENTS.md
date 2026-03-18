@@ -471,6 +471,7 @@ The convenience layer lives in `src/particular/convenience/` as focused modules 
 
 - `index.ts` — `createParticles()` orchestrator: auto-creates canvas, applies styles, composes helpers
 - `types.ts` — All interfaces (`CreateParticlesOptions`, `ParticlesController`, etc.)
+- `resize.ts` — Shared resize watcher: `getViewportSize()`, `watchResize()` — see Resize Utility below
 - `forces.ts` — `createForces()`: attractor + mouse force management
 - `boundary.ts` — `createBoundaryHelper()`: DOM element repulsion boundaries with resize/scroll sync
 - `containerGlow.ts` — `createContainerGlowHelper()`: glowing particle halo around DOM elements
@@ -481,6 +482,35 @@ The convenience layer lives in `src/particular/convenience/` as focused modules 
 - `screensaver.ts` — `startScreensaver()`: continuous ambient emission
 
 Each module exports a factory function that receives shared state (engine, config, container, cleanups) and returns an API slice. The orchestrator spreads them together into the `ParticlesController`.
+
+## Resize Utility
+
+File: `src/particular/convenience/resize.ts`
+
+Shared resize watcher used by convenience modules that need to respond to viewport/container size changes. Abstracts container-vs-window detection, debouncing, scale factor calculation, and cleanup registration.
+
+### `getViewportSize(container?)`
+
+Returns `{ w, h }` — uses `container.clientWidth/Height` in container mode, `window.innerWidth/Height` otherwise. Single source of truth for viewport measurement. Used by `imageParticles.ts`, `imageShatter.ts`, `forces.ts`, and `screensaver.ts`.
+
+### `watchResize(callback, options?)`
+
+Watches for resize on the container (via `ResizeObserver`) or window (via `resize` event). Returns the initial size snapshot `{ w, h }`.
+
+Callback signature: `(scaleX, scaleY, current) => void` — scale factors are relative to the size at call time.
+
+Options:
+- `container?: HTMLElement` — uses `ResizeObserver` when present, `window.addEventListener('resize')` otherwise
+- `debounceMs?: number` — default 200. Set to 0 for immediate (no debounce)
+- `cleanups?: Array<() => void>` — teardown is automatically registered
+- `skipSmallChanges?: boolean` — skip when scale change < 1%. Default `true` when debounced, `false` when immediate
+
+### Consumers
+
+- **imageParticles.ts (autoCenter)**: `debounceMs: 200`, scales explicit x/y/width/height proportionally. When dimensions are omitted, smart defaults recalculate from the new viewport
+- **imageParticles.ts (elementToParticles)**: `skipSmallChanges: false`, re-reads element `getBoundingClientRect()` on resize. Uses `autoCenter: false` on inner `imageToParticles` call to avoid double handling
+- **screensaver.ts**: `debounceMs: 0` (immediate), updates emitter spawn width and center position
+- **imageShatter.ts / forces.ts**: Use `getViewportSize(container)` directly for initial smart defaults (no ongoing resize watch)
 
 ### DX Defaults (Zero-Config)
 
@@ -496,6 +526,25 @@ Each module exports a factory function that receives shared state (engine, confi
 **Defaults pattern**: Every feature's defaults live in `src/particular/core/defaults.ts` as named exports (`defaultImageParticles`, `defaultElementParticles`, `defaultMouseWind`, etc.). Convenience methods merge user config over these: `{ ...defaultXxx, ...userConfig }`. Never hardcode default values inline in convenience methods or stories.
 
 Minimal usage: `createParticles()` gives a fully working engine with WebGL, auto-canvas, and styles applied.
+
+## Performance Optimizations
+
+The library has zero runtime dependencies (lodash-es removed). Key hot-path optimizations:
+
+### Cached hex color parsing
+`Particle` parses its hex color to normalized RGB (`colorR`, `colorG`, `colorB`, 0–1 range) once in the constructor via the static `parseHexNorm()` method. The WebGL renderer reads these cached fields in `fillInstanceData` instead of calling `hexToRgba()` per particle per frame.
+
+### In-place trail segment aging
+`Particle.update()` ages and compacts trail segments using a write-index pattern instead of `.map(spread).filter()`. This eliminates per-frame array allocation (~250 objects/frame at typical trail counts).
+
+### Minimal trail ghost objects
+Both renderers expand trail segments into drawable "ghost" objects for the render pipeline. Instead of `{ ...particle }` (spreading all 50+ Particle fields), ghosts are constructed with only the ~15-17 fields needed by the draw methods (`position`, `factoredSize`, `rotation`, `alpha`, `color`, `colorR/G/B`, `shape`, `blendMode`, `image`, `imageTint`, `glow`, `shadow`, `trail`, `trailSegments`, `shadowLightOrigin`).
+
+### Cached WebGL attribute locations
+`WebGLRenderer` caches all `getAttribLocation()` and `getUniformLocation()` results as class fields during `init()`. The hot-path draw methods (`drawCircleInstances`, `drawImageInstances`, `drawImageBatch`, `onUpdateAfter`) use cached locations instead of querying the GL context each frame.
+
+### Native iteration
+All `lodash-es` utilities (`forEach`, `filter`, `sample`) replaced with native `for...of` loops, `Array.prototype.filter()`, and `Math.random()` indexing. `Particular.getCount()` sums emitter particle counts in a for-loop instead of allocating `getAllParticles()`.
 
 ## Stable Public API
 

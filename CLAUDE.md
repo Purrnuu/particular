@@ -82,6 +82,7 @@ src/particular/convenience/effects.ts       # explode() + scatter() particle man
 src/particular/convenience/imageParticles.ts # imageToParticles() + textToParticles()
 src/particular/convenience/imageShatter.ts  # shatterImage() + shatterText() — polygon-chunk glass-break + interactive mode
 src/particular/convenience/screensaver.ts   # startScreensaver() — continuous ambient emission
+src/particular/convenience/resize.ts        # Shared resize watcher: getViewportSize(), watchResize() — container/window detection, debounce, scale factors
 src/particular/useParticles.ts              # useParticles(), useScreensaver() — React hooks
 src/particular/ParticularWrapper.tsx        # HOC wrapper (legacy React API)
 src/particular/presets.ts                   # Curated presets (Burst, Ambient, Images) + color palettes

@@ -1,5 +1,3 @@
-import { sample, forEach } from 'lodash-es';
-
 import Vector from '../utils/vector';
 import Particle from './particle';
 import { getRandomInt } from '../utils/math';
@@ -35,8 +33,9 @@ export default class Emitter {
 
     for (let j = 0; j < count; j++) {
       const particle = this.createParticle();
-      const icon = this.configuration.icons.length > 0
-        ? (sample(this.configuration.icons) ?? this.configuration.icons[0]!)
+      const icons = this.configuration.icons;
+      const icon = icons.length > 0
+        ? icons[Math.floor(Math.random() * icons.length)]!
         : null;
       particle.init(icon, this.particular);
       this.particles.push(particle);
@@ -52,14 +51,14 @@ export default class Emitter {
     const detonate = this.configuration.detonate;
     const newChildren: Particle[] = [];
 
-    forEach(this.particles, (particle) => {
+    for (const particle of this.particles) {
       const pos = particle.position;
       if (pos.x < 0 || pos.x > boundsX || pos.y < -boundsY || pos.y > boundsY) {
         // Particles with a home position are never killed by bounds — they'll spring back
         if (particle.homePosition) {
           particle.update(forces, dt);
           currentParticles.push(particle);
-          return;
+          continue;
         }
         const hasTrail = particle.trail && particle.trailSegments.length > 0;
         if (hasTrail) {
@@ -72,7 +71,7 @@ export default class Emitter {
         } else {
           particle.destroy();
         }
-        return;
+        continue;
       }
 
       particle.update(forces, dt);
@@ -104,7 +103,7 @@ export default class Emitter {
           newChildren.push(child);
         }
         particle.destroy();
-        return; // parent dies — don't push to currentParticles
+        continue; // parent dies — don't push to currentParticles
       }
 
       const trailActive = particle.trail && particle.trailSegments.length > 0;
@@ -116,11 +115,14 @@ export default class Emitter {
       } else {
         particle.destroy();
       }
-    });
+    }
 
-    this.particles = newChildren.length > 0
-      ? [...currentParticles, ...newChildren]
-      : currentParticles;
+    if (newChildren.length > 0) {
+      for (let i = 0; i < newChildren.length; i++) {
+        currentParticles.push(newChildren[i]!);
+      }
+    }
+    this.particles = currentParticles;
     this.isEmitting = this.particular?.continuous ? true : this.lifeCycle < this.configuration.life;
   }
 

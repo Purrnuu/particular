@@ -19,6 +19,7 @@ import Vector from '../utils/vector';
 import { loadImage } from '../utils/pixelSampler';
 import { createTextImage, canvasToDataURL } from '../utils/imageSource';
 import { generateImageChunks } from '../utils/imageChunker';
+import { getViewportSize } from './resize';
 import type { ImageShatterConfig, TextImageConfig } from '../types';
 
 export function createImageShatterHelper(
@@ -26,12 +27,6 @@ export function createImageShatterHelper(
   mergedConfig: MergedConfig,
   container?: HTMLElement,
 ) {
-  const getViewportSize = () => {
-    if (container) {
-      return { w: container.clientWidth, h: container.clientHeight };
-    }
-    return { w: window.innerWidth, h: window.innerHeight };
-  };
 
   const shatterImage = async (config: ImageShatterConfig): Promise<Emitter> => {
     const resolved = { ...defaultImageShatter, ...config };
@@ -57,7 +52,7 @@ export function createImageShatterHelper(
     const aspect = image.naturalWidth / image.naturalHeight;
 
     // Smart defaults for position and size
-    const viewport = getViewportSize();
+    const viewport = getViewportSize(container);
     const x = config.x ?? viewport.w / 2;
     const y = config.y ?? viewport.h / 2;
 

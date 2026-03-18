@@ -176,14 +176,21 @@ export default class CanvasRenderer {
     const sizeScale = particle.trailShrink + life * (1 - particle.trailShrink);
     const alphaScale = life * particle.trailFade;
 
+    // Minimal ghost with only fields used by drawBasicElement / drawImage
     return {
-      ...particle,
-      position: { x: segment.x, y: segment.y } as any,
+      position: { x: segment.x, y: segment.y },
       factoredSize: Math.max(0.1, segment.size * sizeScale),
       rotation: segment.rotation,
       alpha: segment.alpha * alphaScale,
+      color: particle.color,
+      shape: particle.shape,
+      blendMode: particle.blendMode,
+      image: particle.image,
       glow: false,
       shadow: false,
+      glowColor: particle.glowColor,
+      glowAlpha: particle.glowAlpha,
+      glowSize: particle.glowSize,
       trailSegments: [],
       getRoundedLocation: () => [
         ((segment.x * 10) << 0) * 0.1,

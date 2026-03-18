@@ -334,6 +334,20 @@ export default class WebGLRenderer {
   private imageShadowColorUniform: WebGLUniformLocation | null = null;
   private imageShadowBlurUniform: WebGLUniformLocation | null = null;
   private textureCache = new Map<HTMLImageElement, WebGLTexture>();
+  // Cached attribute locations (circle program)
+  private circleAttrPos = -1;
+  private circleAttrParticlePos = -1;
+  private circleAttrSize = -1;
+  private circleAttrRotation = -1;
+  private circleAttrColor = -1;
+  private circleAttrShape = -1;
+  // Cached attribute locations (image program)
+  private imageAttrPos = -1;
+  private imageAttrParticlePos = -1;
+  private imageAttrSize = -1;
+  private imageAttrRotation = -1;
+  private imageAttrColor = -1;
+  private imageTexUniform: WebGLUniformLocation | null = null;
 
   constructor(target: HTMLCanvasElement, options?: WebGLRendererOptions) {
     this.target = target;
@@ -374,6 +388,12 @@ export default class WebGLRenderer {
     this.isShadowUniform = gl.getUniformLocation(program, 'u_isShadow');
     this.shadowColorUniform = gl.getUniformLocation(program, 'u_shadowColor');
     this.shadowBlurUniform = gl.getUniformLocation(program, 'u_shadowBlur');
+    this.circleAttrPos = gl.getAttribLocation(program, 'a_position');
+    this.circleAttrParticlePos = gl.getAttribLocation(program, 'a_particle_pos');
+    this.circleAttrSize = gl.getAttribLocation(program, 'a_particle_size');
+    this.circleAttrRotation = gl.getAttribLocation(program, 'a_particle_rotation');
+    this.circleAttrColor = gl.getAttribLocation(program, 'a_particle_color');
+    this.circleAttrShape = gl.getAttribLocation(program, 'a_particle_shape');
 
     const imageVs = this.compileShader(gl.VERTEX_SHADER, IMAGE_VERTEX_SHADER);
     const imageFs = this.compileShader(gl.FRAGMENT_SHADER, IMAGE_FRAGMENT_SHADER);
@@ -391,6 +411,12 @@ export default class WebGLRenderer {
     this.imageIsShadowUniform = gl.getUniformLocation(imageProgram, 'u_isShadow');
     this.imageShadowColorUniform = gl.getUniformLocation(imageProgram, 'u_shadowColor');
     this.imageShadowBlurUniform = gl.getUniformLocation(imageProgram, 'u_shadowBlur');
+    this.imageAttrPos = gl.getAttribLocation(imageProgram, 'a_position');
+    this.imageAttrParticlePos = gl.getAttribLocation(imageProgram, 'a_particle_pos');
+    this.imageAttrSize = gl.getAttribLocation(imageProgram, 'a_particle_size');
+    this.imageAttrRotation = gl.getAttribLocation(imageProgram, 'a_particle_rotation');
+    this.imageAttrColor = gl.getAttribLocation(imageProgram, 'a_particle_color');
+    this.imageTexUniform = gl.getUniformLocation(imageProgram, 'u_texture');
 
     // Quad for image particles: exactly [-1, 1] so UV maps to [0, 1]
     const quadData = new Float32Array([
@@ -481,15 +507,25 @@ export default class WebGLRenderer {
 
         const sizeScale = particle.trailShrink + life * (1 - particle.trailShrink);
         const alphaScale = life * particle.trailFade;
+        // Minimal ghost with only fields used by buildBatches + fillInstanceData
         const ghost = {
-          ...particle,
           position: { x: segment.x, y: segment.y },
           factoredSize: Math.max(0.1, segment.size * sizeScale),
           rotation: segment.rotation,
           alpha: segment.alpha * alphaScale,
+          color: particle.color,
+          colorR: particle.colorR,
+          colorG: particle.colorG,
+          colorB: particle.colorB,
+          shape: particle.shape,
+          blendMode: particle.blendMode,
+          image: particle.image,
+          imageTint: particle.imageTint,
           glow: false,
           shadow: false,
+          trail: false,
           trailSegments: [],
+          shadowLightOrigin: particle.shadowLightOrigin,
         } as unknown as Particle;
         expanded.push(ghost);
       }
@@ -566,7 +602,9 @@ export default class WebGLRenderer {
   ): void {
     let offset = 0;
     for (const p of particles) {
-      const [r, g, b] = hexToRgba(p.color);
+      const r = p.colorR;
+      const g = p.colorG;
+      const b = p.colorB;
       let effectiveOffsetX = offsetX;
       let effectiveOffsetY = offsetY;
 
@@ -610,11 +648,11 @@ export default class WebGLRenderer {
   ): void {
     const gl = this.gl!;
     const stride = this.instanceStride;
-    const posLoc2 = gl.getAttribLocation(this.program!, 'a_particle_pos');
-    const sizeLoc = gl.getAttribLocation(this.program!, 'a_particle_size');
-    const rotLoc = gl.getAttribLocation(this.program!, 'a_particle_rotation');
-    const colLoc = gl.getAttribLocation(this.program!, 'a_particle_color');
-    const shapeLoc = gl.getAttribLocation(this.program!, 'a_particle_shape');
+    const posLoc2 = this.circleAttrParticlePos;
+    const sizeLoc = this.circleAttrSize;
+    const rotLoc = this.circleAttrRotation;
+    const colLoc = this.circleAttrColor;
+    const shapeLoc = this.circleAttrShape;
 
     for (let i = 0; i < list.length; i += this.maxInstances) {
       const chunk = list.slice(i, i + this.maxInstances);
@@ -694,10 +732,10 @@ export default class WebGLRenderer {
   ): void {
     const gl = this.gl!;
     const stride = this.instanceStride;
-    const posLoc2 = gl.getAttribLocation(this.imageProgram!, 'a_particle_pos');
-    const sizeLoc = gl.getAttribLocation(this.imageProgram!, 'a_particle_size');
-    const rotLoc = gl.getAttribLocation(this.imageProgram!, 'a_particle_rotation');
-    const colLoc = gl.getAttribLocation(this.imageProgram!, 'a_particle_color');
+    const posLoc2 = this.imageAttrParticlePos;
+    const sizeLoc = this.imageAttrSize;
+    const rotLoc = this.imageAttrRotation;
+    const colLoc = this.imageAttrColor;
 
     for (let i = 0; i < list.length; i += this.maxInstances) {
       const chunk = list.slice(i, i + this.maxInstances);
@@ -753,13 +791,11 @@ export default class WebGLRenderer {
 
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, batch.texture);
-    const texLoc = gl.getUniformLocation(this.imageProgram, 'u_texture');
-    gl.uniform1i(texLoc, 0);
+    gl.uniform1i(this.imageTexUniform!, 0);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuffer);
-    const posLoc = gl.getAttribLocation(this.imageProgram, 'a_position');
-    gl.enableVertexAttribArray(posLoc);
-    gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(this.imageAttrPos);
+    gl.vertexAttribPointer(this.imageAttrPos, 2, gl.FLOAT, false, 0, 0);
 
     // Shadow pass
     if (batch.shadow) {
@@ -812,7 +848,7 @@ export default class WebGLRenderer {
     this.gl.useProgram(this.program);
     this.gl.uniform2f(this.resolutionUniform, logicalW, logicalH);
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.circleQuadBuffer);
-    const posLoc = this.gl.getAttribLocation(this.program, 'a_position');
+    const posLoc = this.circleAttrPos;
     this.gl.enableVertexAttribArray(posLoc);
     this.gl.vertexAttribPointer(posLoc, 2, this.gl.FLOAT, false, 0, 0);
 

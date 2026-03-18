@@ -2,6 +2,7 @@ import Emitter from '../components/emitter';
 import { configureParticle, defaultParticle, defaultMouseWind } from '../core/defaults';
 import { getPreset } from '../presets';
 import Vector from '../utils/vector';
+import { getViewportSize, watchResize } from './resize';
 import type { FullParticularConfig } from '../types';
 import { createParticles } from './index';
 import type { ScreensaverOptions, ScreensaverController } from './types';
@@ -36,11 +37,11 @@ export function startScreensaver({
   });
 
   const pixelRatio = controller.engine.pixelRatio;
-  const sourceW = container ? container.clientWidth : window.innerWidth;
-  const spawnWidth = sourceW / pixelRatio;
+  const initialSize = getViewportSize(container);
+  const spawnWidth = initialSize.w / pixelRatio;
 
   const emitter = new Emitter({
-    point: new Vector(sourceW / 2 / pixelRatio, 0),
+    point: new Vector(initialSize.w / 2 / pixelRatio, 0),
     ...configureParticle(mergedConfig),
     spawnWidth,
     spawnHeight: defaultParticle.spawnHeight,
@@ -62,24 +63,11 @@ export function startScreensaver({
     });
   }
 
-  if (autoResize && !container) {
-    const onResize = () => {
-      const newSpawnWidth = window.innerWidth / pixelRatio;
-      emitter.configuration.spawnWidth = newSpawnWidth;
-      emitter.configuration.point.x = window.innerWidth / 2 / pixelRatio;
-    };
-    window.addEventListener('resize', onResize);
-    cleanups.push(() => window.removeEventListener('resize', onResize));
-  }
-
-  if (autoResize && container) {
-    const ro = new ResizeObserver(() => {
-      const newSpawnWidth = container.clientWidth / pixelRatio;
-      emitter.configuration.spawnWidth = newSpawnWidth;
-      emitter.configuration.point.x = container.clientWidth / 2 / pixelRatio;
-    });
-    ro.observe(container);
-    cleanups.push(() => ro.disconnect());
+  if (autoResize) {
+    watchResize((_sx, _sy, current) => {
+      emitter.configuration.spawnWidth = current.w / pixelRatio;
+      emitter.configuration.point.x = current.w / 2 / pixelRatio;
+    }, { container, debounceMs: 0, cleanups });
   }
 
   const destroy = () => {
