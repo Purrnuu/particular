@@ -16,6 +16,10 @@ export default class MouseForce implements ForceSource {
   private _trackTarget: EventTarget | null = null;
   private _pixelRatio = 1;
   private _container: HTMLElement | null = null;
+  private _cachedRect: { left: number; top: number } | null = null;
+  private _rectDirty = true;
+  private _rectInvalidator: (() => void) | null = null;
+  private _resizeObserver: ResizeObserver | null = null;
 
   constructor(config: MouseForceConfig = {}) {
     const merged = { ...defaultMouseForce, ...config };
@@ -36,14 +40,29 @@ export default class MouseForce implements ForceSource {
     this.stopTracking();
     this._pixelRatio = pixelRatio;
     this._container = container ?? null;
+    this._rectDirty = true;
+    this._cachedRect = null;
+
+    // Cache container rect — invalidate on scroll/resize instead of reading per mousemove
+    if (this._container) {
+      this._rectInvalidator = () => { this._rectDirty = true; };
+      this._resizeObserver = new ResizeObserver(this._rectInvalidator);
+      this._resizeObserver.observe(this._container);
+      window.addEventListener('scroll', this._rectInvalidator, { passive: true });
+      this._container.addEventListener('scroll', this._rectInvalidator, { passive: true });
+    }
 
     const handleCoords = (clientX: number, clientY: number) => {
       let x = clientX;
       let y = clientY;
       if (this._container) {
-        const rect = this._container.getBoundingClientRect();
-        x -= rect.left;
-        y -= rect.top;
+        if (this._rectDirty || !this._cachedRect) {
+          const rect = this._container.getBoundingClientRect();
+          this._cachedRect = { left: rect.left, top: rect.top };
+          this._rectDirty = false;
+        }
+        x -= this._cachedRect.left;
+        y -= this._cachedRect.top;
       }
       this.updatePosition(x / this._pixelRatio, y / this._pixelRatio);
     };
@@ -75,6 +94,19 @@ export default class MouseForce implements ForceSource {
         this._trackTarget.removeEventListener('touchstart', this._touchListener as EventListener);
       }
     }
+    if (this._resizeObserver) {
+      this._resizeObserver.disconnect();
+      this._resizeObserver = null;
+    }
+    if (this._rectInvalidator) {
+      window.removeEventListener('scroll', this._rectInvalidator);
+      if (this._container) {
+        this._container.removeEventListener('scroll', this._rectInvalidator);
+      }
+      this._rectInvalidator = null;
+    }
+    this._cachedRect = null;
+    this._rectDirty = true;
     this._trackTarget = null;
     this._trackListener = null;
     this._touchListener = null;

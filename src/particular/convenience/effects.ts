@@ -117,13 +117,29 @@ export function createEffects(engine: Particular, mergedConfig: MergedConfig) {
       const pr = mergedConfig.pixelRatio;
       const container = engine.container;
 
+      // Cache container rect — invalidate on scroll/resize instead of reading per mousemove
+      let cachedRect: { left: number; top: number } | null = null;
+      let rectDirty = true;
+      const invalidateRect = () => { rectDirty = true; };
+      let wobbleRo: ResizeObserver | null = null;
+      if (container) {
+        wobbleRo = new ResizeObserver(invalidateRect);
+        wobbleRo.observe(container);
+        window.addEventListener('scroll', invalidateRect, { passive: true });
+        container.addEventListener('scroll', invalidateRect, { passive: true });
+      }
+
       const updateMouse = (clientX: number, clientY: number) => {
         let x = clientX;
         let y = clientY;
         if (container) {
-          const rect = container.getBoundingClientRect();
-          x -= rect.left;
-          y -= rect.top;
+          if (rectDirty || !cachedRect) {
+            const rect = container.getBoundingClientRect();
+            cachedRect = { left: rect.left, top: rect.top };
+            rectDirty = false;
+          }
+          x -= cachedRect.left;
+          y -= cachedRect.top;
         }
         const newX = x / pr;
         const newY = y / pr;
@@ -148,6 +164,13 @@ export function createEffects(engine: Particular, mergedConfig: MergedConfig) {
       eventCleanups.push(
         () => track.removeEventListener('mousemove', onMouseMove),
         () => track.removeEventListener('touchmove', onTouchMove),
+        () => { if (wobbleRo) wobbleRo.disconnect(); },
+        () => {
+          if (container) {
+            window.removeEventListener('scroll', invalidateRect);
+            container.removeEventListener('scroll', invalidateRect);
+          }
+        },
       );
     }
 

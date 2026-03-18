@@ -73,14 +73,30 @@ export function createMouseTrailHelper(
     engine.addEmitter(emitter);
     emitter.isEmitting = false; // start paused until mouse moves
 
+    // Cache container rect — invalidate on scroll/resize instead of reading per mousemove
+    let cachedRect: { left: number; top: number } | null = null;
+    let rectDirty = true;
+    const invalidateRect = () => { rectDirty = true; };
+    let trailRo: ResizeObserver | null = null;
+    if (container) {
+      trailRo = new ResizeObserver(invalidateRect);
+      trailRo.observe(container);
+      window.addEventListener('scroll', invalidateRect, { passive: true });
+      container.addEventListener('scroll', invalidateRect, { passive: true });
+    }
+
     // Mouse tracking (reuses the same pattern as MouseForce)
     const handleCoords = (clientX: number, clientY: number) => {
       let x = clientX;
       let y = clientY;
       if (container) {
-        const rect = container.getBoundingClientRect();
-        x -= rect.left;
-        y -= rect.top;
+        if (rectDirty || !cachedRect) {
+          const rect = container.getBoundingClientRect();
+          cachedRect = { left: rect.left, top: rect.top };
+          rectDirty = false;
+        }
+        x -= cachedRect.left;
+        y -= cachedRect.top;
       }
       mouseX = x / pr;
       mouseY = y / pr;
@@ -151,6 +167,11 @@ export function createMouseTrailHelper(
         target.removeEventListener('mousemove', onMouseMove);
         target.removeEventListener('touchmove', onTouchMove);
         target.removeEventListener('touchstart', onTouchMove);
+        if (trailRo) trailRo.disconnect();
+        if (container) {
+          window.removeEventListener('scroll', invalidateRect);
+          container.removeEventListener('scroll', invalidateRect);
+        }
         const idx = engine.emitters.indexOf(emitter);
         if (idx !== -1) engine.emitters.splice(idx, 1);
         emitter.destroy();

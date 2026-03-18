@@ -96,8 +96,16 @@ export function createBoundaryHelper(
     // Initial build
     rebuild();
 
-    // Auto-rebuild on element/container resize (tiling count may change)
-    const ro = new ResizeObserver(rebuild);
+    // Auto-rebuild on element/container resize (tiling count may change).
+    // Debounce with rAF to coalesce multiple resize events per frame.
+    let rebuildRafId = 0;
+    const ro = new ResizeObserver(() => {
+      if (rebuildRafId) return;
+      rebuildRafId = requestAnimationFrame(() => {
+        rebuildRafId = 0;
+        rebuild();
+      });
+    });
     ro.observe(element);
     if (container) ro.observe(container);
 
@@ -117,6 +125,7 @@ export function createBoundaryHelper(
       update: rebuild,
       destroy: () => {
         ro.disconnect();
+        if (rebuildRafId) cancelAnimationFrame(rebuildRafId);
         scrollTarget.removeEventListener('scroll', onScroll);
         if (scrollRafId) cancelAnimationFrame(scrollRafId);
         for (const a of attractors) engine.removeAttractor(a);
