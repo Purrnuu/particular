@@ -28,6 +28,7 @@ const Burst = {
   confetti: {
     shape: 'rectangle' as const,
     blendMode: 'normal' as const,
+    shadow: true,
     rate: 20,
     life: 28,
     velocity: Vector.fromAngle(-90, 7),
@@ -52,7 +53,7 @@ const Burst = {
     glowSize: 10,
     glowColor: '#74c0fc',
     glowAlpha: 0.35,
-    shadow: false,
+
     rate: 16,
     life: 34,
     velocity: Vector.fromAngle(-90, 5),
@@ -81,7 +82,7 @@ const Burst = {
     glowSize: 8,
     glowColor: '#ff9500',
     glowAlpha: 0.3,
-    shadow: false,
+
     rate: 22,
     life: 24,
     velocity: Vector.fromAngle(-90, 8.8),
@@ -110,7 +111,7 @@ const Burst = {
     glowSize: 8,
     glowColor: '#74c0fc',
     glowAlpha: 0.3,
-    shadow: false,
+
     rate: 22,
     life: 24,
     velocity: Vector.fromAngle(-Math.PI / 2, 8.8),
@@ -179,7 +180,7 @@ const Ambient = {
     glowSize: 8,
     glowColor: '#ffffff',
     glowAlpha: 0.2,
-    shadow: false,
+
     rate: 0.55,
     life: 999999,
     particleLife: 500,
@@ -210,7 +211,7 @@ const Ambient = {
     glowSize: 12,
     glowColor: '#ff8c00',
     glowAlpha: 0.4,
-    shadow: false,
+
     trail: true,
     trailLength: 15,
     trailFade: 0.2,
@@ -244,7 +245,7 @@ const Ambient = {
     glowSize: 8,
     glowColor: '#ff9500',
     glowAlpha: 0.3,
-    shadow: false,
+
     trail: true,
     trailLength: 6,
     trailFade: 0.3,
@@ -297,7 +298,7 @@ const Ambient = {
     glowSize: 6,
     glowColor: '#80deea',
     glowAlpha: 0.25,
-    shadow: false,
+
     trail: true,
     trailLength: 6,
     trailFade: 0.5,
@@ -326,7 +327,7 @@ const ImageParticles = {
   text: {
     shape: 'square' as const,
     blendMode: 'normal' as const,
-    shadow: false,
+
     glow: false,
     maxCount: 10000,
   } satisfies FullParticularConfig,
@@ -335,7 +336,7 @@ const ImageParticles = {
   shape: {
     shape: 'circle' as const,
     blendMode: 'normal' as const,
-    shadow: false,
+
     glow: true,
     glowSize: 8,
     glowAlpha: 0.3,

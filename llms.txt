@@ -499,7 +499,7 @@ const p = createParticles({ config: { colors: ["#ff6b6b", "#feca57", "#48dbfb"] 
 - All positions in controller methods use screen pixels (CSS pixels). Engine divides by pixelRatio internally.
 - Attractor positions use engine coordinates (screen / pixelRatio). Use addAttractor for direct control.
 - Image/text particles have spring return — they bounce back to home positions after being pushed.
-- shadow is enabled by default (`shadow: true` in base particle config). It adds visual depth but uses GPU resources. Disable with `config: { shadow: false }` if not needed. Glow-focused presets (magic, fireworks) disable it automatically.
+- shadow is disabled by default (`shadow: false`). Only the confetti preset enables it for visual depth. Enable with `config: { shadow: true }` when needed — it uses extra GPU resources.
 - destroy() cleans up everything: canvas (if auto-created), event listeners, resize observers, RAF loop. Child handles (BoundaryHandle, ContainerGlowHandle, MouseTrailHandle) are also cleaned up by controller.destroy(). Calling handle.destroy() after controller.destroy() is safe (idempotent).
 - Container elements must have `position: relative` (or absolute/fixed). A warning is logged if position is static.
 - createParticles() requires a browser environment. In SSR/Node.js, wrap the call in useEffect or guard with `typeof document !== 'undefined'`.

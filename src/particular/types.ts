@@ -42,8 +42,7 @@ export interface ShapeConfig {
   trailShrink?: number;
   /** When true, tint image particles with particle color (WebGL). Default false = render images as-is. */
   imageTint?: boolean;
-  /** Enable drop shadow. Default true in base particle config — adds visual depth but uses extra GPU resources.
-   *  Presets that don't need shadows (e.g. glow-only effects) explicitly disable this. */
+  /** Enable drop shadow. Default false. Adds visual depth but uses extra GPU resources. */
   shadow?: boolean;
   /** Shadow blur radius in pixels. Default 9. */
   shadowBlur?: number;

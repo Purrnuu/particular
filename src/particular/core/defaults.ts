@@ -56,7 +56,7 @@ export const defaultParticle: Required<Omit<ParticleConfig, 'detonate'>> = {
   trailFade: 0.75,
   trailShrink: 0.55,
   imageTint: false,
-  shadow: true,
+  shadow: false,
   shadowBlur: 9,
   shadowOffsetX: 3,
   shadowOffsetY: 3,
@@ -137,7 +137,6 @@ export const defaultImageParticles: Partial<ImageParticlesConfig> = {
   gravity: 0,
   fadeTime: 40,
   shape: 'square',
-  shadow: false,
   glow: false,
 };
 
