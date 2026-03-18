@@ -681,7 +681,7 @@ const WelcomeDemo: React.FC = () => {
       x: w / 2,
       y: heroH * 0.38,
       width: Math.min(w * 0.75, 800),
-      resolution: 300,
+      resolution: 400,
       intro: { mode: 'scatter', duration: 1200 },
     });
 
@@ -833,7 +833,7 @@ const WelcomeDemo: React.FC = () => {
     if (!ctrl || !heading || heading.style.visibility === 'hidden') return;
     ctrl.elementToParticles(heading, {
       shape: 'triangle',
-      resolution: 200,
+      resolution: 400,
       intro: { mode: 'ripple', duration: 600 },
     }).then(() => {
       ctrl.addMouseForce({ track: true, strength: 2, radius: 60 });
