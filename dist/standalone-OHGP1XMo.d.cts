@@ -1039,8 +1039,8 @@ declare const presetRegistry: {
         colors: string[];
     };
     readonly meteors: {
-        shape: "circle";
-        blendMode: "normal";
+        shape: "ring";
+        blendMode: "additive";
         glow: true;
         glowSize: number;
         glowColor: string;
@@ -1334,10 +1334,10 @@ declare const presets: {
             autoStart: true;
             colors: string[];
         };
-        /** Meteors: bright diagonal streaks with glowing trails, accelerating as they fall */
+        /** Meteors: fast diagonal streaks with long glowing trails, additive blending */
         readonly meteors: {
-            shape: "circle";
-            blendMode: "normal";
+            shape: "ring";
+            blendMode: "additive";
             glow: true;
             glowSize: number;
             glowColor: string;
@@ -1664,8 +1664,8 @@ declare const presets: {
         colors: string[];
     };
     readonly meteors: {
-        shape: "circle";
-        blendMode: "normal";
+        shape: "ring";
+        blendMode: "additive";
         glow: true;
         glowSize: number;
         glowColor: string;

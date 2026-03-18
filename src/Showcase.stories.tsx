@@ -196,14 +196,7 @@ const MeteorDemo: React.FC = () => {
       preset: 'meteors',
       config: {
         maxCount: 40,
-        rate: 0.25,
-        shape: 'star',
-        sizeMin: 2,
-        sizeMax: 5,
-        particleLife: 200,
-        velocity: Vector.fromAngle(95, 2),
-        spread: Math.PI * 0.08,
-        trailLength: 10,
+        rate: 0.35,
         zIndex: 1,
       },
       renderer: 'webgl',
@@ -585,7 +578,10 @@ const WelcomeDemo: React.FC = () => {
       for (const b of boundariesRef.current) b.destroy();
       boundariesRef.current = [];
 
-      for (const card of cardRefs.current) {
+      // Only add boundaries around the feature cards (upper section where snow lands)
+      const featureCount = 6;
+      for (let i = 0; i < featureCount; i++) {
+        const card = cardRefs.current[i];
         if (!card) continue;
         boundariesRef.current.push(
           ctrl.addBoundary({ element: card, strength: -1.5, radius: 10 }),
@@ -781,6 +777,10 @@ const WelcomeDemo: React.FC = () => {
     });
   }, []);
 
+  const handleTitleClick = useCallback(() => {
+    textControllerRef.current?.scatter({ velocity: 15, rotation: 8 });
+  }, []);
+
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'e' || e.key === 'E') {
       textControllerRef.current?.scatter({ velocity: 12 });
@@ -837,6 +837,20 @@ const WelcomeDemo: React.FC = () => {
           userSelect: 'none',
         }}
       >
+        {/* Clickable area over the "Particular" text particles — click to explode */}
+        <div
+          onClick={handleTitleClick}
+          style={{
+            position: 'absolute',
+            top: '28vh',
+            left: '10%',
+            right: '10%',
+            height: '20vh',
+            pointerEvents: 'auto',
+            cursor: 'pointer',
+            zIndex: 2,
+          }}
+        />
         <div style={{ paddingTop: '58vh' }}>
           <p
             style={{
@@ -850,7 +864,7 @@ const WelcomeDemo: React.FC = () => {
             Beautiful by default. Lightning fast. Zero config.
           </p>
           <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.8rem' }}>
-            Touch or move mouse to push particles
+            Click the title or move mouse to push particles
           </p>
         </div>
         <div style={{ position: 'absolute', bottom: 40, left: 0, right: 0, color: 'rgba(255,255,255,0.25)', fontSize: '0.85rem' }}>

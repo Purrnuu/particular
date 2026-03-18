@@ -11,7 +11,7 @@ const orangePalette: string[] = ['#b33600', '#cc4a00', '#e86100', '#f57c00', '#f
 const greenPalette: string[] = ['#006b3f', '#008c51', '#00a85e', '#00c46b', '#1edd80', '#4deda0'];
 const mutedPalette: string[] = ['#d4a373', '#ccd5ae', '#e9edc9', '#a8dadc', '#b5838d', '#e5989b', '#8d99ae'];
 const fireworksPalette: string[] = ['#ff4757', '#ffa502', '#2ed573', '#1e90ff', '#ff6b81', '#eccc68', '#7bed9f', '#70a1ff', '#ffffff'];
-const meteorPalette: string[] = ['#ffffff', '#fff4e0', '#ffd699', '#ff9500', '#ff6b00', '#e84d00'];
+const meteorPalette: string[] = ['#ffffff', '#e0f0ff', '#80d0ff', '#40a0e0', '#2060c0', '#6040ff', '#a080ff'];
 const waterPalette: string[] = ['#e0f7fa', '#b2ebf2', '#80deea', '#4dd0e1', '#26c6da', '#00acc1', '#ffffff'];
 const finlandPalette: string[] = ['#003580', '#002f6c', '#ffffff', '#f8f9fa'];
 const usaPalette: string[] = ['#B22234', '#ffffff', '#3C3B6E'];
@@ -203,36 +203,36 @@ const Ambient = {
     colors: snowPalette,
   } satisfies FullParticularConfig,
 
-  /** Meteors: bright diagonal streaks with glowing trails, accelerating as they fall */
+  /** Meteors: fast diagonal streaks with long glowing trails, additive blending */
   meteors: {
-    shape: 'circle' as const,
-    blendMode: 'normal' as const,
+    shape: 'ring' as const,
+    blendMode: 'additive' as const,
     glow: true,
-    glowSize: 12,
-    glowColor: '#ff8c00',
-    glowAlpha: 0.4,
+    glowSize: 14,
+    glowColor: '#ff6d00',
+    glowAlpha: 0.5,
 
     trail: true,
-    trailLength: 15,
-    trailFade: 0.2,
-    trailShrink: 0.5,
-    rate: 0.3,
+    trailLength: 12,
+    trailFade: 0.25,
+    trailShrink: 0.4,
+    rate: 0.5,
     life: 999999,
-    particleLife: 250,
-    velocity: Vector.fromAngle(Math.PI * 0.5, 8.5),
-    spread: Math.PI * 0.5,
-    sizeMin: 1,
-    sizeMax: 8,
-    velocityMultiplier: 0.5,
-    fadeTime: 40,
-    gravity: 0.05,
-    gravityJitter: 0.3,
-    acceleration: 0.02,
-    accelerationSize: 0.005,
+    particleLife: 90,
+    velocity: Vector.fromAngle(Math.PI * 0.65, 14),
+    spread: Math.PI * 0.15,
+    sizeMin: 2,
+    sizeMax: 6,
+    velocityMultiplier: 2,
+    fadeTime: 20,
+    gravity: 0.12,
+    gravityJitter: 0.4,
+    acceleration: 0.04,
+    accelerationSize: 0.008,
     friction: 0,
     frictionSize: 0,
     scaleStep: 1,
-    maxCount: 150,
+    maxCount: 100,
     continuous: true,
     autoStart: true,
     colors: meteorPalette,
