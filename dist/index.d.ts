@@ -1,5 +1,5 @@
-import { P as Particular, c as configureParticular, F as FullParticularConfig, a as ParticleConfig, B as BurstSettings, b as PresetName, R as RendererType, M as MouseForceConfig, d as ParticlesController, e as BurstOptions, E as ExplodeOptions, I as ImageParticlesConfig, T as TextImageConfig, f as ElementParticlesConfig } from './standalone-CxzAPAA1.js';
-export { A as Attractor, g as AttractorConfig, h as BlendMode, i as BoundaryConfig, j as BoundaryHandle, C as CanvasRenderer, k as ChildExplosionConfig, l as CreateParticlesOptions, D as DetonateConfig, m as Emitter, n as EmitterConfiguration, o as FPSOverlayController, p as FPSOverlayOptions, q as ForceSource, H as HomePositionConfig, r as IntroConfig, s as IntroMode, t as MouseForce, u as Particle, v as ParticleConstructorParams, w as ParticleShape, x as ParticularConfig, S as ScreensaverController, y as ScreensaverOptions, z as ShapeConfig, V as Vector, W as WebGLRenderer, G as WebGLRendererOptions, J as applyCanvasStyles, K as canvasToDataURL, L as configureParticle, N as createHeartImage, O as createParticles, Q as createTextImage, U as getParticlesBackgroundLayerStyle, X as getParticlesContainerLayerStyle, Y as particlesBackgroundLayerStyle, Z as particlesContainerLayerStyle, _ as particlesDefaultZIndex, $ as presets, a0 as showFPSOverlay, a1 as startScreensaver } from './standalone-CxzAPAA1.js';
+import { P as Particular, c as configureParticular, F as FullParticularConfig, a as ParticleConfig, B as BurstSettings, b as PresetName, R as RendererType, M as MouseForceConfig, d as ParticlesController, e as BurstOptions, E as ExplodeOptions, W as WobbleConfig, I as ImageParticlesConfig, T as TextImageConfig, f as ElementParticlesConfig, g as ImageShatterConfig } from './standalone-BLWpuFko.js';
+export { A as Attractor, h as AttractorConfig, i as BlendMode, j as BoundaryConfig, k as BoundaryHandle, C as CanvasRenderer, l as ChildExplosionConfig, m as ContainerGlowConfig, n as ContainerGlowHandle, o as CreateParticlesOptions, D as DetonateConfig, p as Emitter, q as EmitterConfiguration, r as FPSOverlayController, s as FPSOverlayOptions, t as ForceSource, H as HomePositionConfig, u as IntroConfig, v as IntroMode, w as MouseForce, x as MouseTrailConfig, y as MouseTrailHandle, z as Particle, G as ParticleConstructorParams, J as ParticleShape, K as ParticularConfig, S as ScreensaverController, L as ScreensaverOptions, N as ShapeConfig, V as Vector, O as WebGLRenderer, Q as WebGLRendererOptions, U as applyCanvasStyles, X as canvasToDataURL, Y as configureParticle, Z as createHeartImage, _ as createParticles, $ as createTextImage, a0 as getParticlesBackgroundLayerStyle, a1 as getParticlesContainerLayerStyle, a2 as particlesBackgroundLayerStyle, a3 as particlesContainerLayerStyle, a4 as particlesDefaultZIndex, a5 as presets, a6 as showFPSOverlay, a7 as startScreensaver } from './standalone-BLWpuFko.js';
 import React, { ComponentType, MutableRefObject, CSSProperties, MouseEvent as MouseEvent$1 } from 'react';
 
 interface CanvasWrapperState {
@@ -114,12 +114,20 @@ interface UseParticlesResult {
     explode: (options?: ExplodeOptions) => void;
     scatter: (options?: {
         velocity?: number;
+        rotation?: number;
     }) => void;
+    startWobble: (config?: WobbleConfig) => void;
+    stopWobble: () => void;
     imageToParticles: (config: ImageParticlesConfig) => void;
     textToParticles: (text: string, config?: Omit<ImageParticlesConfig, 'image'> & {
         textConfig?: Omit<TextImageConfig, 'text'>;
     }) => void;
     elementToParticles: (element: HTMLElement, config?: ElementParticlesConfig) => void;
+    shatterImage: (config: ImageShatterConfig) => void;
+    shatterText: (text: string, config?: Omit<ImageShatterConfig, 'image'> & {
+        textConfig?: Omit<TextImageConfig, 'text'>;
+    }) => void;
+    setIdleEffect: (enabled: boolean) => void;
 }
 /**
  * Hooks-first API for React apps.
@@ -159,4 +167,4 @@ interface UseScreensaverResult {
  */
 declare function useScreensaver({ preset, config, renderer, autoResize, backgroundLayer, mouseWind, container, }?: UseScreensaverOptions): UseScreensaverResult;
 
-export { BurstOptions, BurstSettings, ElementParticlesConfig, ExplodeOptions, FullParticularConfig, ImageParticlesConfig, MouseForceConfig, ParticleConfig, ParticlesController, Particular, particularWrapper as ParticularWrapper, PresetName, RendererType, TextImageConfig, type UseParticlesOptions, type UseParticlesResult, type UseScreensaverOptions, type UseScreensaverResult, useParticles, useScreensaver, withParticles };
+export { BurstOptions, BurstSettings, ElementParticlesConfig, ExplodeOptions, FullParticularConfig, ImageParticlesConfig, ImageShatterConfig, MouseForceConfig, ParticleConfig, ParticlesController, Particular, particularWrapper as ParticularWrapper, PresetName, RendererType, TextImageConfig, type UseParticlesOptions, type UseParticlesResult, type UseScreensaverOptions, type UseScreensaverResult, WobbleConfig, useParticles, useScreensaver, withParticles };

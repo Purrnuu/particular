@@ -355,7 +355,10 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
     // Auto-center: re-run the effect on resize, scaling position/size proportionally.
     const autoCenter = config.autoCenter ?? true;
     if (autoCenter) {
+      let resizeGen = 0;
       watchResize((scaleX, scaleY) => {
+        const gen = ++resizeGen;
+
         // Remove old particles
         const idx = engine.emitters.indexOf(collector);
         if (idx !== -1) engine.emitters.splice(idx, 1);
@@ -375,6 +378,12 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
         if (config.height != null) scaledConfig.height = config.height * scaleY;
 
         imageToParticles(scaledConfig).then((newCollector) => {
+          // Discard stale result if a newer resize has started
+          if (gen !== resizeGen) {
+            const staleIdx = engine.emitters.indexOf(newCollector);
+            if (staleIdx !== -1) engine.emitters.splice(staleIdx, 1);
+            return;
+          }
           collector.particles.push(...newCollector.particles);
           const newIdx = engine.emitters.indexOf(newCollector);
           if (newIdx !== -1) engine.emitters.splice(newIdx, 1);
@@ -464,8 +473,10 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
       let lastY = y;
       let lastW = width;
       let lastH = height;
+      let elemResizeGen = 0;
 
       watchResize(() => {
+        const gen = ++elemResizeGen;
         const newRect = readElementRect(element);
         const newX = imageConfig.x ?? newRect.x;
         const newY = imageConfig.y ?? newRect.y;
@@ -495,6 +506,12 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
           autoCenter: false,
           intro: undefined,
         }).then((newCollector) => {
+          // Discard stale result if a newer resize has started
+          if (gen !== elemResizeGen) {
+            const staleIdx = engine.emitters.indexOf(newCollector);
+            if (staleIdx !== -1) engine.emitters.splice(staleIdx, 1);
+            return;
+          }
           emitter.particles.push(...newCollector.particles);
           const newIdx = engine.emitters.indexOf(newCollector);
           if (newIdx !== -1) engine.emitters.splice(newIdx, 1);

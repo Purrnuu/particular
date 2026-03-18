@@ -1,9 +1,6 @@
-import { forEach, filter, sample } from 'lodash-es';
 import React, { useRef, useEffect, useCallback, Component } from 'react';
 import { createPortal } from 'react-dom';
 import { jsx, jsxs } from 'react/jsx-runtime';
-
-// src/particular/core/particular.ts
 
 // src/particular/utils/eventDispatcher.ts
 var EventDispatcher = class _EventDispatcher {
@@ -134,6 +131,7 @@ var defaultParticle = {
   velocityMultiplier: 6,
   fadeTime: 30,
   gravity: 0.15,
+  gravityJitter: 0,
   scaleStep: 1,
   spawnWidth: 0,
   spawnHeight: 0,
@@ -153,7 +151,7 @@ var defaultParticle = {
   trailFade: 0.75,
   trailShrink: 0.55,
   imageTint: false,
-  shadow: true,
+  shadow: false,
   shadowBlur: 9,
   shadowOffsetX: 3,
   shadowOffsetY: 3,
@@ -224,11 +222,10 @@ var defaultHomeConfig = {
 };
 var defaultImageParticles = {
   alphaThreshold: 0.1,
-  particleLife: 99999,
+  particleLife: Infinity,
   gravity: 0,
   fadeTime: 40,
   shape: "square",
-  shadow: false,
   glow: false
 };
 var defaultElementParticles = {
@@ -236,6 +233,65 @@ var defaultElementParticles = {
   shape: "triangle",
   hideElement: true,
   restoreElement: true
+};
+var defaultContainerGlow = {
+  colors: ["#a5d8ff", "#74c0fc", "#4dabf7", "#d0bfff", "#b197fc", "#9775fa"],
+  rate: 0.5,
+  sizeMin: 0.5,
+  sizeMax: 2,
+  particleLife: 60,
+  fadeTime: 30,
+  velocity: 0.4,
+  spread: 0.3,
+  friction: 0.01,
+  shape: "sparkle",
+  glow: true,
+  glowColor: "#74c0fc",
+  glowAlpha: 0.35,
+  glowSize: 8,
+  blendMode: "additive",
+  pulseSpeed: 0.02,
+  pulseAmplitude: 0.4
+};
+var defaultMouseTrail = {
+  colors: ["#a5d8ff", "#74c0fc", "#4dabf7", "#d0bfff", "#b197fc", "#9775fa"],
+  rate: 1.5,
+  sizeMin: 1,
+  sizeMax: 3,
+  particleLife: 40,
+  fadeTime: 20,
+  velocity: 1.5,
+  spread: 0.8,
+  friction: 0.02,
+  shape: "sparkle",
+  glow: true,
+  glowColor: "#74c0fc",
+  glowAlpha: 0.4,
+  glowSize: 10,
+  blendMode: "additive",
+  trail: true,
+  trailLength: 6,
+  trailFade: 0.4,
+  trailShrink: 0.5,
+  minSpeed: 0.5
+};
+var defaultImageShatter = {
+  chunkCount: 36,
+  jitter: 0.4,
+  velocity: 5,
+  velocitySpread: 0.5,
+  gravity: 0.12,
+  rotationSpeed: 5,
+  particleLife: 120,
+  fadeTime: 40,
+  friction: 5e-3,
+  scaleStep: 100
+};
+var defaultWobble = {
+  velocity: 0.8,
+  rotation: 0.4,
+  mouseRadius: 200,
+  mouseStrength: 3
 };
 var defaultMouseWind = {
   strength: 0.12,
@@ -247,8 +303,8 @@ var defaultMouseWind = {
 function configureParticular(configuration) {
   return { ...defaultParticular, ...defaultParticle, ...configuration };
 }
-function configureParticle(settings, configuration) {
-  return { ...defaultParticle, ...configuration, ...settings };
+function configureParticle(overrides, base) {
+  return { ...defaultParticle, ...base, ...overrides };
 }
 
 // src/particular/utils/genericUtils.ts
@@ -357,18 +413,18 @@ var _Particular = class _Particular {
   }
   updateEmitters(dt = 1) {
     if (this.getCount() <= this.maxCount) {
-      forEach(this.emitters, (emitter) => {
+      for (const emitter of this.emitters) {
         emitter.emit(dt);
-      });
+      }
     }
     for (const mf of this.mouseForces) {
       mf.decay(dt);
     }
     const forces = this.mouseForces.length > 0 ? [...this.attractors, ...this.mouseForces] : this.attractors;
-    forEach(this.emitters, (emitter) => {
+    for (const emitter of this.emitters) {
       emitter.update(this.width, this.height, forces, dt);
-    });
-    this.emitters = filter(this.emitters, (emitter) => {
+    }
+    this.emitters = this.emitters.filter((emitter) => {
       if (this.continuous || emitter.isAlive()) {
         return true;
       }
@@ -380,7 +436,11 @@ var _Particular = class _Particular {
     }
   }
   getCount() {
-    return this.getAllParticles().length;
+    let count = 0;
+    for (let i = 0; i < this.emitters.length; i++) {
+      count += this.emitters[i].particles.length;
+    }
+    return count;
   }
   getAllParticles() {
     let particles = [];
@@ -463,6 +523,9 @@ var Particle = class _Particle {
     this.homeConfig = null;
     /** When false, idle animations (breathing, wiggle, wave, pulse) are suppressed. Spring return still works. */
     this.idleEnabled = true;
+    /** When true, suppress the settle-snap behavior. Spring still runs but particles never hard-snap to home.
+     *  Useful for interactive effects where external forces (wobble, drag) should keep particles in motion. */
+    this.preventSettle = false;
     this.breathingPhase = Math.random() * Math.PI * 2;
     /** Per-particle spring multiplier (0.6–1.4) — breaks sync so particles return at different rates. */
     this.springMultiplier = 1;
@@ -485,7 +548,7 @@ var Particle = class _Particle {
     this.rotationDirection = Math.random() > 0.5 ? 1 : -1;
     this.rotationVelocity = this.rotationDirection * getRandomInt(1, 3);
     this.factoredSize = 1;
-    this.lifeTime = getRandomInt(Math.round(particleLife * 0.75), particleLife);
+    this.lifeTime = particleLife === Infinity ? Infinity : getRandomInt(Math.round(particleLife * 0.75), particleLife);
     this.lifeTick = 0;
     this.size = size ?? getRandomInt(5, 15);
     this.gravity = gravity;
@@ -494,6 +557,10 @@ var Particle = class _Particle {
     this.alpha = 1;
     this.baseAlpha = baseAlpha;
     this.color = color ?? (colors && colors.length > 0 ? colors[Math.floor(Math.random() * colors.length)] : "#888888");
+    const parsed = _Particle.parseHexNorm(this.color);
+    this.colorR = parsed[0];
+    this.colorG = parsed[1];
+    this.colorB = parsed[2];
     this.shape = shape;
     this.blendMode = blendMode;
     this.glow = glow;
@@ -550,7 +617,7 @@ var Particle = class _Particle {
       const dy = this.homePosition.y - this.position.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
       const speed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y);
-      const isSettled = dist < this.homeConfig.homeThreshold && speed < this.homeConfig.velocityThreshold;
+      const isSettled = !this.preventSettle && dist < this.homeConfig.homeThreshold && speed < this.homeConfig.velocityThreshold;
       if (this.homeConfig.idlePulseStrength > 0 && this.homeConfig.idlePulseIntervalMin > 0) {
         this.idleTicks += dt;
       }
@@ -559,6 +626,8 @@ var Particle = class _Particle {
         this.velocity.y = 0;
         this.position.x = this.homePosition.x;
         this.position.y = this.homePosition.y;
+        this.rotationVelocity = 0;
+        this.rotation = 0;
         if (this.idleEnabled && this.homeConfig.idlePulseStrength > 0 && this.homeConfig.idlePulseIntervalMin > 0) {
           const waveDelay = this.homeDistFromCenter * 0.3;
           if (this.idleTicks >= this.nextPulseAt + waveDelay) {
@@ -586,6 +655,11 @@ var Particle = class _Particle {
           this.velocity.x += (Math.random() - 0.5) * noise;
           this.velocity.y += (Math.random() - 0.5) * noise;
         }
+        if (this.rotationVelocity !== 0 || this.rotation !== 0) {
+          this.rotationVelocity *= dampFactor;
+          let normRot = (this.rotation % 360 + 540) % 360 - 180;
+          this.rotationVelocity -= normRot * k * dt;
+        }
       }
     }
     this.position.add(this.velocity, dt);
@@ -597,8 +671,12 @@ var Particle = class _Particle {
     } else {
       this.factoredSize = baseSize;
     }
-    this.alpha = Math.min(1, Math.max((this.lifeTime - this.lifeTick) / this.fadeTime, 0)) * this.baseAlpha;
-    this.lifeTick += dt;
+    if (this.homePosition) {
+      this.alpha = this.baseAlpha;
+    } else {
+      this.alpha = Math.min(1, Math.max((this.lifeTime - this.lifeTick) / this.fadeTime, 0)) * this.baseAlpha;
+      this.lifeTick += dt;
+    }
     this.dispatch("PARTICLE_UPDATE", this);
   }
   advanceTrail(dt = 1) {
@@ -610,7 +688,15 @@ var Particle = class _Particle {
       return;
     }
     const maxAge = Math.max(1, Math.floor(this.trailLength));
-    this.trailSegments = this.trailSegments.map((segment) => ({ ...segment, age: segment.age + dt })).filter((segment) => segment.age < maxAge);
+    let writeIdx = 0;
+    for (let i = 0; i < this.trailSegments.length; i++) {
+      const segment = this.trailSegments[i];
+      segment.age += dt;
+      if (segment.age < maxAge) {
+        this.trailSegments[writeIdx++] = segment;
+      }
+    }
+    this.trailSegments.length = writeIdx;
     if (!addCurrentPoint) return;
     if (this.alpha <= 0) return;
     this.trailSegments.push({
@@ -627,6 +713,13 @@ var Particle = class _Particle {
   }
   getRoundedLocation() {
     return [(this.position.x * 10 << 0) * 0.1, (this.position.y * 10 << 0) * 0.1];
+  }
+  /** Parse hex color string to normalized [r, g, b] (0–1). Cached once per particle in constructor. */
+  static parseHexNorm(hex) {
+    const r = parseInt(hex.slice(1, 3), 16) / 255;
+    const g = parseInt(hex.slice(3, 5), 16) / 255;
+    const b = parseInt(hex.slice(5, 7), 16) / 255;
+    return [r, g, b];
   }
   /** Deterministic pseudo-random interval from cycle number — same output for all particles in the same cycle. */
   static deterministicInterval(cycle, min, max) {
@@ -728,7 +821,8 @@ var Emitter = class {
     this.emitAccumulator -= count;
     for (let j = 0; j < count; j++) {
       const particle = this.createParticle();
-      const icon = this.configuration.icons.length > 0 ? sample(this.configuration.icons) ?? this.configuration.icons[0] : null;
+      const icons = this.configuration.icons;
+      const icon = icons.length > 0 ? icons[Math.floor(Math.random() * icons.length)] : null;
       particle.init(icon, this.particular);
       this.particles.push(particle);
     }
@@ -740,13 +834,13 @@ var Emitter = class {
     const currentParticles = [];
     const detonate = this.configuration.detonate;
     const newChildren = [];
-    forEach(this.particles, (particle) => {
+    for (const particle of this.particles) {
       const pos = particle.position;
       if (pos.x < 0 || pos.x > boundsX || pos.y < -boundsY || pos.y > boundsY) {
         if (particle.homePosition) {
           particle.update(forces, dt);
           currentParticles.push(particle);
-          return;
+          continue;
         }
         const hasTrail = particle.trail && particle.trailSegments.length > 0;
         if (hasTrail) {
@@ -759,7 +853,7 @@ var Emitter = class {
         } else {
           particle.destroy();
         }
-        return;
+        continue;
       }
       particle.update(forces, dt);
       if (detonate && !particle.isDetonationChild && this.particular && particle.lifeTick >= particle.lifeTime * detonate.at) {
@@ -783,7 +877,7 @@ var Emitter = class {
           newChildren.push(child);
         }
         particle.destroy();
-        return;
+        continue;
       }
       const trailActive = particle.trail && particle.trailSegments.length > 0;
       const fadedOut = particle.alpha <= 0 && particle.lifeTick >= particle.lifeTime;
@@ -792,8 +886,13 @@ var Emitter = class {
       } else {
         particle.destroy();
       }
-    });
-    this.particles = newChildren.length > 0 ? [...currentParticles, ...newChildren] : currentParticles;
+    }
+    if (newChildren.length > 0) {
+      for (let i = 0; i < newChildren.length; i++) {
+        currentParticles.push(newChildren[i]);
+      }
+    }
+    this.particles = currentParticles;
     this.isEmitting = this.particular?.continuous ? true : this.lifeCycle < this.configuration.life;
   }
   isAlive() {
@@ -809,6 +908,7 @@ var Emitter = class {
       velocityMultiplier,
       particleLife,
       gravity,
+      gravityJitter,
       scaleStep,
       fadeTime,
       spawnWidth,
@@ -846,6 +946,8 @@ var Emitter = class {
     newVelocity.add({ x: 0, y: -((sizeMax - size) / 15) * velocityMultiplier });
     const friction = frictionBase + frictionSize * size;
     const acceleration = new Vector(0, accelBase + accelerationSize * size);
+    const jitter = gravityJitter ?? 0;
+    const jitteredGravity = jitter > 0 ? gravity * (1 - jitter + Math.random() * jitter * 2) : gravity;
     this.lifeCycle++;
     return new Particle({
       point: newPoint,
@@ -854,7 +956,7 @@ var Emitter = class {
       friction,
       size,
       particleLife,
-      gravity,
+      gravity: jitteredGravity,
       scaleStep,
       fadeTime,
       shape,
@@ -881,10 +983,12 @@ var Emitter = class {
     destroy(this.particles);
   }
 };
+
+// src/particular/components/icons.ts
 var images = [];
 function processImages(icons) {
   images = [];
-  forEach(icons, (icon) => {
+  for (const icon of icons) {
     if (typeof icon === "string") {
       const imageObject = new Image();
       imageObject.src = icon;
@@ -892,7 +996,7 @@ function processImages(icons) {
     } else {
       images.push(icon);
     }
-  });
+  }
   return images;
 }
 
@@ -1033,13 +1137,19 @@ var CanvasRenderer = class {
     const sizeScale = particle.trailShrink + life * (1 - particle.trailShrink);
     const alphaScale = life * particle.trailFade;
     return {
-      ...particle,
       position: { x: segment.x, y: segment.y },
       factoredSize: Math.max(0.1, segment.size * sizeScale),
       rotation: segment.rotation,
       alpha: segment.alpha * alphaScale,
+      color: particle.color,
+      shape: particle.shape,
+      blendMode: particle.blendMode,
+      image: particle.image,
       glow: false,
       shadow: false,
+      glowColor: particle.glowColor,
+      glowAlpha: particle.glowAlpha,
+      glowSize: particle.glowSize,
       trailSegments: [],
       getRoundedLocation: () => [
         (segment.x * 10 << 0) * 0.1,
@@ -1327,6 +1437,31 @@ float sdStar5(vec2 p, float r, float rf) {
   return length(p - ba * h) * sign(p.y * ba.x - p.x * ba.y);
 }
 
+float sdRing(vec2 p, float radius, float thickness) {
+  return abs(length(p) - radius) - thickness;
+}
+
+float sdSparkle(vec2 p) {
+  // 4-pointed star: union of two diamond shapes rotated 45 degrees
+  float armWidth = 0.15;
+  // Axis-aligned diamond (vertical/horizontal arms)
+  float d1 = abs(p.x) * 0.7 + abs(p.y) - 1.0;
+  float w1 = abs(p.x) - armWidth;
+  float arm1 = max(d1, w1);
+  float d2 = abs(p.y) * 0.7 + abs(p.x) - 1.0;
+  float w2 = abs(p.y) - armWidth;
+  float arm2 = max(d2, w2);
+  // Diagonal arms (rotated 45 degrees)
+  vec2 pr = vec2(p.x + p.y, p.y - p.x) * 0.7071;
+  float d3 = abs(pr.x) * 0.7 + abs(pr.y) - 0.7;
+  float w3 = abs(pr.x) - armWidth;
+  float arm3 = max(d3, w3);
+  float d4 = abs(pr.y) * 0.7 + abs(pr.x) - 0.7;
+  float w4 = abs(pr.y) - armWidth;
+  float arm4 = max(d4, w4);
+  return min(min(arm1, arm2), min(arm3, arm4));
+}
+
 float shapeSdf(vec2 p, float shapeId) {
   if (shapeId < 0.5) {
     return length(p) - 1.0; // circle
@@ -1340,7 +1475,13 @@ float shapeSdf(vec2 p, float shapeId) {
   if (shapeId < 3.5) {
     return sdStar5(p, 1.0, 0.45); // star
   }
-  return sdRoundedBox(p, vec2(0.75), 0.25); // rounded rectangle
+  if (shapeId < 4.5) {
+    return sdRoundedBox(p, vec2(0.75), 0.25); // rounded rectangle
+  }
+  if (shapeId < 5.5) {
+    return sdRing(p, 0.75, 0.2); // ring
+  }
+  return sdSparkle(p); // sparkle
 }
 
 void main() {
@@ -1462,6 +1603,10 @@ function shapeToId(shape) {
       return 3;
     case "roundedRectangle":
       return 4;
+    case "ring":
+      return 5;
+    case "sparkle":
+      return 6;
     default:
       return 0;
   }
@@ -1511,6 +1656,20 @@ var WebGLRenderer = class {
     this.imageShadowColorUniform = null;
     this.imageShadowBlurUniform = null;
     this.textureCache = /* @__PURE__ */ new Map();
+    // Cached attribute locations (circle program)
+    this.circleAttrPos = -1;
+    this.circleAttrParticlePos = -1;
+    this.circleAttrSize = -1;
+    this.circleAttrRotation = -1;
+    this.circleAttrColor = -1;
+    this.circleAttrShape = -1;
+    // Cached attribute locations (image program)
+    this.imageAttrPos = -1;
+    this.imageAttrParticlePos = -1;
+    this.imageAttrSize = -1;
+    this.imageAttrRotation = -1;
+    this.imageAttrColor = -1;
+    this.imageTexUniform = null;
     this.resize = (args) => {
       if (!args || !this.gl) return;
       const { width, height } = args;
@@ -1544,7 +1703,7 @@ var WebGLRenderer = class {
       this.gl.useProgram(this.program);
       this.gl.uniform2f(this.resolutionUniform, logicalW, logicalH);
       this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.circleQuadBuffer);
-      const posLoc = this.gl.getAttribLocation(this.program, "a_position");
+      const posLoc = this.circleAttrPos;
       this.gl.enableVertexAttribArray(posLoc);
       this.gl.vertexAttribPointer(posLoc, 2, this.gl.FLOAT, false, 0, 0);
       for (const batch of batches) {
@@ -1594,6 +1753,12 @@ var WebGLRenderer = class {
     this.isShadowUniform = gl.getUniformLocation(program, "u_isShadow");
     this.shadowColorUniform = gl.getUniformLocation(program, "u_shadowColor");
     this.shadowBlurUniform = gl.getUniformLocation(program, "u_shadowBlur");
+    this.circleAttrPos = gl.getAttribLocation(program, "a_position");
+    this.circleAttrParticlePos = gl.getAttribLocation(program, "a_particle_pos");
+    this.circleAttrSize = gl.getAttribLocation(program, "a_particle_size");
+    this.circleAttrRotation = gl.getAttribLocation(program, "a_particle_rotation");
+    this.circleAttrColor = gl.getAttribLocation(program, "a_particle_color");
+    this.circleAttrShape = gl.getAttribLocation(program, "a_particle_shape");
     const imageVs = this.compileShader(gl.VERTEX_SHADER, IMAGE_VERTEX_SHADER);
     const imageFs = this.compileShader(gl.FRAGMENT_SHADER, IMAGE_FRAGMENT_SHADER);
     const imageProgram = gl.createProgram();
@@ -1610,6 +1775,12 @@ var WebGLRenderer = class {
     this.imageIsShadowUniform = gl.getUniformLocation(imageProgram, "u_isShadow");
     this.imageShadowColorUniform = gl.getUniformLocation(imageProgram, "u_shadowColor");
     this.imageShadowBlurUniform = gl.getUniformLocation(imageProgram, "u_shadowBlur");
+    this.imageAttrPos = gl.getAttribLocation(imageProgram, "a_position");
+    this.imageAttrParticlePos = gl.getAttribLocation(imageProgram, "a_particle_pos");
+    this.imageAttrSize = gl.getAttribLocation(imageProgram, "a_particle_size");
+    this.imageAttrRotation = gl.getAttribLocation(imageProgram, "a_particle_rotation");
+    this.imageAttrColor = gl.getAttribLocation(imageProgram, "a_particle_color");
+    this.imageTexUniform = gl.getUniformLocation(imageProgram, "u_texture");
     const quadData = new Float32Array([
       -1,
       -1,
@@ -1696,14 +1867,23 @@ var WebGLRenderer = class {
         const sizeScale = particle.trailShrink + life * (1 - particle.trailShrink);
         const alphaScale = life * particle.trailFade;
         const ghost = {
-          ...particle,
           position: { x: segment.x, y: segment.y },
           factoredSize: Math.max(0.1, segment.size * sizeScale),
           rotation: segment.rotation,
           alpha: segment.alpha * alphaScale,
+          color: particle.color,
+          colorR: particle.colorR,
+          colorG: particle.colorG,
+          colorB: particle.colorB,
+          shape: particle.shape,
+          blendMode: particle.blendMode,
+          image: particle.image,
+          imageTint: particle.imageTint,
           glow: false,
           shadow: false,
-          trailSegments: []
+          trail: false,
+          trailSegments: [],
+          shadowLightOrigin: particle.shadowLightOrigin
         };
         expanded.push(ghost);
       }
@@ -1751,7 +1931,9 @@ var WebGLRenderer = class {
   fillInstanceData(particles, offsetX = 0, offsetY = 0, scaleOffsetByAlpha = false, directionalFromLightOrigin = false) {
     let offset = 0;
     for (const p of particles) {
-      const [r, g, b] = hexToRgba(p.color);
+      const r = p.colorR;
+      const g = p.colorG;
+      const b = p.colorB;
       let effectiveOffsetX = offsetX;
       let effectiveOffsetY = offsetY;
       if (directionalFromLightOrigin) {
@@ -1786,11 +1968,11 @@ var WebGLRenderer = class {
   drawCircleInstances(list, offsetX, offsetY, scaleOffsetByAlpha = false, directionalFromLightOrigin = false) {
     const gl = this.gl;
     const stride = this.instanceStride;
-    const posLoc2 = gl.getAttribLocation(this.program, "a_particle_pos");
-    const sizeLoc = gl.getAttribLocation(this.program, "a_particle_size");
-    const rotLoc = gl.getAttribLocation(this.program, "a_particle_rotation");
-    const colLoc = gl.getAttribLocation(this.program, "a_particle_color");
-    const shapeLoc = gl.getAttribLocation(this.program, "a_particle_shape");
+    const posLoc2 = this.circleAttrParticlePos;
+    const sizeLoc = this.circleAttrSize;
+    const rotLoc = this.circleAttrRotation;
+    const colLoc = this.circleAttrColor;
+    const shapeLoc = this.circleAttrShape;
     for (let i = 0; i < list.length; i += this.maxInstances) {
       const chunk = list.slice(i, i + this.maxInstances);
       this.fillInstanceData(
@@ -1850,10 +2032,10 @@ var WebGLRenderer = class {
   drawImageInstances(list, offsetX, offsetY, scaleOffsetByAlpha = false, directionalFromLightOrigin = false) {
     const gl = this.gl;
     const stride = this.instanceStride;
-    const posLoc2 = gl.getAttribLocation(this.imageProgram, "a_particle_pos");
-    const sizeLoc = gl.getAttribLocation(this.imageProgram, "a_particle_size");
-    const rotLoc = gl.getAttribLocation(this.imageProgram, "a_particle_rotation");
-    const colLoc = gl.getAttribLocation(this.imageProgram, "a_particle_color");
+    const posLoc2 = this.imageAttrParticlePos;
+    const sizeLoc = this.imageAttrSize;
+    const rotLoc = this.imageAttrRotation;
+    const colLoc = this.imageAttrColor;
     for (let i = 0; i < list.length; i += this.maxInstances) {
       const chunk = list.slice(i, i + this.maxInstances);
       this.fillInstanceData(
@@ -1893,12 +2075,10 @@ var WebGLRenderer = class {
     gl.uniform1f(this.imageTintUniform, batch.imageTint ? 1 : 0);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, batch.texture);
-    const texLoc = gl.getUniformLocation(this.imageProgram, "u_texture");
-    gl.uniform1i(texLoc, 0);
+    gl.uniform1i(this.imageTexUniform, 0);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuffer);
-    const posLoc = gl.getAttribLocation(this.imageProgram, "a_position");
-    gl.enableVertexAttribArray(posLoc);
-    gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(this.imageAttrPos);
+    gl.vertexAttribPointer(this.imageAttrPos, 2, gl.FLOAT, false, 0, 0);
     if (batch.shadow) {
       const [sr, sg, sb] = hexToRgba(batch.shadowColor ?? "#000000");
       const sa = batch.shadowAlpha ?? 0.5;
@@ -2060,6 +2240,7 @@ var Burst = {
   confetti: {
     shape: "rectangle",
     blendMode: "normal",
+    shadow: true,
     rate: 20,
     life: 28,
     velocity: Vector.fromAngle(-90, 7),
@@ -2069,56 +2250,74 @@ var Burst = {
     velocityMultiplier: 6,
     fadeTime: 35,
     gravity: 0.14,
+    gravityJitter: 0.2,
     scaleStep: 1.2,
     friction: 5e-3,
     maxCount: 500,
     colors: mutedPalette
   },
-  /** Signature magical burst: soft white glow + star silhouettes */
+  /** Signature magical burst: glowing sparkles with soft trails */
   magic: {
-    shape: "circle",
-    blendMode: "normal",
-    glow: false,
-    rate: 14,
+    shape: "sparkle",
+    blendMode: "additive",
+    glow: true,
+    glowSize: 10,
+    glowColor: "#74c0fc",
+    glowAlpha: 0.35,
+    rate: 16,
     life: 34,
     velocity: Vector.fromAngle(-90, 5),
     spread: Math.PI * 1.15,
-    sizeMin: 6,
-    sizeMax: 16,
+    sizeMin: 3,
+    sizeMax: 10,
     velocityMultiplier: 5,
-    fadeTime: 30,
-    gravity: 0.1,
+    fadeTime: 35,
+    gravity: 0.08,
+    gravityJitter: 0.15,
     scaleStep: 0.9,
-    maxCount: 360,
-    trail: true,
-    trailLength: 12,
-    colors: coolBluePalette
-  },
-  /** Cinematic fireworks: energetic circles with bright bloom */
-  fireworks: {
-    shape: "circle",
-    blendMode: "normal",
-    rate: 22,
-    life: 24,
-    velocity: Vector.fromAngle(-90, 8.8),
-    spread: Math.PI * 1.05,
-    sizeMin: 4,
-    sizeMax: 12,
-    velocityMultiplier: 8,
-    fadeTime: 20,
-    gravity: 0.18,
-    scaleStep: 1.15,
-    maxCount: 520,
+    friction: 5e-3,
+    maxCount: 400,
     trail: true,
     trailLength: 8,
     trailFade: 0.35,
     trailShrink: 0.5,
+    colors: ["#a5d8ff", "#74c0fc", "#4dabf7", "#d0bfff", "#b197fc", "#9775fa"]
+  },
+  /** Cinematic fireworks: glowing sparkles with bright trailing bloom */
+  fireworks: {
+    shape: "sparkle",
+    blendMode: "additive",
+    glow: true,
+    glowSize: 8,
+    glowColor: "#ff9500",
+    glowAlpha: 0.3,
+    rate: 22,
+    life: 24,
+    velocity: Vector.fromAngle(-90, 8.8),
+    spread: Math.PI * 1.05,
+    sizeMin: 3,
+    sizeMax: 10,
+    velocityMultiplier: 8,
+    fadeTime: 22,
+    gravity: 0.18,
+    gravityJitter: 0.2,
+    scaleStep: 1.15,
+    friction: 3e-3,
+    maxCount: 520,
+    trail: true,
+    trailLength: 10,
+    trailFade: 0.3,
+    trailShrink: 0.45,
     colors: mutedPalette
   },
   /** Fireworks with timed detonation: narrow upward launch that auto-explodes into colorful sub-bursts */
   fireworksDetonation: {
-    shape: "circle",
-    blendMode: "normal",
+    shape: "sparkle",
+    blendMode: "additive",
+    glow: true,
+    glowSize: 8,
+    glowColor: "#74c0fc",
+    glowAlpha: 0.3,
     rate: 22,
     life: 24,
     velocity: Vector.fromAngle(-Math.PI / 2, 8.8),
@@ -2128,6 +2327,7 @@ var Burst = {
     velocityMultiplier: 8,
     fadeTime: 20,
     gravity: 0.08,
+    gravityJitter: 0.15,
     scaleStep: 1.15,
     maxCount: 3e3,
     particleLife: 80,
@@ -2143,6 +2343,11 @@ var Burst = {
       sizeMax: 4,
       fadeTime: 18,
       inheritColor: true,
+      shape: "sparkle",
+      glow: true,
+      glowSize: 6,
+      glowColor: "#74c0fc",
+      glowAlpha: 0.3,
       trail: true,
       trailLength: 4,
       trailFade: 0.5,
@@ -2179,12 +2384,12 @@ var Ambient = {
     glowSize: 8,
     glowColor: "#ffffff",
     glowAlpha: 0.2,
-    shadow: false,
     rate: 0.55,
     life: 999999,
     particleLife: 500,
     velocity: Vector.fromAngle(Math.PI / 2, 0.4),
     spread: Math.PI * 0.15,
+    gravityJitter: 0.5,
     sizeMin: 1,
     sizeMax: 4,
     velocityMultiplier: 0.3,
@@ -2208,7 +2413,6 @@ var Ambient = {
     glowSize: 12,
     glowColor: "#ff8c00",
     glowAlpha: 0.4,
-    shadow: false,
     trail: true,
     trailLength: 15,
     trailFade: 0.2,
@@ -2223,6 +2427,7 @@ var Ambient = {
     velocityMultiplier: 0.5,
     fadeTime: 40,
     gravity: 0.05,
+    gravityJitter: 0.3,
     acceleration: 0.02,
     accelerationSize: 5e-3,
     friction: 0,
@@ -2235,8 +2440,12 @@ var Ambient = {
   },
   /** Fireworks show: gentle rockets launch from the bottom and auto-explode into colorful bursts */
   fireworksShow: {
-    shape: "triangle",
-    blendMode: "normal",
+    shape: "sparkle",
+    blendMode: "additive",
+    glow: true,
+    glowSize: 8,
+    glowColor: "#ff9500",
+    glowAlpha: 0.3,
     trail: true,
     trailLength: 6,
     trailFade: 0.3,
@@ -2251,6 +2460,7 @@ var Ambient = {
     velocityMultiplier: 3,
     fadeTime: 15,
     gravity: 0.05,
+    gravityJitter: 0.15,
     scaleStep: 1,
     maxCount: 1200,
     continuous: true,
@@ -2268,6 +2478,11 @@ var Ambient = {
       sizeMax: 3,
       fadeTime: 20,
       inheritColor: true,
+      shape: "sparkle",
+      glow: true,
+      glowSize: 6,
+      glowColor: "#ff9500",
+      glowAlpha: 0.3,
       trail: true,
       trailLength: 4,
       trailFade: 0.5,
@@ -2282,7 +2497,6 @@ var Ambient = {
     glowSize: 6,
     glowColor: "#80deea",
     glowAlpha: 0.25,
-    shadow: false,
     trail: true,
     trailLength: 6,
     trailFade: 0.5,
@@ -2310,7 +2524,6 @@ var ImageParticles = {
   text: {
     shape: "square",
     blendMode: "normal",
-    shadow: false,
     glow: false,
     maxCount: 1e4
   },
@@ -2318,7 +2531,6 @@ var ImageParticles = {
   shape: {
     shape: "circle",
     blendMode: "normal",
-    shadow: false,
     glow: true,
     glowSize: 8,
     glowAlpha: 0.3,
@@ -2523,6 +2735,10 @@ var MouseForce = class {
     this._trackTarget = null;
     this._pixelRatio = 1;
     this._container = null;
+    this._cachedRect = null;
+    this._rectDirty = true;
+    this._rectInvalidator = null;
+    this._resizeObserver = null;
     const merged = { ...defaultMouseForce, ...config };
     this.position = new Vector(merged.x, merged.y);
     this.velocity = new Vector(0, 0);
@@ -2539,13 +2755,28 @@ var MouseForce = class {
     this.stopTracking();
     this._pixelRatio = pixelRatio;
     this._container = container ?? null;
+    this._rectDirty = true;
+    this._cachedRect = null;
+    if (this._container) {
+      this._rectInvalidator = () => {
+        this._rectDirty = true;
+      };
+      this._resizeObserver = new ResizeObserver(this._rectInvalidator);
+      this._resizeObserver.observe(this._container);
+      window.addEventListener("scroll", this._rectInvalidator, { passive: true });
+      this._container.addEventListener("scroll", this._rectInvalidator, { passive: true });
+    }
     const handleCoords = (clientX, clientY) => {
       let x = clientX;
       let y = clientY;
       if (this._container) {
-        const rect = this._container.getBoundingClientRect();
-        x -= rect.left;
-        y -= rect.top;
+        if (this._rectDirty || !this._cachedRect) {
+          const rect = this._container.getBoundingClientRect();
+          this._cachedRect = { left: rect.left, top: rect.top };
+          this._rectDirty = false;
+        }
+        x -= this._cachedRect.left;
+        y -= this._cachedRect.top;
       }
       this.updatePosition(x / this._pixelRatio, y / this._pixelRatio);
     };
@@ -2573,6 +2804,19 @@ var MouseForce = class {
         this._trackTarget.removeEventListener("touchstart", this._touchListener);
       }
     }
+    if (this._resizeObserver) {
+      this._resizeObserver.disconnect();
+      this._resizeObserver = null;
+    }
+    if (this._rectInvalidator) {
+      window.removeEventListener("scroll", this._rectInvalidator);
+      if (this._container) {
+        this._container.removeEventListener("scroll", this._rectInvalidator);
+      }
+      this._rectInvalidator = null;
+    }
+    this._cachedRect = null;
+    this._rectDirty = true;
     this._trackTarget = null;
     this._trackListener = null;
     this._touchListener = null;
@@ -2612,6 +2856,53 @@ var MouseForce = class {
   }
 };
 
+// src/particular/convenience/resize.ts
+function getViewportSize(container) {
+  if (container) {
+    return { w: container.clientWidth, h: container.clientHeight };
+  }
+  return { w: window.innerWidth, h: window.innerHeight };
+}
+function watchResize(callback, options = {}) {
+  const { container, debounceMs = 200, cleanups } = options;
+  const skipSmall = options.skipSmallChanges ?? debounceMs > 0;
+  const initial = getViewportSize(container);
+  let debounceTimer = null;
+  const fire = () => {
+    const current = getViewportSize(container);
+    const scaleX = initial.w > 0 ? current.w / initial.w : 1;
+    const scaleY = initial.h > 0 ? current.h / initial.h : 1;
+    if (skipSmall && Math.abs(scaleX - 1) < 0.01 && Math.abs(scaleY - 1) < 0.01) return;
+    callback(scaleX, scaleY, current);
+  };
+  const handler = () => {
+    if (debounceMs <= 0) {
+      fire();
+      return;
+    }
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(fire, debounceMs);
+  };
+  const teardown = () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+  };
+  if (container) {
+    const ro = new ResizeObserver(handler);
+    ro.observe(container);
+    cleanups?.push(() => {
+      ro.disconnect();
+      teardown();
+    });
+  } else {
+    window.addEventListener("resize", handler);
+    cleanups?.push(() => {
+      window.removeEventListener("resize", handler);
+      teardown();
+    });
+  }
+  return initial;
+}
+
 // src/particular/convenience/forces.ts
 function createForces(engine, container, cleanups) {
   const addAttractor = (config) => {
@@ -2624,10 +2915,9 @@ function createForces(engine, container, cleanups) {
   };
   const addRandomAttractors = (count, config) => {
     const pixelRatio = engine.pixelRatio;
-    const sourceW = container ? container.clientWidth : window.innerWidth;
-    const sourceH = container ? container.clientHeight : window.innerHeight;
-    const viewW = sourceW / pixelRatio;
-    const viewH = sourceH / pixelRatio;
+    const vp = getViewportSize(container);
+    const viewW = vp.w / pixelRatio;
+    const viewH = vp.h / pixelRatio;
     const marginX = viewW * 0.1;
     const marginY = viewH * 0.1;
     const result = [];
@@ -2730,7 +3020,14 @@ function createBoundaryHelper(engine, container, cleanups) {
       }
     };
     rebuild();
-    const ro = new ResizeObserver(rebuild);
+    let rebuildRafId = 0;
+    const ro = new ResizeObserver(() => {
+      if (rebuildRafId) return;
+      rebuildRafId = requestAnimationFrame(() => {
+        rebuildRafId = 0;
+        rebuild();
+      });
+    });
     ro.observe(element);
     if (container) ro.observe(container);
     let scrollRafId = 0;
@@ -2747,6 +3044,7 @@ function createBoundaryHelper(engine, container, cleanups) {
       update: rebuild,
       destroy: () => {
         ro.disconnect();
+        if (rebuildRafId) cancelAnimationFrame(rebuildRafId);
         scrollTarget.removeEventListener("scroll", onScroll);
         if (scrollRafId) cancelAnimationFrame(scrollRafId);
         for (const a of attractors) engine.removeAttractor(a);
@@ -2758,6 +3056,303 @@ function createBoundaryHelper(engine, container, cleanups) {
     return handle;
   };
   return { addBoundary };
+}
+
+// src/particular/convenience/containerGlow.ts
+var EDGE_ANGLES = {
+  top: -Math.PI / 2,
+  bottom: Math.PI / 2,
+  left: Math.PI,
+  right: 0
+};
+function createContainerGlowHelper(engine, container, cleanups) {
+  const addContainerGlow = (config) => {
+    const { element, ...userConfig } = config;
+    const resolved = { ...defaultContainerGlow, ...userConfig };
+    const pr = engine.pixelRatio;
+    let emitters = [];
+    let edgeData = [];
+    let pulseTick = 0;
+    let paused = false;
+    const baseRate = resolved.rate;
+    const buildParticleConfig = (angle) => configureParticle({
+      rate: resolved.rate,
+      life: 999999,
+      particleLife: resolved.particleLife,
+      velocity: Vector.fromAngle(angle, resolved.velocity),
+      spread: resolved.spread,
+      sizeMin: resolved.sizeMin,
+      sizeMax: resolved.sizeMax,
+      velocityMultiplier: 0,
+      fadeTime: resolved.fadeTime,
+      gravity: 0,
+      scaleStep: 1,
+      friction: resolved.friction,
+      frictionSize: 0,
+      acceleration: 0,
+      accelerationSize: 0,
+      colors: resolved.colors,
+      shape: resolved.shape,
+      blendMode: resolved.blendMode,
+      glow: resolved.glow,
+      glowSize: resolved.glowSize,
+      glowColor: resolved.glowColor,
+      glowAlpha: resolved.glowAlpha,
+      shadow: false,
+      trail: false
+    });
+    const rebuild = () => {
+      for (const em of emitters) {
+        engine.emitters.splice(engine.emitters.indexOf(em), 1);
+        em.destroy();
+      }
+      emitters = [];
+      edgeData = [];
+      const refRect = container ? container.getBoundingClientRect() : { left: 0, top: 0 };
+      const elRect = element.getBoundingClientRect();
+      const elLeft = (elRect.left - refRect.left) / pr;
+      const elTop = (elRect.top - refRect.top) / pr;
+      const elW = elRect.width / pr;
+      const elH = elRect.height / pr;
+      const edges = [
+        { edge: "top", offsetX: elW / 2, offsetY: 0, spawnW: elW, spawnH: 0 },
+        { edge: "bottom", offsetX: elW / 2, offsetY: elH, spawnW: elW, spawnH: 0 },
+        { edge: "left", offsetX: 0, offsetY: elH / 2, spawnW: 0, spawnH: elH },
+        { edge: "right", offsetX: elW, offsetY: elH / 2, spawnW: 0, spawnH: elH }
+      ];
+      for (const { edge, offsetX, offsetY, spawnW, spawnH } of edges) {
+        const particleConfig = buildParticleConfig(EDGE_ANGLES[edge]);
+        const emitter = new Emitter({
+          point: new Vector(elLeft + offsetX, elTop + offsetY),
+          ...particleConfig,
+          spawnWidth: spawnW,
+          spawnHeight: spawnH,
+          icons: []
+        });
+        engine.addEmitter(emitter);
+        emitter.isEmitting = true;
+        emitter.emit();
+        emitters.push(emitter);
+        edgeData.push({ edge, offsetX, offsetY });
+      }
+    };
+    const reposition = () => {
+      if (emitters.length === 0) return;
+      const refRect = container ? container.getBoundingClientRect() : { left: 0, top: 0 };
+      const elRect = element.getBoundingClientRect();
+      const elLeft = (elRect.left - refRect.left) / pr;
+      const elTop = (elRect.top - refRect.top) / pr;
+      for (let i = 0; i < emitters.length; i++) {
+        const em = emitters[i];
+        const data = edgeData[i];
+        em.configuration.point.x = elLeft + data.offsetX;
+        em.configuration.point.y = elTop + data.offsetY;
+      }
+    };
+    const onUpdate = () => {
+      if (paused) {
+        for (const em of emitters) em.isEmitting = false;
+        return;
+      }
+      if (resolved.pulseAmplitude > 0 && resolved.pulseSpeed > 0) {
+        pulseTick++;
+        const pulse = 1 + resolved.pulseAmplitude * Math.sin(pulseTick * resolved.pulseSpeed);
+        for (const em of emitters) {
+          em.configuration.rate = baseRate * pulse;
+        }
+      }
+    };
+    rebuild();
+    engine.addEventListener(Particular.UPDATE, onUpdate);
+    const ro = new ResizeObserver(rebuild);
+    ro.observe(element);
+    if (container) ro.observe(container);
+    let scrollRafId = 0;
+    const onScroll = () => {
+      if (scrollRafId) return;
+      scrollRafId = requestAnimationFrame(() => {
+        scrollRafId = 0;
+        reposition();
+      });
+    };
+    const scrollTarget = container ?? window;
+    scrollTarget.addEventListener("scroll", onScroll, { passive: true });
+    const stop = () => {
+      paused = true;
+      for (const em of emitters) em.isEmitting = false;
+    };
+    const start = () => {
+      paused = false;
+      for (const em of emitters) em.isEmitting = true;
+    };
+    const handle = {
+      update: rebuild,
+      stop,
+      start,
+      destroy: () => {
+        engine.removeEventListener(Particular.UPDATE, onUpdate);
+        ro.disconnect();
+        scrollTarget.removeEventListener("scroll", onScroll);
+        if (scrollRafId) cancelAnimationFrame(scrollRafId);
+        for (const em of emitters) {
+          const idx = engine.emitters.indexOf(em);
+          if (idx !== -1) engine.emitters.splice(idx, 1);
+          em.destroy();
+        }
+        emitters = [];
+        edgeData = [];
+      }
+    };
+    cleanups.push(() => handle.destroy());
+    return handle;
+  };
+  return { addContainerGlow };
+}
+
+// src/particular/convenience/mouseTrail.ts
+function createMouseTrailHelper(engine, container, cleanups) {
+  const addMouseTrail = (config = {}) => {
+    const { target: userTarget, ...userConfig } = config;
+    const resolved = { ...defaultMouseTrail, ...userConfig };
+    const pr = engine.pixelRatio;
+    const target = userTarget ?? window;
+    let paused = false;
+    let mouseX = 0;
+    let mouseY = 0;
+    let prevX = 0;
+    let prevY = 0;
+    let mouseSpeed = 0;
+    let hasMoved = false;
+    const particleConfig = configureParticle({
+      rate: resolved.rate,
+      life: 999999,
+      particleLife: resolved.particleLife,
+      velocity: new Vector(0, 0),
+      spread: resolved.spread,
+      sizeMin: resolved.sizeMin,
+      sizeMax: resolved.sizeMax,
+      velocityMultiplier: 0,
+      fadeTime: resolved.fadeTime,
+      gravity: 0,
+      scaleStep: 1,
+      friction: resolved.friction,
+      frictionSize: 0,
+      acceleration: 0,
+      accelerationSize: 0,
+      colors: resolved.colors,
+      shape: resolved.shape,
+      blendMode: resolved.blendMode,
+      glow: resolved.glow,
+      glowSize: resolved.glowSize,
+      glowColor: resolved.glowColor,
+      glowAlpha: resolved.glowAlpha,
+      shadow: false,
+      trail: resolved.trail,
+      trailLength: resolved.trailLength,
+      trailFade: resolved.trailFade,
+      trailShrink: resolved.trailShrink
+    });
+    const emitter = new Emitter({
+      point: new Vector(0, 0),
+      ...particleConfig,
+      spawnWidth: 0,
+      spawnHeight: 0,
+      icons: []
+    });
+    engine.addEmitter(emitter);
+    emitter.isEmitting = false;
+    let cachedRect = null;
+    let rectDirty = true;
+    const invalidateRect = () => {
+      rectDirty = true;
+    };
+    let trailRo = null;
+    if (container) {
+      trailRo = new ResizeObserver(invalidateRect);
+      trailRo.observe(container);
+      window.addEventListener("scroll", invalidateRect, { passive: true });
+      container.addEventListener("scroll", invalidateRect, { passive: true });
+    }
+    const handleCoords = (clientX, clientY) => {
+      let x = clientX;
+      let y = clientY;
+      if (container) {
+        if (rectDirty || !cachedRect) {
+          const rect = container.getBoundingClientRect();
+          cachedRect = { left: rect.left, top: rect.top };
+          rectDirty = false;
+        }
+        x -= cachedRect.left;
+        y -= cachedRect.top;
+      }
+      mouseX = x / pr;
+      mouseY = y / pr;
+      hasMoved = true;
+    };
+    const onMouseMove = (e) => {
+      const me = e;
+      handleCoords(me.clientX, me.clientY);
+    };
+    const onTouchMove = (e) => {
+      const te = e;
+      const touch = te.touches[0];
+      if (touch) handleCoords(touch.clientX, touch.clientY);
+    };
+    target.addEventListener("mousemove", onMouseMove);
+    target.addEventListener("touchmove", onTouchMove, { passive: true });
+    target.addEventListener("touchstart", onTouchMove, { passive: true });
+    const onUpdate = () => {
+      if (paused) {
+        emitter.isEmitting = false;
+        return;
+      }
+      if (!hasMoved) {
+        emitter.isEmitting = false;
+        return;
+      }
+      const dx = mouseX - prevX;
+      const dy = mouseY - prevY;
+      mouseSpeed = Math.sqrt(dx * dx + dy * dy);
+      prevX = mouseX;
+      prevY = mouseY;
+      emitter.configuration.point.x = mouseX;
+      emitter.configuration.point.y = mouseY;
+      if (mouseSpeed < resolved.minSpeed) {
+        emitter.isEmitting = false;
+        return;
+      }
+      const angle = Math.atan2(dy, dx);
+      emitter.configuration.velocity = Vector.fromAngle(angle + Math.PI, resolved.velocity);
+      emitter.isEmitting = true;
+    };
+    engine.addEventListener(Particular.UPDATE, onUpdate);
+    const handle = {
+      stop: () => {
+        paused = true;
+        emitter.isEmitting = false;
+      },
+      start: () => {
+        paused = false;
+      },
+      destroy: () => {
+        engine.removeEventListener(Particular.UPDATE, onUpdate);
+        target.removeEventListener("mousemove", onMouseMove);
+        target.removeEventListener("touchmove", onTouchMove);
+        target.removeEventListener("touchstart", onTouchMove);
+        if (trailRo) trailRo.disconnect();
+        if (container) {
+          window.removeEventListener("scroll", invalidateRect);
+          container.removeEventListener("scroll", invalidateRect);
+        }
+        const idx = engine.emitters.indexOf(emitter);
+        if (idx !== -1) engine.emitters.splice(idx, 1);
+        emitter.destroy();
+      }
+    };
+    cleanups.push(() => handle.destroy());
+    return handle;
+  };
+  return { addMouseTrail };
 }
 
 // src/particular/convenience/effects.ts
@@ -2808,15 +3403,155 @@ function createEffects(engine, mergedConfig) {
   };
   const scatter = (options = {}) => {
     const baseVelocity = options.velocity ?? 10;
+    const rotationImpulse = options.rotation ?? 0;
     const allParticles = engine.getAllParticles();
     for (const particle of allParticles) {
       const angle = Math.random() * Math.PI * 2;
       const magnitude = baseVelocity * (0.3 + Math.random() * 1.4);
       particle.velocity.x += Math.cos(angle) * magnitude;
       particle.velocity.y += Math.sin(angle) * magnitude;
+      if (rotationImpulse > 0) {
+        particle.rotationVelocity += (Math.random() - 0.5) * 2 * rotationImpulse;
+      }
     }
   };
-  return { explode, scatter };
+  let wobbleCleanup = null;
+  const startWobble = (config) => {
+    stopWobble();
+    const { track, ...rest } = config ?? {};
+    const resolved = { ...defaultWobble, ...rest };
+    for (const p of engine.getAllParticles()) {
+      p.preventSettle = true;
+    }
+    const allParticles = engine.getAllParticles();
+    let cx = 0, cy = 0, homeCount = 0;
+    for (const p of allParticles) {
+      if (p.homePosition) {
+        cx += p.homePosition.x;
+        cy += p.homePosition.y;
+        homeCount++;
+      }
+    }
+    if (homeCount > 0) {
+      cx /= homeCount;
+      cy /= homeCount;
+    }
+    const center = { x: cx, y: cy };
+    let mouseX = center.x;
+    let mouseY = center.y;
+    let mouseVelX = 0;
+    let mouseVelY = 0;
+    let hasMouse = false;
+    const eventCleanups = [];
+    if (track) {
+      const pr = mergedConfig.pixelRatio;
+      const container = engine.container;
+      let cachedRect = null;
+      let rectDirty = true;
+      const invalidateRect = () => {
+        rectDirty = true;
+      };
+      let wobbleRo = null;
+      if (container) {
+        wobbleRo = new ResizeObserver(invalidateRect);
+        wobbleRo.observe(container);
+        window.addEventListener("scroll", invalidateRect, { passive: true });
+        container.addEventListener("scroll", invalidateRect, { passive: true });
+      }
+      const updateMouse = (clientX, clientY) => {
+        let x = clientX;
+        let y = clientY;
+        if (container) {
+          if (rectDirty || !cachedRect) {
+            const rect = container.getBoundingClientRect();
+            cachedRect = { left: rect.left, top: rect.top };
+            rectDirty = false;
+          }
+          x -= cachedRect.left;
+          y -= cachedRect.top;
+        }
+        const newX = x / pr;
+        const newY = y / pr;
+        if (hasMouse) {
+          mouseVelX = newX - mouseX;
+          mouseVelY = newY - mouseY;
+        }
+        mouseX = newX;
+        mouseY = newY;
+        hasMouse = true;
+      };
+      const onMouseMove = (e) => updateMouse(e.clientX, e.clientY);
+      const onTouchMove = (e) => {
+        if (e.touches.length > 0) {
+          updateMouse(e.touches[0].clientX, e.touches[0].clientY);
+        }
+      };
+      track.addEventListener("mousemove", onMouseMove);
+      track.addEventListener("touchmove", onTouchMove);
+      eventCleanups.push(
+        () => track.removeEventListener("mousemove", onMouseMove),
+        () => track.removeEventListener("touchmove", onTouchMove),
+        () => {
+          if (wobbleRo) wobbleRo.disconnect();
+        },
+        () => {
+          if (container) {
+            window.removeEventListener("scroll", invalidateRect);
+            container.removeEventListener("scroll", invalidateRect);
+          }
+        }
+      );
+    }
+    const wobble = () => {
+      const particles = engine.getAllParticles();
+      const pr = mergedConfig.pixelRatio;
+      const engineRadius = resolved.mouseRadius / pr;
+      for (const p of particles) {
+        if (track && p.homePosition) {
+          const outDx = p.homePosition.x - center.x;
+          const outDy = p.homePosition.y - center.y;
+          const outAngle = Math.atan2(outDy, outDx);
+          const mDx = p.position.x - mouseX;
+          const mDy = p.position.y - mouseY;
+          const mDist = Math.sqrt(mDx * mDx + mDy * mDy);
+          const proximity = Math.max(0, 1 - mDist / engineRadius);
+          const angleJitter = (Math.random() - 0.5) * 0.8;
+          const pushAngle = outAngle + angleJitter;
+          const pushStrength = resolved.velocity * (0.3 + proximity * resolved.mouseStrength) * (0.3 + Math.random() * 1.4);
+          p.velocity.x += Math.cos(pushAngle) * pushStrength;
+          p.velocity.y += Math.sin(pushAngle) * pushStrength;
+          if (proximity > 0.1) {
+            p.velocity.x += mouseVelX * proximity * 0.3;
+            p.velocity.y += mouseVelY * proximity * 0.3;
+          }
+          p.rotationVelocity += (Math.random() - 0.5) * resolved.rotation * 2 * (0.3 + proximity * 2);
+          p.velocity.x += (Math.random() - 0.5) * resolved.velocity * 0.3;
+          p.velocity.y += (Math.random() - 0.5) * resolved.velocity * 0.3;
+        } else {
+          p.velocity.x += (Math.random() - 0.5) * resolved.velocity * 2;
+          p.velocity.y += (Math.random() - 0.5) * resolved.velocity * 2;
+          p.rotationVelocity += (Math.random() - 0.5) * resolved.rotation * 2;
+        }
+      }
+      mouseVelX *= 0.85;
+      mouseVelY *= 0.85;
+    };
+    engine.addEventListener("UPDATE", wobble);
+    wobbleCleanup = () => {
+      engine.removeEventListener("UPDATE", wobble);
+      for (const cleanup of eventCleanups) cleanup();
+      for (const p of engine.getAllParticles()) {
+        p.preventSettle = false;
+      }
+    };
+  };
+  const stopWobble = () => {
+    if (wobbleCleanup) {
+      wobbleCleanup();
+      wobbleCleanup = null;
+    }
+  };
+  return { explode, scatter, startWobble, stopWobble };
 }
 
 // src/particular/utils/pixelSampler.ts
@@ -3313,12 +4048,6 @@ function captureElement(element) {
 
 // src/particular/convenience/imageParticles.ts
 function createImageParticles(engine, mergedConfig, container, cleanups) {
-  const getViewportSize = () => {
-    if (container) {
-      return { w: container.clientWidth, h: container.clientHeight };
-    }
-    return { w: window.innerWidth, h: window.innerHeight };
-  };
   const imageToParticles = async (config) => {
     const merged = { ...defaultImageParticles, ...config };
     const {
@@ -3351,9 +4080,15 @@ function createImageParticles(engine, mergedConfig, container, cleanups) {
       intro
     } = merged;
     const resolution = resolutionOverride ?? (shape === "square" ? 400 : 200);
-    const image = await loadImage(imageSrc);
+    let image;
+    try {
+      image = await loadImage(imageSrc);
+    } catch (err) {
+      console.warn("Particular: imageToParticles failed to load image.", typeof imageSrc === "string" ? imageSrc : "(HTMLImageElement)", err);
+      throw err;
+    }
     const aspect = image.naturalWidth / image.naturalHeight;
-    const viewport = getViewportSize();
+    const viewport = getViewportSize(container);
     const x = config.x ?? viewport.w / 2;
     const y = config.y ?? viewport.h / 2;
     let displayW;
@@ -3400,13 +4135,13 @@ function createImageParticles(engine, mergedConfig, container, cleanups) {
       icons: []
     });
     collector.isEmitting = false;
-    const makeParticle = (sample2, introScaleStep) => {
-      const px = originX + sample2.nx * engineW;
-      const py = originY + sample2.ny * engineH;
+    const makeParticle = (sample, introScaleStep) => {
+      const px = originX + sample.nx * engineW;
+      const py = originY + sample.ny * engineH;
       const homePos = new Vector(px, py);
       const particle = new Particle({
-        color: sample2.color,
-        baseAlpha: sample2.alpha,
+        color: sample.color,
+        baseAlpha: sample.alpha,
         point: new Vector(px, py),
         velocity: new Vector(0, 0),
         acceleration: new Vector(0, 0),
@@ -3437,7 +4172,7 @@ function createImageParticles(engine, mergedConfig, container, cleanups) {
         homeCenter: imageCenter,
         homeConfig
       });
-      if (shape === "triangle" && (sample2.gridX + sample2.gridY) % 2 === 1) {
+      if (shape === "triangle" && (sample.gridX + sample.gridY) % 2 === 1) {
         particle.rotation = 180;
       }
       particle.init(null, engine);
@@ -3449,8 +4184,8 @@ function createImageParticles(engine, mergedConfig, container, cleanups) {
       const introScaleStep = size / 15;
       if (mode === "scatter") {
         const scatterRadius = Math.max(engineW, engineH) * 0.3;
-        for (const sample2 of samples) {
-          const particle = makeParticle(sample2, introScaleStep);
+        for (const sample of samples) {
+          const particle = makeParticle(sample, introScaleStep);
           const angle = Math.random() * Math.PI * 2;
           const dist = Math.random() * scatterRadius;
           particle.position.x += Math.cos(angle) * dist;
@@ -3576,57 +4311,41 @@ function createImageParticles(engine, mergedConfig, container, cleanups) {
         }
       }
     } else {
-      for (const sample2 of samples) {
-        const particle = makeParticle(sample2);
+      for (const sample of samples) {
+        const particle = makeParticle(sample);
         collector.particles.push(particle);
       }
       engine.addEmitter(collector);
     }
     const autoCenter = config.autoCenter ?? true;
     if (autoCenter) {
-      let debounceTimer = null;
-      const initialW = window.innerWidth;
-      const initialH = window.innerHeight;
-      const onResize = () => {
-        if (debounceTimer) clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-          const scaleX = window.innerWidth / initialW;
-          const scaleY = window.innerHeight / initialH;
-          if (Math.abs(scaleX - 1) < 0.01 && Math.abs(scaleY - 1) < 0.01) return;
-          const idx = engine.emitters.indexOf(collector);
-          if (idx !== -1) engine.emitters.splice(idx, 1);
-          collector.particles.length = 0;
-          const scaledConfig = {
-            ...config,
-            intro: void 0,
-            autoCenter: false
-          };
-          if (config.x != null) scaledConfig.x = config.x * scaleX;
-          if (config.y != null) scaledConfig.y = config.y * scaleY;
-          delete scaledConfig.width;
-          delete scaledConfig.height;
-          imageToParticles(scaledConfig).then((newCollector) => {
-            collector.particles.push(...newCollector.particles);
-            const newIdx = engine.emitters.indexOf(newCollector);
-            if (newIdx !== -1) engine.emitters.splice(newIdx, 1);
-            engine.addEmitter(collector);
-          });
-        }, 200);
-      };
-      if (container) {
-        const ro = new ResizeObserver(onResize);
-        ro.observe(container);
-        cleanups?.push(() => {
-          ro.disconnect();
-          if (debounceTimer) clearTimeout(debounceTimer);
+      let resizeGen = 0;
+      watchResize((scaleX, scaleY) => {
+        const gen = ++resizeGen;
+        const idx = engine.emitters.indexOf(collector);
+        if (idx !== -1) engine.emitters.splice(idx, 1);
+        collector.particles.length = 0;
+        const scaledConfig = {
+          ...config,
+          intro: void 0,
+          autoCenter: false
+        };
+        if (config.x != null) scaledConfig.x = config.x * scaleX;
+        if (config.y != null) scaledConfig.y = config.y * scaleY;
+        if (config.width != null) scaledConfig.width = config.width * scaleX;
+        if (config.height != null) scaledConfig.height = config.height * scaleY;
+        imageToParticles(scaledConfig).then((newCollector) => {
+          if (gen !== resizeGen) {
+            const staleIdx = engine.emitters.indexOf(newCollector);
+            if (staleIdx !== -1) engine.emitters.splice(staleIdx, 1);
+            return;
+          }
+          collector.particles.push(...newCollector.particles);
+          const newIdx = engine.emitters.indexOf(newCollector);
+          if (newIdx !== -1) engine.emitters.splice(newIdx, 1);
+          engine.addEmitter(collector);
         });
-      } else {
-        window.addEventListener("resize", onResize);
-        cleanups?.push(() => {
-          window.removeEventListener("resize", onResize);
-          if (debounceTimer) clearTimeout(debounceTimer);
-        });
-      }
+      }, { container, cleanups });
     }
     return collector;
   };
@@ -3638,24 +4357,40 @@ function createImageParticles(engine, mergedConfig, container, cleanups) {
       image: canvasToDataURL(textCanvas)
     });
   };
+  const readElementRect = (element) => {
+    const rect = element.getBoundingClientRect();
+    const containerRect = container?.getBoundingClientRect();
+    return {
+      x: rect.left + rect.width / 2 - (containerRect?.left ?? 0),
+      y: rect.top + rect.height / 2 - (containerRect?.top ?? 0),
+      width: rect.width,
+      height: rect.height
+    };
+  };
   const elementToParticles = async (element, config) => {
     const merged = { ...defaultElementParticles, ...config };
     const { hideElement, restoreElement, ...imageConfig } = merged;
-    const capturedCanvas = captureElement(element);
+    let capturedCanvas;
+    try {
+      capturedCanvas = captureElement(element);
+    } catch (err) {
+      console.warn("Particular: elementToParticles failed to capture element.", element, err);
+      throw err;
+    }
     const dataURL = canvasToDataURL(capturedCanvas);
-    const rect = element.getBoundingClientRect();
-    const containerRect = container?.getBoundingClientRect();
-    const x = imageConfig.x ?? rect.left + rect.width / 2 - (containerRect?.left ?? 0);
-    const y = imageConfig.y ?? rect.top + rect.height / 2 - (containerRect?.top ?? 0);
-    const width = imageConfig.width ?? rect.width;
-    const height = imageConfig.height ?? rect.height;
+    const elemRect = readElementRect(element);
+    const x = imageConfig.x ?? elemRect.x;
+    const y = imageConfig.y ?? elemRect.y;
+    const width = imageConfig.width ?? elemRect.width;
+    const height = imageConfig.height ?? elemRect.height;
     const emitter = await imageToParticles({
       ...imageConfig,
       image: dataURL,
       x,
       y,
       width,
-      height
+      height,
+      autoCenter: false
     });
     if (hideElement) {
       element.style.visibility = "hidden";
@@ -3664,6 +4399,49 @@ function createImageParticles(engine, mergedConfig, container, cleanups) {
       cleanups?.push(() => {
         element.style.visibility = "";
       });
+    }
+    if (imageConfig.autoCenter !== false) {
+      let lastX = x;
+      let lastY = y;
+      let lastW = width;
+      let lastH = height;
+      let elemResizeGen = 0;
+      watchResize(() => {
+        const gen = ++elemResizeGen;
+        const newRect = readElementRect(element);
+        const newX = imageConfig.x ?? newRect.x;
+        const newY = imageConfig.y ?? newRect.y;
+        const newW = imageConfig.width ?? newRect.width;
+        const newH = imageConfig.height ?? newRect.height;
+        if (Math.abs(newX - lastX) < 1 && Math.abs(newY - lastY) < 1 && Math.abs(newW - lastW) < 1 && Math.abs(newH - lastH) < 1) return;
+        lastX = newX;
+        lastY = newY;
+        lastW = newW;
+        lastH = newH;
+        const idx = engine.emitters.indexOf(emitter);
+        if (idx !== -1) engine.emitters.splice(idx, 1);
+        emitter.particles.length = 0;
+        imageToParticles({
+          ...imageConfig,
+          image: dataURL,
+          x: newX,
+          y: newY,
+          width: newW,
+          height: newH,
+          autoCenter: false,
+          intro: void 0
+        }).then((newCollector) => {
+          if (gen !== elemResizeGen) {
+            const staleIdx = engine.emitters.indexOf(newCollector);
+            if (staleIdx !== -1) engine.emitters.splice(staleIdx, 1);
+            return;
+          }
+          emitter.particles.push(...newCollector.particles);
+          const newIdx = engine.emitters.indexOf(newCollector);
+          if (newIdx !== -1) engine.emitters.splice(newIdx, 1);
+          engine.addEmitter(emitter);
+        });
+      }, { container, cleanups, skipSmallChanges: false });
     }
     return emitter;
   };
@@ -3675,6 +4453,257 @@ function createImageParticles(engine, mergedConfig, container, cleanups) {
     }
   };
   return { imageToParticles, textToParticles, elementToParticles, setIdleEffect };
+}
+
+// src/particular/utils/imageChunker.ts
+function buildJitteredGrid(w, h, cols, rows, jitter) {
+  const cellW = w / cols;
+  const cellH = h / rows;
+  const grid = [];
+  for (let j = 0; j <= rows; j++) {
+    const row = [];
+    for (let i = 0; i <= cols; i++) {
+      let x = i * cellW;
+      let y = j * cellH;
+      if (i > 0 && i < cols && j > 0 && j < rows) {
+        x += (Math.random() - 0.5) * cellW * jitter;
+        y += (Math.random() - 0.5) * cellH * jitter;
+      }
+      row.push({ x, y });
+    }
+    grid.push(row);
+  }
+  return grid;
+}
+function clipPolygon(source, points, expand = 1) {
+  let clipPoints = points;
+  if (expand > 0) {
+    const pcx = points.reduce((s, p) => s + p.x, 0) / points.length;
+    const pcy = points.reduce((s, p) => s + p.y, 0) / points.length;
+    clipPoints = points.map((p) => {
+      const dx = p.x - pcx;
+      const dy = p.y - pcy;
+      const d = Math.sqrt(dx * dx + dy * dy) || 1;
+      return { x: p.x + dx / d * expand, y: p.y + dy / d * expand };
+    });
+  }
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const p of points) {
+    if (p.x < minX) minX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y > maxY) maxY = p.y;
+  }
+  const margin = Math.ceil(expand) + 1;
+  minX -= margin;
+  minY -= margin;
+  maxX += margin;
+  maxY += margin;
+  const bw = Math.ceil(maxX - minX);
+  const bh = Math.ceil(maxY - minY);
+  const side = Math.max(bw, bh);
+  const padX = (side - bw) / 2;
+  const padY = (side - bh) / 2;
+  const canvas = document.createElement("canvas");
+  canvas.width = side;
+  canvas.height = side;
+  const ctx = canvas.getContext("2d");
+  ctx.beginPath();
+  ctx.moveTo(clipPoints[0].x - minX + padX, clipPoints[0].y - minY + padY);
+  for (let i = 1; i < clipPoints.length; i++) {
+    ctx.lineTo(clipPoints[i].x - minX + padX, clipPoints[i].y - minY + padY);
+  }
+  ctx.closePath();
+  ctx.clip();
+  ctx.drawImage(source, -minX + padX, -minY + padY);
+  return canvas;
+}
+async function generateImageChunks(source, chunkCount, jitter = 0.35) {
+  const w = source.width;
+  const h = source.height;
+  const aspect = w / h;
+  const cols = Math.max(2, Math.round(Math.sqrt(chunkCount * aspect)));
+  const rows = Math.max(2, Math.round(chunkCount / cols));
+  const grid = buildJitteredGrid(w, h, cols, rows, jitter);
+  const chunks = [];
+  const imagePromises = [];
+  for (let j = 0; j < rows; j++) {
+    for (let i = 0; i < cols; i++) {
+      const tl = grid[j][i];
+      const tr = grid[j][i + 1];
+      const br = grid[j + 1][i + 1];
+      const bl = grid[j + 1][i];
+      const points = [tl, tr, br, bl];
+      const pMinX = Math.min(tl.x, tr.x, br.x, bl.x);
+      const pMaxX = Math.max(tl.x, tr.x, br.x, bl.x);
+      const pMinY = Math.min(tl.y, tr.y, br.y, bl.y);
+      const pMaxY = Math.max(tl.y, tr.y, br.y, bl.y);
+      const cx = (pMinX + pMaxX) / 2;
+      const cy = (pMinY + pMaxY) / 2;
+      const chunkCanvas = clipPolygon(source, points);
+      const chunk = {
+        image: null,
+        cx: cx / w,
+        cy: cy / h,
+        size: chunkCanvas.width
+      };
+      chunks.push(chunk);
+      const p = new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          chunk.image = img;
+          resolve();
+        };
+        img.src = chunkCanvas.toDataURL();
+      });
+      imagePromises.push(p);
+    }
+  }
+  await Promise.all(imagePromises);
+  return chunks;
+}
+
+// src/particular/convenience/imageShatter.ts
+function createImageShatterHelper(engine, mergedConfig, container) {
+  const shatterImage = async (config) => {
+    const resolved = { ...defaultImageShatter, ...config };
+    const {
+      image: imageSrc,
+      chunkCount,
+      jitter,
+      velocity,
+      velocitySpread,
+      gravity,
+      rotationSpeed,
+      particleLife,
+      fadeTime,
+      friction,
+      scaleStep,
+      homeConfig
+    } = resolved;
+    const interactive = !!homeConfig;
+    let image;
+    try {
+      image = await loadImage(imageSrc);
+    } catch (err) {
+      console.warn("Particular: shatterImage failed to load image.", typeof imageSrc === "string" ? imageSrc : "(HTMLImageElement)", err);
+      throw err;
+    }
+    const aspect = image.naturalWidth / image.naturalHeight;
+    const viewport = getViewportSize(container);
+    const x = config.x ?? viewport.w / 2;
+    const y = config.y ?? viewport.h / 2;
+    let displayW;
+    let displayH;
+    if (config.width != null && config.height != null) {
+      displayW = config.width;
+      displayH = config.height;
+    } else if (config.width != null) {
+      displayW = config.width;
+      displayH = config.width / aspect;
+    } else if (config.height != null) {
+      displayH = config.height;
+      displayW = config.height * aspect;
+    } else {
+      displayW = Math.min(viewport.w * 0.8, 800);
+      displayH = displayW / aspect;
+    }
+    const pr = mergedConfig.pixelRatio;
+    const engineW = displayW / pr;
+    const engineH = displayH / pr;
+    const centerX = x / pr;
+    const centerY = y / pr;
+    const sourceCanvas = document.createElement("canvas");
+    sourceCanvas.width = Math.round(displayW);
+    sourceCanvas.height = Math.round(displayH);
+    const sourceCtx = sourceCanvas.getContext("2d");
+    sourceCtx.drawImage(image, 0, 0, sourceCanvas.width, sourceCanvas.height);
+    const chunks = await generateImageChunks(sourceCanvas, chunkCount, jitter);
+    if (engine.maxCount < engine.getCount() + chunks.length) {
+      engine.maxCount = engine.getCount() + chunks.length;
+    }
+    const collectorConfig = configureParticle({}, mergedConfig);
+    const collector = new Emitter({
+      point: new Vector(0, 0),
+      ...collectorConfig,
+      rate: 0,
+      life: 0,
+      icons: []
+    });
+    collector.isEmitting = false;
+    const imageCenter = new Vector(centerX, centerY);
+    for (const chunk of chunks) {
+      const px = centerX - engineW / 2 + chunk.cx * engineW;
+      const py = centerY - engineH / 2 + chunk.cy * engineH;
+      const chunkSize = chunk.size / sourceCanvas.width * engineW / 2;
+      if (interactive) {
+        const homePos = new Vector(px, py);
+        const particle = new Particle({
+          point: new Vector(px, py),
+          velocity: new Vector(0, 0),
+          acceleration: new Vector(0, 0),
+          friction,
+          size: chunkSize,
+          particleLife: Infinity,
+          gravity: 0,
+          scaleStep: chunkSize,
+          // instant full size
+          fadeTime: 1,
+          colors: [],
+          color: "#ffffff",
+          shape: "square",
+          homePosition: homePos,
+          homeCenter: imageCenter,
+          homeConfig
+        });
+        particle.init(chunk.image, engine);
+        collector.particles.push(particle);
+      } else {
+        const dx = px - centerX;
+        const dy = py - centerY;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const angle = Math.atan2(dy, dx);
+        const spreadAngle = angle + (Math.random() - 0.5) * 0.6;
+        const speedMul = 1 + (Math.random() - 0.5) * 2 * velocitySpread;
+        const distFactor = 0.5 + dist / Math.max(engineW, engineH) * 1.5;
+        const speed = velocity * speedMul * distFactor;
+        const particle = new Particle({
+          point: new Vector(px, py),
+          velocity: new Vector(
+            Math.cos(spreadAngle) * speed,
+            Math.sin(spreadAngle) * speed
+          ),
+          acceleration: new Vector(0, 0),
+          friction,
+          size: chunkSize,
+          particleLife,
+          gravity,
+          scaleStep,
+          fadeTime,
+          colors: [],
+          color: "#ffffff",
+          shape: "square"
+        });
+        particle.rotationVelocity = (Math.random() - 0.5) * 2 * rotationSpeed;
+        particle.init(chunk.image, engine);
+        collector.particles.push(particle);
+      }
+    }
+    engine.addEmitter(collector);
+    return collector;
+  };
+  const shatterText = async (text, config) => {
+    const { textConfig, ...shatterConfig } = config ?? {};
+    const textCanvas = createTextImage({ text, ...textConfig });
+    return shatterImage({
+      ...shatterConfig,
+      image: canvasToDataURL(textCanvas)
+    });
+  };
+  return { shatterImage, shatterText };
 }
 
 // src/particular/convenience/index.ts
@@ -3689,6 +4718,17 @@ function createParticles({
   container,
   mouseForce
 } = {}) {
+  if (typeof document === "undefined") {
+    throw new Error("Particular: createParticles() requires a browser environment (document is not defined). Wrap the call in a useEffect or check for window before calling.");
+  }
+  if (container) {
+    const position = getComputedStyle(container).position;
+    if (position === "static") {
+      console.warn(
+        'Particular: container element has position: static. The canvas will be positioned with position: absolute inside it, which requires a positioned parent (relative, absolute, or fixed). Add "position: relative" to your container.'
+      );
+    }
+  }
   let canvas;
   let canvasAutoCreated = false;
   if (userCanvas) {
@@ -3772,8 +4812,11 @@ function createParticles({
   }
   const forces = createForces(engine, container, cleanups);
   const boundary = createBoundaryHelper(engine, container, cleanups);
+  const containerGlow = createContainerGlowHelper(engine, container, cleanups);
+  const mouseTrail = createMouseTrailHelper(engine, container, cleanups);
   const effects = createEffects(engine, mergedConfig);
   const imageApi = createImageParticles(engine, mergedConfig, container, cleanups);
+  const imageShatter = createImageShatterHelper(engine, mergedConfig, container);
   if (mouseForce) {
     const mouseConfig = mouseForce === true ? { track: true } : { track: true, ...mouseForce };
     forces.addMouseForce(mouseConfig);
@@ -3792,8 +4835,11 @@ function createParticles({
     attachClickBurst,
     ...forces,
     ...boundary,
+    ...containerGlow,
+    ...mouseTrail,
     ...effects,
     ...imageApi,
+    ...imageShatter,
     destroy: destroy2
   };
 }
@@ -3823,10 +4869,10 @@ function startScreensaver({
     container
   });
   const pixelRatio = controller.engine.pixelRatio;
-  const sourceW = container ? container.clientWidth : window.innerWidth;
-  const spawnWidth = sourceW / pixelRatio;
+  const initialSize = getViewportSize(container);
+  const spawnWidth = initialSize.w / pixelRatio;
   const emitter = new Emitter({
-    point: new Vector(sourceW / 2 / pixelRatio, 0),
+    point: new Vector(initialSize.w / 2 / pixelRatio, 0),
     ...configureParticle(mergedConfig),
     spawnWidth,
     spawnHeight: defaultParticle.spawnHeight,
@@ -3843,23 +4889,11 @@ function startScreensaver({
       ...mouseWindOption
     });
   }
-  if (autoResize && !container) {
-    const onResize = () => {
-      const newSpawnWidth = window.innerWidth / pixelRatio;
-      emitter.configuration.spawnWidth = newSpawnWidth;
-      emitter.configuration.point.x = window.innerWidth / 2 / pixelRatio;
-    };
-    window.addEventListener("resize", onResize);
-    cleanups.push(() => window.removeEventListener("resize", onResize));
-  }
-  if (autoResize && container) {
-    const ro = new ResizeObserver(() => {
-      const newSpawnWidth = container.clientWidth / pixelRatio;
-      emitter.configuration.spawnWidth = newSpawnWidth;
-      emitter.configuration.point.x = container.clientWidth / 2 / pixelRatio;
-    });
-    ro.observe(container);
-    cleanups.push(() => ro.disconnect());
+  if (autoResize) {
+    watchResize((_sx, _sy, current) => {
+      emitter.configuration.spawnWidth = current.w / pixelRatio;
+      emitter.configuration.point.x = current.w / 2 / pixelRatio;
+    }, { container, debounceMs: 0, cleanups });
   }
   const destroy2 = () => {
     for (const cleanup of cleanups) cleanup();
@@ -3925,6 +4959,12 @@ function useParticles({
   const scatter = useCallback((options) => {
     controllerRef.current?.scatter(options);
   }, []);
+  const startWobble = useCallback((config2) => {
+    controllerRef.current?.startWobble(config2);
+  }, []);
+  const stopWobble = useCallback(() => {
+    controllerRef.current?.stopWobble();
+  }, []);
   const imageToParticles = useCallback((config2) => {
     controllerRef.current?.imageToParticles(config2);
   }, []);
@@ -3940,6 +4980,18 @@ function useParticles({
     },
     []
   );
+  const shatterImage = useCallback((config2) => {
+    controllerRef.current?.shatterImage(config2);
+  }, []);
+  const shatterText = useCallback(
+    (text, config2) => {
+      controllerRef.current?.shatterText(text, config2);
+    },
+    []
+  );
+  const setIdleEffect = useCallback((enabled) => {
+    controllerRef.current?.setIdleEffect(enabled);
+  }, []);
   return {
     canvasRef,
     canvasStyle,
@@ -3948,9 +5000,14 @@ function useParticles({
     burstFromEvent,
     explode,
     scatter,
+    startWobble,
+    stopWobble,
     imageToParticles,
     textToParticles,
-    elementToParticles
+    elementToParticles,
+    shatterImage,
+    shatterText,
+    setIdleEffect
   };
 }
 function useScreensaver({
