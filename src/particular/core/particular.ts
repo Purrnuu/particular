@@ -5,6 +5,7 @@ import { setParticlePoolSize } from '../components/particle';
 import type Emitter from '../components/emitter';
 import type Attractor from '../components/attractor';
 import type MouseForce from '../components/mouseForce';
+import type FlockingForce from '../components/flockingForce';
 import type { ParticularConfig, ForceSource } from '../types';
 
 interface Renderer {
@@ -21,6 +22,7 @@ export default class Particular implements IEventDispatcher {
   emitters: Emitter[] = [];
   attractors: Attractor[] = [];
   mouseForces: MouseForce[] = [];
+  flockingForces: FlockingForce[] = [];
   renderers: Renderer[] = [];
   maxCount: number = defaultParticular.maxCount;
   width = 0;
@@ -118,6 +120,17 @@ export default class Particular implements IEventDispatcher {
     }
   }
 
+  addFlockingForce(flockingForce: FlockingForce): void {
+    this.flockingForces.push(flockingForce);
+  }
+
+  removeFlockingForce(flockingForce: FlockingForce): void {
+    const index = this.flockingForces.indexOf(flockingForce);
+    if (index !== -1) {
+      this.flockingForces.splice(index, 1);
+    }
+  }
+
   update = (timestamp?: DOMHighResTimeStamp): void => {
     this.animateRequest = window.requestAnimationFrame(this.update);
     if (this.isOn) {
@@ -150,13 +163,23 @@ export default class Particular implements IEventDispatcher {
       mf.decay(dt);
     }
 
+    // Pre-compute flocking forces (requires all particles for neighbor queries)
+    if (this.flockingForces.length > 0) {
+      const allParticles = this.getAllParticles();
+      for (const ff of this.flockingForces) {
+        ff.preCompute(allParticles, dt);
+      }
+    }
+
     // Reuse cached array for combined forces to avoid per-frame allocation
     let forces: ForceSource[];
-    if (this.mouseForces.length > 0) {
+    const hasExtra = this.mouseForces.length > 0 || this.flockingForces.length > 0;
+    if (hasExtra) {
       const combined = this._combinedForces;
       combined.length = 0;
       for (const a of this.attractors) combined.push(a);
       for (const mf of this.mouseForces) combined.push(mf);
+      for (const ff of this.flockingForces) combined.push(ff);
       forces = combined;
     } else {
       forces = this.attractors;
@@ -215,6 +238,7 @@ export default class Particular implements IEventDispatcher {
     destroy(this.renderers);
     destroy(this.emitters);
     this.attractors = [];
+    this.flockingForces = [];
     destroy(this.mouseForces);
   }
 }

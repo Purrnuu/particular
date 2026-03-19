@@ -197,9 +197,35 @@ The `MouseForceConfig.track` field wires self-tracking through the convenience l
 
 `controller.addMouseForce({ track: true, strength: 1, ... })` replaces the old pattern of adding a force + wiring a `mousemove` listener + dividing by `pixelRatio` manually.
 
+## FlockingForce (Boids)
+
+File: `src/particular/components/flockingForce.ts`
+
+Craig Reynolds' Boids flocking — three steering rules applied as a ForceSource:
+
+- **Separation**: Push away from neighbors within `separationDistance` (default 25). Force = sum of normalized (self - neighbor) vectors.
+- **Alignment**: Steer toward average neighbor velocity. Force = `(avgVelocity - selfVelocity) * alignmentWeight`.
+- **Cohesion**: Steer toward average neighbor position. Force = `(avgPosition - selfPosition) * 0.01 * cohesionWeight`.
+
+### Architecture
+
+Uses `preCompute(particles, dt)` hook — called once per frame in `Particular.updateEmitters()` before particle updates. Pre-computes per-particle forces via spatial hash and stores in `WeakMap<Particle, {x,y,z}>`. `getForce(position, particle)` returns the pre-computed force via WeakMap lookup. Returns zero when `particle` param is omitted (backward compat).
+
+### Spatial Hash Grid
+
+2D grid (9-cell neighbor query) with Szudzik pairing. Cell arrays are pooled to avoid GC. Distance checks include z when any particle has `z !== 0` (detected once per `preCompute`). For pure 2D scenes, z-overhead is zero. Cell size = `neighborRadius`.
+
+### Config
+
+`FlockingForceConfig`: `neighborRadius` (100), `separationWeight` (1.5), `alignmentWeight` (1.0), `cohesionWeight` (1.0), `maxSteeringForce` (0.5), `maxSpeed` (4), `separationDistance` (25). Defaults in `defaultFlockingForce`.
+
+### Speed Clamping
+
+After computing the steering force, `getForce` checks if applying the force would exceed `maxSpeed`. If so, it adjusts the force to bring velocity to `maxSpeed` in the desired direction. This prevents runaway acceleration.
+
 ## ForceSource Interface
 
-Both `Attractor` and `MouseForce` implement `ForceSource { getForce(position: Vector): Vector }`. Engine merges `[...attractors, ...mouseForces]` each frame, passed to `Particle.update(forces)`.
+`Attractor`, `MouseForce`, and `FlockingForce` implement `ForceSource { getForce(position: Vector, particle?: Particle): Vector; preCompute?(particles, dt): void }`. Engine merges `[...attractors, ...mouseForces, ...flockingForces]` each frame, passed to `Particle.update(forces)`. The optional `particle` param is used by FlockingForce for identity-based WeakMap lookup. The optional `preCompute` hook is called once per frame before particle updates for forces that need neighbor access.
 
 ### Interaction Model Guideline
 
@@ -213,7 +239,13 @@ Engine-level components that need DOM event wiring (e.g. mouse tracking, touch i
 
 Chain: `ParticleConfig.colors?` → `Emitter` constructor (generates palette if empty) → `EmitterConfiguration.colors` → `Particle` constructor.
 
-Built-in palettes: snow (white-offwhite), grayscale, coolBlue (cool blue range), muted (desaturated warm/cool), blue (bold saturated blue), orange (bold saturated orange), green (bold saturated green), meteor (white-hot to deep red), finland, usa.
+Built-in palettes (all in `presets.ts`, exported via `colorPalettes` map and `presets.Colors`):
+- **Naturals**: snow (white-offwhite), grayscale, ash (dark grey), slate (dark blue-grey)
+- **Blues**: coolBlue, blue, magic (blue-purple sparkle, used by magic preset and defaults), nebula (blue-purple-pink, used by galaxySpin), fairy (pastel blue-purple-teal-mint)
+- **Warms**: orange, amber (warm orange-gold glow), gold (yellow-orange), solar (hot reds/whites, used by supernova), meteor (white-hot to deep red)
+- **Accents**: green, emerald (green to pastel mint), rose (hot-to-pastel pink), violet (deep purple), muted (desaturated warm/cool)
+- **Multi**: fireworks (vivid multicolor), water (cyan-white)
+- **Flags**: finland, usa
 
 The `colorPalettes` export from `presets.ts` provides a `Record<string, string[]>` lookup of all named palettes, used by Storybook's `colorPalette` select control.
 
@@ -230,6 +262,7 @@ Curated and intentionally limited. Polish over quantity.
 - `presets.Ambient.snow` — gentle snowfall (continuous, low rate, long life, gravityJitter 0.5 for natural drift)
 - `presets.Ambient.meteors` — bright diagonal streaks with glowing trails, accelerating as they fall, gravityJitter 0.3
 - `presets.Ambient.fireworksShow` — continuous fireworks screensaver: triangle rockets launch from bottom, auto-detonate into trailing triangle bursts (vivid palette), gravityJitter 0.15
+- `presets.Ambient.flock` — boids swarm: triangles with glow, trails, zero gravity, continuous emission, coolBlue palette. Use with `addFlockingForce()` for self-organizing behavior.
 - `presets.Ambient.river` — horizontal water stream with cyan glow and short trails, designed for use with attractors (water palette)
 - `presets.Images.showcase` — tuned for icon/image particles
 - `presets.ImageParticles.text` — high-fidelity text as tiny square particles

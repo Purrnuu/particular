@@ -8,9 +8,12 @@ import {
   Emitter,
   Vector,
   presets,
+  colorPalettes,
   particlesContainerLayerStyle,
 } from "particular";
 import vikingPng from "../../../src/icons/viking.png";
+import viking2Png from "../../../src/icons/viking_2.png";
+import woltLogoSvg from "../../../src/icons/woltLogo.svg";
 
 /* ─── Shared Styles ─── */
 
@@ -52,8 +55,8 @@ const sectionSubStyle = {
 
 /* ─── Palettes ─── */
 
-const subtleSnowColors = ["#555566", "#606070", "#6a6a7a", "#757585", "#808090"];
-const mutedRiverColors = ["#3a4a4f", "#455558", "#4f6065", "#5a6b70", "#647578"];
+const subtleSnowColors = colorPalettes.ash;
+const mutedRiverColors = colorPalettes.slate;
 
 /* ─── Responsive CSS (injected once) ─── */
 
@@ -135,12 +138,12 @@ const DemoLabel = ({ title, desc }) => (
 /* ─── Demo: Click Burst (rotating palettes) ─── */
 
 const burstPalettes = [
-  { colors: ["#b33600", "#cc4a00", "#e86100", "#f57c00", "#ff9500", "#ffad33"], glow: "#ff9500" },
-  { colors: ["#a5d8ff", "#74c0fc", "#4dabf7", "#d0bfff", "#b197fc", "#9775fa"], glow: "#74c0fc" },
-  { colors: ["#006b3f", "#00a85e", "#1edd80", "#4deda0", "#96f2c8", "#c3fae8"], glow: "#1edd80" },
-  { colors: ["#ff4757", "#ff6b81", "#ff8fa3", "#ffa8b8", "#ffc9d3", "#ffe0e6"], glow: "#ff6b81" },
-  { colors: ["#ffd699", "#ffcc66", "#ffad33", "#ff9500", "#f57c00", "#e86100"], glow: "#ffcc66" },
-  { colors: ["#d0bfff", "#b197fc", "#9775fa", "#845ef7", "#7048e8", "#5f3dc4"], glow: "#9775fa" },
+  { colors: colorPalettes.orange, glow: "#ff9500" },
+  { colors: colorPalettes.magic, glow: "#74c0fc" },
+  { colors: colorPalettes.emerald, glow: "#1edd80" },
+  { colors: colorPalettes.rose, glow: "#ff6b81" },
+  { colors: colorPalettes.gold, glow: "#ffcc66" },
+  { colors: colorPalettes.violet, glow: "#9775fa" },
 ];
 
 function BurstDemo() {
@@ -154,8 +157,19 @@ function BurstDemo() {
     const ctrl = createParticles({
       container: el,
       preset: "magic",
-      config: { maxCount: 200, zIndex: 1, sizeMin: 2, sizeMax: 7 },
-      renderer: "webgl",
+      config: {
+        maxCount: 200,
+        zIndex: 1,
+        sizeMin: 2,
+        sizeMax: 7,
+        spawnDepth: 100,
+        camera: {
+          fov: 50,
+          position: { x: 0, y: 0, z: 300 },
+          target: { x: 0, y: 0, z: 0 },
+        },
+      },
+      renderer: "webgl3d",
       autoResize: true,
     });
     ctrlRef.current = ctrl;
@@ -243,7 +257,7 @@ function ShatterDemo() {
       if (h > maxH) { h = maxH; w = h * aspect; }
 
       ctrl.shatterImage({
-        image: vikingPng,
+        image: viking2Png,
         width: w,
         height: h,
         chunkCount: 20,
@@ -251,7 +265,7 @@ function ShatterDemo() {
         homeConfig: { springStrength: 0.06, springDamping: 0.85, returnNoise: 0.2 },
       }).then(() => { readyRef.current = true; });
     };
-    img.src = vikingPng;
+    img.src = viking2Png;
 
     return () => { ctrl.destroy(); ctrlRef.current = null; readyRef.current = false; };
   }, []);
@@ -272,9 +286,9 @@ function ShatterDemo() {
   );
 }
 
-/* ─── Demo: Text Particles ─── */
+/* ─── Demo: Logo Particles ─── */
 
-function TextDemo() {
+function LogoDemo() {
   const ref = useRef(null);
 
   useEffect(() => {
@@ -283,13 +297,13 @@ function TextDemo() {
     const ctrl = createParticles({
       container: el,
       preset: "imageText",
-      config: { maxCount: 2000, continuous: true, zIndex: 1 },
+      config: { maxCount: 5000, continuous: true, zIndex: 1 },
       renderer: "webgl",
       autoResize: true,
     });
-    ctrl.textToParticles("Hello", {
-      height: el.clientHeight * 0.45,
-      resolution: 100,
+    ctrl.imageToParticles({
+      image: woltLogoSvg,
+      resolution: 200,
       shape: "circle",
     });
     ctrl.addMouseForce({ track: true, strength: 2, radius: 50 });
@@ -298,7 +312,7 @@ function TextDemo() {
 
   return (
     <div ref={ref} style={demoCellStyle}>
-      <DemoLabel title="Text Particles" desc="Interactive mouse force" />
+      <DemoLabel title="Logo Particles" desc="Interactive mouse force" />
     </div>
   );
 }
@@ -541,7 +555,7 @@ export default function App() {
       fadeTime: 20,
       velocity: 0.8,
       spread: 0.5,
-      colors: ["#a5d8ff", "#74c0fc", "#d0bfff", "#b197fc", "#99e9f2", "#c3fae8"],
+      colors: colorPalettes.fairy,
       glow: true,
       glowSize: 6,
       glowAlpha: 0.25,
@@ -608,20 +622,36 @@ export default function App() {
     };
   }, []);
 
-  // Fireworks — scroll to bottom
+  // Fireworks — scroll to bottom (3D)
   useEffect(() => {
     const canvas = fireworksCanvasRef.current;
-    const container = containerRef.current;
-    if (!canvas || !container) return;
+    if (!canvas) return;
 
     const controller = createParticles({
       canvas,
-      container,
-      preset: "fireworksShow",
-      config: { maxCount: 2000, continuous: false },
-      renderer: "webgl",
+      preset: "fireworks3d",
+      config: {
+        maxCount: 2000,
+        continuous: false,
+        autoStart: false,
+        camera: {
+          fov: 60,
+          position: { x: 0, y: -200, z: 600 },
+          target: { x: 0, y: 100, z: 0 },
+        },
+      },
+      renderer: "webgl3d",
       autoResize: true,
     });
+
+    // Restore absolute positioning — createParticles sets position:fixed for non-container canvases
+    canvas.style.position = "absolute";
+    canvas.style.inset = "auto";
+    canvas.style.bottom = "0";
+    canvas.style.left = "0";
+    canvas.style.width = "100%";
+    canvas.style.height = "100vh";
+    canvas.style.zIndex = "0";
 
     const onScroll = () => {
       if (firedFireworksRef.current) return;
@@ -631,31 +661,32 @@ export default function App() {
       if (scrollBottom >= totalHeight - 150) {
         firedFireworksRef.current = true;
         const pr = controller.engine.pixelRatio;
-        const w = container.clientWidth / pr;
-        const h = container.clientHeight / pr;
+        const w = window.innerWidth / pr;
+        const h = window.innerHeight / pr;
 
         const fwConfig = configureParticle({
-          ...presets.Ambient.fireworksShow,
+          ...presets.Burst3D.fireworks3d,
           rate: 1,
-          life: 3,
+          life: 5,
         });
 
-        const wave1 = [0.15, 0.35, 0.55, 0.75, 0.9];
-        const wave2 = [0.25, 0.45, 0.65, 0.85];
+        const wave1 = [0.3, 0.42, 0.5, 0.58, 0.7];
+        const wave2 = [0.35, 0.45, 0.55, 0.65];
+        const wave3 = [0.38, 0.5, 0.62];
 
         wave1.forEach((xFrac, i) => {
           setTimeout(() => {
             const emitter = new Emitter({
               point: new Vector(w * xFrac, h),
               ...fwConfig,
-              spawnWidth: w * 0.06,
+              spawnWidth: w * 0.08,
               spawnHeight: 0,
               icons: [],
             });
             controller.engine.addEmitter(emitter);
             emitter.isEmitting = true;
             emitter.emit();
-          }, i * 400);
+          }, i * 300);
         });
 
         wave2.forEach((xFrac, i) => {
@@ -663,14 +694,29 @@ export default function App() {
             const emitter = new Emitter({
               point: new Vector(w * xFrac, h),
               ...fwConfig,
-              spawnWidth: w * 0.06,
+              spawnWidth: w * 0.08,
               spawnHeight: 0,
               icons: [],
             });
             controller.engine.addEmitter(emitter);
             emitter.isEmitting = true;
             emitter.emit();
-          }, 2200 + i * 500);
+          }, 1800 + i * 350);
+        });
+
+        wave3.forEach((xFrac, i) => {
+          setTimeout(() => {
+            const emitter = new Emitter({
+              point: new Vector(w * xFrac, h),
+              ...fwConfig,
+              spawnWidth: w * 0.08,
+              spawnHeight: 0,
+              icons: [],
+            });
+            controller.engine.addEmitter(emitter);
+            emitter.isEmitting = true;
+            emitter.emit();
+          }, 3400 + i * 400);
         });
 
         setTimeout(() => { firedFireworksRef.current = false; }, 10000);
@@ -698,7 +744,7 @@ export default function App() {
     });
     ctrl.addContainerGlow({
       element: badge,
-      colors: ["#ffad33", "#ff9500", "#f57c00", "#e86100", "#ffcc66", "#ffd699"],
+      colors: colorPalettes.amber,
       rate: 0.6,
       sizeMin: 0.5,
       sizeMax: 2,
@@ -784,7 +830,6 @@ export default function App() {
     >
       <canvas ref={snowCanvasRef} style={particlesContainerLayerStyle} />
       <canvas ref={textCanvasRef} style={particlesContainerLayerStyle} />
-      <canvas ref={fireworksCanvasRef} style={particlesContainerLayerStyle} />
 
       {/* Hero */}
       <section
@@ -858,7 +903,7 @@ export default function App() {
           <BurstDemo />
           <MeteorDemo />
           <ShatterDemo />
-          <TextDemo />
+          <LogoDemo />
           <GlowDemo />
           <ScatterDemo />
         </div>
@@ -933,6 +978,17 @@ export default function App() {
           Particles flow around every element on this page.
         </p>
       </section>
+
+      {/* Fireworks canvas — pinned to bottom of page, behind content, viewport-height for 3D camera */}
+      <canvas ref={fireworksCanvasRef} style={{
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        width: "100%",
+        height: "100vh",
+        pointerEvents: "none",
+        zIndex: 0,
+      }} />
     </div>
   );
 }

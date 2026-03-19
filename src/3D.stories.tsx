@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { createParticles } from './index';
+import { createParticles, colorPalettes } from './index';
 
 const meta: Meta = {
   title: 'Particular/3D',
@@ -309,7 +309,7 @@ const Attractor3DComponent: React.FC = () => {
         rate: 2,
         maxCount: 400,
         particleLife: 250,
-        colors: ['#c0392b', '#d35400', '#e67e22', '#f39c12', '#d4a574', '#8b4513', '#a0522d', '#cd853f'],
+        colors: colorPalettes.autumn!,
         glowColor: '#e67e22',
         camera: {
           fov: 60,

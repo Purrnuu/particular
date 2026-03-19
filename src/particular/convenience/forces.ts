@@ -1,8 +1,9 @@
 import Attractor from '../components/attractor';
 import MouseForce from '../components/mouseForce';
+import FlockingForce from '../components/flockingForce';
 import type Particular from '../core/particular';
 import { getViewportSize } from './resize';
-import type { AttractorConfig, MouseForceConfig } from '../types';
+import type { AttractorConfig, MouseForceConfig, FlockingForceConfig } from '../types';
 
 /**
  * Create attractor and mouse force helpers bound to an engine instance.
@@ -73,5 +74,15 @@ export function createForces(
     engine.removeMouseForce(mouseForce);
   };
 
-  return { addAttractor, removeAttractor, addRandomAttractors, removeAllAttractors, addMouseForce, removeMouseForce };
+  const addFlockingForce = (config?: FlockingForceConfig): FlockingForce => {
+    const flockingForce = new FlockingForce(config);
+    engine.addFlockingForce(flockingForce);
+    return flockingForce;
+  };
+
+  const removeFlockingForce = (flockingForce: FlockingForce): void => {
+    engine.removeFlockingForce(flockingForce);
+  };
+
+  return { addAttractor, removeAttractor, addRandomAttractors, removeAllAttractors, addMouseForce, removeMouseForce, addFlockingForce, removeFlockingForce };
 }

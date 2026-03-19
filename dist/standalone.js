@@ -62,22 +62,28 @@ var EventDispatcher = class _EventDispatcher {
 
 // src/particular/utils/vector.ts
 var Vector = class _Vector {
-  constructor(x, y) {
+  constructor(x, y, z) {
     this.x = x ?? 0;
     this.y = y ?? 0;
+    this.z = z ?? 0;
   }
   getMagnitude() {
-    return Math.sqrt(this.x * this.x + this.y * this.y);
+    if (this.z === 0) {
+      return Math.sqrt(this.x * this.x + this.y * this.y);
+    }
+    return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
   }
   add(vector, scale = 1) {
     this.x += vector.x * scale;
     this.y += vector.y * scale;
+    if (vector.z) this.z += vector.z * scale;
   }
   addFriction(friction, dt = 1) {
     if (friction <= 0) return;
     const factor = Math.pow(1 - friction, dt);
     this.x *= factor;
     this.y *= factor;
+    if (this.z !== 0) this.z *= factor;
   }
   addGravity(gravity, dt = 1) {
     if (gravity === 0) return;
@@ -86,24 +92,667 @@ var Vector = class _Vector {
   subtract(vector) {
     this.x -= vector.x;
     this.y -= vector.y;
+    if (vector.z) this.z -= vector.z;
   }
   normalize() {
     const mag = this.getMagnitude();
     if (mag > 0) {
       this.x /= mag;
       this.y /= mag;
+      this.z /= mag;
     }
   }
   scale(scalar) {
     this.x *= scalar;
     this.y *= scalar;
+    this.z *= scalar;
   }
   getAngle() {
     return Math.atan2(this.y, this.x);
   }
+  /** Elevation angle from the XY plane (radians). 0 = in-plane, +PI/2 = up z-axis. */
+  getElevation() {
+    const xyMag = Math.sqrt(this.x * this.x + this.y * this.y);
+    return Math.atan2(this.z, xyMag);
+  }
   static fromAngle(angle, magnitude) {
     return new _Vector(magnitude * Math.cos(angle), magnitude * Math.sin(angle));
   }
+  /** Create a Vector from spherical coordinates (azimuth in XY plane, elevation from XY, magnitude). */
+  static fromSpherical(azimuth, elevation, magnitude) {
+    const cosElev = Math.cos(elevation);
+    return new _Vector(
+      magnitude * cosElev * Math.cos(azimuth),
+      magnitude * cosElev * Math.sin(azimuth),
+      magnitude * Math.sin(elevation)
+    );
+  }
+};
+
+// src/particular/presets.ts
+var snowPalette = ["#ffffff", "#f8f9fa", "#f1f3f5", "#e9ecef", "#dee2e6"];
+var grayscalePalette = ["#f8f9fa", "#dee2e6", "#adb5bd", "#868e96", "#495057", "#212529"];
+var coolBluePalette = ["#d0ebff", "#a5d8ff", "#74c0fc", "#4dabf7", "#339af0", "#228be6"];
+var bluePalette = ["#003d99", "#0057d9", "#0077ff", "#1a8cff", "#3da1ff", "#66b8ff"];
+var orangePalette = ["#b33600", "#cc4a00", "#e86100", "#f57c00", "#ff9500", "#ffad33"];
+var greenPalette = ["#006b3f", "#008c51", "#00a85e", "#00c46b", "#1edd80", "#4deda0"];
+var mutedPalette = ["#d4a373", "#ccd5ae", "#e9edc9", "#a8dadc", "#b5838d", "#e5989b", "#8d99ae"];
+var fireworksPalette = ["#ff4757", "#ffa502", "#2ed573", "#1e90ff", "#ff6b81", "#eccc68", "#7bed9f", "#70a1ff", "#ffffff"];
+var meteorPalette = ["#ffffff", "#e0f0ff", "#80d0ff", "#40a0e0", "#2060c0", "#6040ff", "#a080ff"];
+var waterPalette = ["#e0f7fa", "#b2ebf2", "#80deea", "#4dd0e1", "#26c6da", "#00acc1", "#ffffff"];
+var finlandPalette = ["#003580", "#002f6c", "#ffffff", "#f8f9fa"];
+var usaPalette = ["#B22234", "#ffffff", "#3C3B6E"];
+var magicPalette = ["#a5d8ff", "#74c0fc", "#4dabf7", "#d0bfff", "#b197fc", "#9775fa"];
+var nebulaPalette = ["#a5d8ff", "#74c0fc", "#4dabf7", "#d0bfff", "#b197fc", "#9775fa", "#e599f7", "#f783ac"];
+var solarPalette = ["#ff6b6b", "#ffa502", "#ff6348", "#ff4757", "#ffffff", "#ffd32a", "#ff9f1a"];
+var autumnPalette = ["#c0392b", "#d35400", "#e67e22", "#f39c12", "#d4a574", "#8b4513", "#a0522d", "#cd853f"];
+var ashPalette = ["#555566", "#606070", "#6a6a7a", "#757585", "#808090"];
+var slatePalette = ["#3a4a4f", "#455558", "#4f6065", "#5a6b70", "#647578"];
+var fairyPalette = ["#a5d8ff", "#74c0fc", "#d0bfff", "#b197fc", "#99e9f2", "#c3fae8"];
+var amberPalette = ["#ffad33", "#ff9500", "#f57c00", "#e86100", "#ffcc66", "#ffd699"];
+var rosePalette = ["#ff4757", "#ff6b81", "#ff8fa3", "#ffa8b8", "#ffc9d3", "#ffe0e6"];
+var goldPalette = ["#ffd699", "#ffcc66", "#ffad33", "#ff9500", "#f57c00", "#e86100"];
+var violetPalette = ["#d0bfff", "#b197fc", "#9775fa", "#845ef7", "#7048e8", "#5f3dc4"];
+var emeraldPalette = ["#006b3f", "#00a85e", "#1edd80", "#4deda0", "#96f2c8", "#c3fae8"];
+var Burst = {
+  /** Celebratory confetti burst: colorful rectangles fluttering outward and drifting down */
+  confetti: {
+    shape: "rectangle",
+    blendMode: "normal",
+    shadow: true,
+    rate: 20,
+    life: 28,
+    velocity: Vector.fromAngle(-90, 7),
+    spread: Math.PI * 0.85,
+    sizeMin: 3,
+    sizeMax: 10,
+    velocityMultiplier: 6,
+    fadeTime: 35,
+    gravity: 0.14,
+    gravityJitter: 0.2,
+    scaleStep: 1.2,
+    friction: 5e-3,
+    maxCount: 500,
+    colors: mutedPalette
+  },
+  /** Signature magical burst: glowing sparkles with soft trails */
+  magic: {
+    shape: "sparkle",
+    blendMode: "additive",
+    glow: true,
+    glowSize: 10,
+    glowColor: "#74c0fc",
+    glowAlpha: 0.35,
+    rate: 16,
+    life: 34,
+    velocity: Vector.fromAngle(-90, 5),
+    spread: Math.PI * 1.15,
+    sizeMin: 3,
+    sizeMax: 10,
+    velocityMultiplier: 5,
+    fadeTime: 35,
+    gravity: 0.08,
+    gravityJitter: 0.15,
+    scaleStep: 0.9,
+    friction: 5e-3,
+    maxCount: 400,
+    trail: true,
+    trailLength: 8,
+    trailFade: 0.35,
+    trailShrink: 0.5,
+    colors: magicPalette
+  },
+  /** Cinematic fireworks: glowing triangles with bright trailing bloom */
+  fireworks: {
+    shape: "triangle",
+    blendMode: "additive",
+    glow: true,
+    glowSize: 8,
+    glowColor: "#ff9500",
+    glowAlpha: 0.3,
+    rate: 22,
+    life: 24,
+    velocity: Vector.fromAngle(-90, 8.8),
+    spread: Math.PI * 1.05,
+    sizeMin: 3,
+    sizeMax: 10,
+    velocityMultiplier: 8,
+    fadeTime: 22,
+    gravity: 0.18,
+    gravityJitter: 0.2,
+    scaleStep: 1.15,
+    friction: 3e-3,
+    maxCount: 520,
+    trail: true,
+    trailLength: 10,
+    trailFade: 0.3,
+    trailShrink: 0.45,
+    colors: mutedPalette
+  },
+  /** Fireworks with timed detonation: narrow upward launch that auto-explodes into colorful sub-bursts */
+  fireworksDetonation: {
+    shape: "triangle",
+    blendMode: "additive",
+    glow: true,
+    glowSize: 8,
+    glowColor: "#74c0fc",
+    glowAlpha: 0.3,
+    rate: 22,
+    life: 24,
+    velocity: Vector.fromAngle(-Math.PI / 2, 8.8),
+    spread: Math.PI / 4,
+    sizeMin: 3,
+    sizeMax: 6,
+    velocityMultiplier: 8,
+    fadeTime: 20,
+    gravity: 0.08,
+    gravityJitter: 0.15,
+    scaleStep: 1.15,
+    maxCount: 3e3,
+    particleLife: 80,
+    trail: true,
+    trailLength: 6,
+    trailFade: 0.3,
+    trailShrink: 0.5,
+    detonate: {
+      at: 0.7,
+      childCount: 8,
+      velocity: 5,
+      velocitySpread: 0.6,
+      friction: 0.015,
+      scaleStep: 1,
+      childLife: 45,
+      sizeMin: 1,
+      sizeMax: 4,
+      fadeTime: 18,
+      inheritColor: true,
+      shape: "triangle",
+      trail: true,
+      trailLength: 4,
+      trailFade: 0.5,
+      trailShrink: 0.65
+    }
+  }
+};
+var Images = {
+  /** Tuned for icon/image particles (no tint by default). */
+  showcase: {
+    shape: "roundedRectangle",
+    blendMode: "normal",
+    imageTint: false,
+    glow: false,
+    rate: 12,
+    life: 36,
+    velocity: Vector.fromAngle(-90, 5),
+    spread: Math.PI * 1,
+    sizeMin: 5,
+    sizeMax: 22,
+    velocityMultiplier: 4,
+    fadeTime: 30,
+    gravity: 0.2,
+    scaleStep: 0.8,
+    maxCount: 380
+  }
+};
+var Ambient = {
+  /** Gentle snowfall: soft white particles drifting downward across the viewport */
+  snow: {
+    shape: "circle",
+    blendMode: "normal",
+    glow: true,
+    glowSize: 8,
+    glowColor: "#ffffff",
+    glowAlpha: 0.2,
+    rate: 0.4,
+    life: 999999,
+    particleLife: 500,
+    velocity: Vector.fromAngle(Math.PI / 2, 0.4),
+    spread: Math.PI * 0.15,
+    gravityJitter: 0.5,
+    sizeMin: 1,
+    sizeMax: 4,
+    velocityMultiplier: 0.3,
+    fadeTime: 60,
+    gravity: 5e-3,
+    acceleration: 0,
+    accelerationSize: 1e-3,
+    friction: 1e-3,
+    frictionSize: 3e-3,
+    scaleStep: 1,
+    maxCount: 200,
+    continuous: true,
+    autoStart: true,
+    colors: snowPalette
+  },
+  /** Meteors: fast diagonal streaks with long glowing trails, additive blending */
+  meteors: {
+    shape: "ring",
+    blendMode: "additive",
+    glow: true,
+    glowSize: 14,
+    glowColor: "#ff6d00",
+    glowAlpha: 0.5,
+    trail: true,
+    trailLength: 12,
+    trailFade: 0.25,
+    trailShrink: 0.4,
+    rate: 0.5,
+    life: 999999,
+    particleLife: 90,
+    velocity: Vector.fromAngle(Math.PI * 0.65, 14),
+    spread: Math.PI * 0.15,
+    sizeMin: 2,
+    sizeMax: 6,
+    velocityMultiplier: 2,
+    fadeTime: 20,
+    gravity: 0.12,
+    gravityJitter: 0.4,
+    acceleration: 0.04,
+    accelerationSize: 8e-3,
+    friction: 0,
+    frictionSize: 0,
+    scaleStep: 1,
+    maxCount: 100,
+    continuous: true,
+    autoStart: true,
+    colors: meteorPalette
+  },
+  /** Fireworks show: gentle rockets launch from the bottom and auto-explode into colorful bursts */
+  fireworksShow: {
+    shape: "triangle",
+    blendMode: "additive",
+    glow: true,
+    glowSize: 8,
+    glowColor: "#ff9500",
+    glowAlpha: 0.3,
+    trail: true,
+    trailLength: 6,
+    trailFade: 0.3,
+    trailShrink: 0.5,
+    rate: 0.25,
+    life: 999999,
+    particleLife: 120,
+    velocity: Vector.fromAngle(-Math.PI / 2, 7),
+    spread: Math.PI / 6,
+    sizeMin: 2,
+    sizeMax: 4,
+    velocityMultiplier: 3,
+    fadeTime: 15,
+    gravity: 0.05,
+    gravityJitter: 0.15,
+    scaleStep: 1,
+    maxCount: 1200,
+    continuous: true,
+    autoStart: true,
+    colors: fireworksPalette,
+    detonate: {
+      at: 0.65,
+      childCount: 10,
+      velocity: 4,
+      velocitySpread: 0.6,
+      friction: 0.02,
+      scaleStep: 0.8,
+      childLife: 50,
+      sizeMin: 1,
+      sizeMax: 3,
+      fadeTime: 20,
+      inheritColor: true,
+      shape: "triangle",
+      trail: true,
+      trailLength: 4,
+      trailFade: 0.5,
+      trailShrink: 0.6
+    }
+  },
+  /** Boids flock: self-organizing swarm of triangles. Use with addFlockingForce() for full effect. */
+  flock: {
+    shape: "triangle",
+    blendMode: "additive",
+    glow: true,
+    glowSize: 8,
+    glowColor: "#74c0fc",
+    glowAlpha: 0.3,
+    trail: true,
+    trailLength: 6,
+    trailFade: 0.35,
+    trailShrink: 0.5,
+    rate: 2,
+    life: 999999,
+    particleLife: 600,
+    velocity: Vector.fromAngle(0, 2),
+    spread: Math.PI * 2,
+    sizeMin: 3,
+    sizeMax: 7,
+    velocityMultiplier: 3,
+    fadeTime: 80,
+    gravity: 0,
+    acceleration: 0,
+    accelerationSize: 0,
+    friction: 5e-3,
+    frictionSize: 0,
+    scaleStep: 1,
+    maxCount: 300,
+    continuous: true,
+    autoStart: true,
+    colors: coolBluePalette
+  },
+  /** River flow: horizontal stream of water particles, designed for use with attractors */
+  river: {
+    shape: "circle",
+    blendMode: "normal",
+    glow: true,
+    glowSize: 6,
+    glowColor: "#80deea",
+    glowAlpha: 0.25,
+    trail: true,
+    trailLength: 6,
+    trailFade: 0.5,
+    trailShrink: 0.4,
+    rate: 4,
+    life: 999999,
+    particleLife: 220,
+    velocity: Vector.fromAngle(0, 1.8),
+    spread: Math.PI / 10,
+    sizeMin: 1,
+    sizeMax: 4,
+    velocityMultiplier: 0,
+    fadeTime: 80,
+    gravity: 0,
+    friction: 0,
+    scaleStep: 1,
+    maxCount: 500,
+    continuous: true,
+    autoStart: true,
+    colors: waterPalette
+  }
+};
+var ImageParticles = {
+  /** High-fidelity text rendered as tiny particles with spring return. */
+  text: {
+    shape: "square",
+    blendMode: "normal",
+    glow: false,
+    maxCount: 1e4
+  },
+  /** Shape/icon rendered as particles with soft glow. */
+  shape: {
+    shape: "circle",
+    blendMode: "normal",
+    glow: true,
+    glowSize: 8,
+    glowAlpha: 0.3,
+    maxCount: 1e4
+  }
+};
+var Burst3D = {
+  /** Spinning galaxy: spherical emission with slow orbit drift */
+  galaxySpin: {
+    shape: "ring",
+    blendMode: "additive",
+    glow: true,
+    glowSize: 12,
+    glowColor: "#b197fc",
+    glowAlpha: 0.35,
+    trail: true,
+    trailLength: 14,
+    trailFade: 0.35,
+    trailShrink: 0.45,
+    rate: 4,
+    life: 999999,
+    particleLife: 400,
+    velocity: Vector.fromAngle(-90, 1),
+    spread: Math.PI * 2,
+    spread3d: Math.PI * 2,
+    spawnDepth: 300,
+    sizeMin: 2,
+    sizeMax: 6,
+    velocityMultiplier: 5,
+    gravityJitter: 0.6,
+    fadeTime: 80,
+    gravity: 0,
+    acceleration: 0,
+    accelerationSize: 0,
+    friction: 4e-3,
+    scaleStep: 0.8,
+    maxCount: 600,
+    continuous: true,
+    autoStart: true,
+    colors: nebulaPalette
+  },
+  /** Depth field: particles spread along z-axis for parallax effect */
+  depthField: {
+    shape: "circle",
+    blendMode: "normal",
+    glow: true,
+    glowSize: 8,
+    glowColor: "#ffffff",
+    glowAlpha: 0.2,
+    rate: 0.5,
+    life: 999999,
+    particleLife: 400,
+    velocity: Vector.fromAngle(Math.PI / 2, 0.3),
+    spread: Math.PI * 0.2,
+    spawnDepth: 600,
+    spawnWidth: 400,
+    sizeMin: 1,
+    sizeMax: 5,
+    velocityMultiplier: 0.3,
+    fadeTime: 80,
+    gravity: 2e-3,
+    friction: 1e-3,
+    scaleStep: 1,
+    maxCount: 300,
+    continuous: true,
+    autoStart: true,
+    colors: snowPalette
+  },
+  /** Supernova: explosive 3D burst with spherical emission */
+  supernova: {
+    shape: "star",
+    blendMode: "additive",
+    glow: true,
+    glowSize: 14,
+    glowColor: "#ff6b6b",
+    glowAlpha: 0.4,
+    trail: true,
+    trailLength: 8,
+    trailFade: 0.25,
+    trailShrink: 0.4,
+    rate: 30,
+    life: 30,
+    particleLife: 120,
+    velocity: Vector.fromAngle(-90, 6),
+    spread: Math.PI,
+    spread3d: Math.PI,
+    sizeMin: 2,
+    sizeMax: 8,
+    velocityMultiplier: 8,
+    fadeTime: 40,
+    gravity: 0,
+    friction: 8e-3,
+    scaleStep: 1.2,
+    maxCount: 800,
+    colors: solarPalette
+  },
+  /** 3D fireworks show: rockets launch upward and detonate into spherical sub-bursts */
+  fireworks3d: {
+    shape: "triangle",
+    blendMode: "additive",
+    glow: true,
+    glowSize: 12,
+    glowColor: "#ff9500",
+    glowAlpha: 0.4,
+    trail: true,
+    trailLength: 6,
+    trailFade: 0.3,
+    trailShrink: 0.5,
+    rate: 0.3,
+    life: 999999,
+    particleLife: 100,
+    velocity: Vector.fromAngle(-Math.PI / 2, 7),
+    spread: Math.PI / 8,
+    spread3d: Math.PI / 8,
+    spawnDepth: 150,
+    spawnWidth: 0,
+    sizeMin: 2,
+    sizeMax: 4,
+    velocityMultiplier: 2.5,
+    fadeTime: 15,
+    gravity: 0.05,
+    acceleration: 0,
+    accelerationSize: 0,
+    friction: 3e-3,
+    scaleStep: 1,
+    maxCount: 2e3,
+    continuous: true,
+    autoStart: true,
+    colors: fireworksPalette,
+    detonate: {
+      at: 0.65,
+      childCount: 18,
+      velocity: 4,
+      velocitySpread: 0.5,
+      friction: 0.012,
+      scaleStep: 0.8,
+      childLife: 60,
+      sizeMin: 1,
+      sizeMax: 3,
+      fadeTime: 25,
+      inheritColor: true,
+      shape: "sparkle",
+      spread3d: Math.PI,
+      trail: true,
+      trailLength: 5,
+      trailFade: 0.4,
+      trailShrink: 0.5,
+      glow: true,
+      glowSize: 10,
+      glowColor: "#ffa502",
+      glowAlpha: 0.45
+    }
+  }
+};
+var Colors = {
+  /** White to offwhite range */
+  snow: { colors: snowPalette },
+  /** Full black-to-white range */
+  grayscale: { colors: grayscalePalette },
+  /** Single-hue cool blue range */
+  coolBlue: { colors: coolBluePalette },
+  /** Desaturated warm/cool mix */
+  muted: { colors: mutedPalette },
+  /** Bold saturated blue */
+  blue: { colors: bluePalette },
+  /** Bold saturated orange */
+  orange: { colors: orangePalette },
+  /** Bold saturated green */
+  green: { colors: greenPalette },
+  /** Finnish flag blue and white */
+  finland: { colors: finlandPalette },
+  /** American flag red, white, blue */
+  usa: { colors: usaPalette },
+  /** White-hot to deep red meteor palette */
+  meteor: { colors: meteorPalette },
+  /** Cyan-to-white water palette */
+  water: { colors: waterPalette },
+  /** Blue-purple sparkle (magic preset signature) */
+  magic: { colors: magicPalette },
+  /** Extended blue-purple-pink (galaxy/nebula effects) */
+  nebula: { colors: nebulaPalette },
+  /** Hot reds, oranges, whites (explosions/supernova) */
+  solar: { colors: solarPalette },
+  /** Earth tones: deep reds, burnt orange, sienna */
+  autumn: { colors: autumnPalette },
+  /** Dark greys for subtle/muted backgrounds */
+  ash: { colors: ashPalette },
+  /** Dark blue-grey tones */
+  slate: { colors: slatePalette },
+  /** Pastel blue, purple, teal, mint mix */
+  fairy: { colors: fairyPalette },
+  /** Warm glowing orange-gold */
+  amber: { colors: amberPalette },
+  /** Soft pink gradient from hot to pastel */
+  rose: { colors: rosePalette },
+  /** Warm yellow-orange gradient */
+  gold: { colors: goldPalette },
+  /** Deep violet-purple range */
+  violet: { colors: violetPalette },
+  /** Bright green to pastel mint */
+  emerald: { colors: emeraldPalette },
+  /** Multicolor vivid fireworks */
+  fireworks: { colors: fireworksPalette }
+};
+var presetRegistry = {
+  confetti: Burst.confetti,
+  magic: Burst.magic,
+  fireworks: Burst.fireworks,
+  fireworksDetonation: Burst.fireworksDetonation,
+  images: Images.showcase,
+  imageText: ImageParticles.text,
+  imageShape: ImageParticles.shape,
+  snow: Ambient.snow,
+  meteors: Ambient.meteors,
+  flock: Ambient.flock,
+  river: Ambient.river,
+  fireworksShow: Ambient.fireworksShow,
+  galaxySpin: Burst3D.galaxySpin,
+  depthField: Burst3D.depthField,
+  supernova: Burst3D.supernova,
+  fireworks3d: Burst3D.fireworks3d
+};
+var presets = {
+  Burst,
+  Burst3D,
+  Images,
+  ImageParticles,
+  Ambient,
+  Colors,
+  // Backward-compatible aliases
+  confetti: Burst.confetti,
+  magic: Burst.magic,
+  fireworks: Burst.fireworks,
+  fireworksDetonation: Burst.fireworksDetonation,
+  images: Images.showcase,
+  imageText: ImageParticles.text,
+  imageShape: ImageParticles.shape,
+  snow: Ambient.snow,
+  meteors: Ambient.meteors,
+  flock: Ambient.flock,
+  river: Ambient.river,
+  fireworksShow: Ambient.fireworksShow,
+  galaxySpin: Burst3D.galaxySpin,
+  depthField: Burst3D.depthField,
+  supernova: Burst3D.supernova,
+  fireworks3d: Burst3D.fireworks3d
+};
+function getPreset(name) {
+  return presetRegistry[name];
+}
+var colorPalettes = {
+  snow: snowPalette,
+  grayscale: grayscalePalette,
+  coolBlue: coolBluePalette,
+  muted: mutedPalette,
+  finland: finlandPalette,
+  usa: usaPalette,
+  blue: bluePalette,
+  orange: orangePalette,
+  green: greenPalette,
+  meteor: meteorPalette,
+  water: waterPalette,
+  magic: magicPalette,
+  nebula: nebulaPalette,
+  solar: solarPalette,
+  autumn: autumnPalette,
+  ash: ashPalette,
+  slate: slatePalette,
+  fairy: fairyPalette,
+  amber: amberPalette,
+  rose: rosePalette,
+  gold: goldPalette,
+  violet: violetPalette,
+  emerald: emeraldPalette,
+  fireworks: fireworksPalette
 };
 
 // src/particular/core/defaults.ts
@@ -131,6 +780,9 @@ var defaultParticle = {
   scaleStep: 1,
   spawnWidth: 0,
   spawnHeight: 0,
+  spawnDepth: 0,
+  spread3d: 0,
+  emitDirection: { x: 0, y: -1, z: 0 },
   colors: [],
   acceleration: 0,
   accelerationSize: 0.01,
@@ -175,6 +827,15 @@ var defaultMouseForce = {
   maxSpeed: 10,
   falloff: 1
 };
+var defaultFlockingForce = {
+  neighborRadius: 100,
+  separationWeight: 1.5,
+  alignmentWeight: 1,
+  cohesionWeight: 1,
+  maxSteeringForce: 0.5,
+  maxSpeed: 4,
+  separationDistance: 25
+};
 var defaultExplosionChild = {
   childCount: 5,
   childLife: 40,
@@ -197,7 +858,8 @@ var defaultExplosionChild = {
   trail: true,
   trailLength: 3,
   trailFade: 0.6,
-  trailShrink: 0.65
+  trailShrink: 0.65,
+  spread3d: 0
 };
 var defaultHomeConfig = {
   springStrength: 0.05,
@@ -231,7 +893,7 @@ var defaultElementParticles = {
   restoreElement: true
 };
 var defaultContainerGlow = {
-  colors: ["#a5d8ff", "#74c0fc", "#4dabf7", "#d0bfff", "#b197fc", "#9775fa"],
+  colors: magicPalette,
   rate: 0.5,
   sizeMin: 0.5,
   sizeMax: 2,
@@ -250,7 +912,7 @@ var defaultContainerGlow = {
   pulseAmplitude: 0.4
 };
 var defaultMouseTrail = {
-  colors: ["#a5d8ff", "#74c0fc", "#4dabf7", "#d0bfff", "#b197fc", "#9775fa"],
+  colors: magicPalette,
   rate: 1.5,
   sizeMin: 1,
   sizeMax: 3,
@@ -452,25 +1114,31 @@ var Particle = class _Particle {
     if (point) {
       this.position.x = point.x;
       this.position.y = point.y;
+      this.position.z = point.z;
     } else {
       this.position.x = 0;
       this.position.y = 0;
+      this.position.z = 0;
     }
     this.shadowLightOrigin.x = this.position.x;
     this.shadowLightOrigin.y = this.position.y;
     if (velocity) {
       this.velocity.x = velocity.x;
       this.velocity.y = velocity.y;
+      this.velocity.z = velocity.z;
     } else {
       this.velocity.x = 0;
       this.velocity.y = 0;
+      this.velocity.z = 0;
     }
     if (acceleration) {
       this.acceleration.x = acceleration.x;
       this.acceleration.y = acceleration.y;
+      this.acceleration.z = acceleration.z;
     } else {
       this.acceleration.x = 0;
       this.acceleration.y = 0;
+      this.acceleration.z = 0;
     }
     this.friction = friction ?? 0;
     this.rotation = Math.random() * 360;
@@ -531,8 +1199,9 @@ var Particle = class _Particle {
       if (this.homePosition) {
         this.homePosition.x = homePosition.x;
         this.homePosition.y = homePosition.y;
+        this.homePosition.z = homePosition.z;
       } else {
-        this.homePosition = new Vector(homePosition.x, homePosition.y);
+        this.homePosition = new Vector(homePosition.x, homePosition.y, homePosition.z);
       }
       this.homeConfig = { ...defaultHomeConfig, ...homeConfig };
       this.homeThresholdSq = this.homeConfig.homeThreshold * this.homeConfig.homeThreshold;
@@ -562,10 +1231,10 @@ var Particle = class _Particle {
     this.dispatch("PARTICLE_CREATED", this);
   }
   update(forces, dt = 1) {
-    if (this.homePosition && this.homeConfig && !this.preventSettle && this.velocity.x === 0 && this.velocity.y === 0 && this.position.x === this.homePosition.x && this.position.y === this.homePosition.y) {
+    if (this.homePosition && this.homeConfig && !this.preventSettle && this.velocity.x === 0 && this.velocity.y === 0 && this.velocity.z === 0 && this.position.x === this.homePosition.x && this.position.y === this.homePosition.y && this.position.z === this.homePosition.z) {
       if (forces && forces.length > 0) {
         for (let i = 0; i < forces.length; i++) {
-          const f = forces[i].getForce(this.position);
+          const f = forces[i].getForce(this.position, this);
           this.velocity.x += f.x * dt;
           this.velocity.y += f.y * dt;
         }
@@ -590,6 +1259,8 @@ var Particle = class _Particle {
       }
       if (this.factoredSize < this.size) {
         this.factoredSize = Math.min(this.factoredSize + this.scaleStep * dt, this.size);
+      } else if (this.factoredSize > this.size) {
+        this.factoredSize = this.size;
       } else if (this.idleEnabled && this.homeConfig.breathingAmplitude > 0) {
         this.breathingPhase += this.homeConfig.breathingSpeed * dt;
         this.factoredSize = this.size * (1 + Math.sin(this.breathingPhase) * this.homeConfig.breathingAmplitude);
@@ -610,17 +1281,19 @@ var Particle = class _Particle {
     if (this.trail) this.updateTrail(true, dt);
     this.velocity.x += this.acceleration.x * dt;
     this.velocity.y += this.acceleration.y * dt;
+    this.velocity.z += this.acceleration.z * dt;
     if (this.friction > 0) {
       const frictionFactor = Math.pow(1 - this.friction, dt);
       this.velocity.x *= frictionFactor;
       this.velocity.y *= frictionFactor;
+      if (this.velocity.z !== 0) this.velocity.z *= frictionFactor;
     }
     if (this.gravity !== 0) {
       this.velocity.y += this.gravity * dt;
     }
     if (forces && forces.length > 0) {
       for (let i = 0; i < forces.length; i++) {
-        const f = forces[i].getForce(this.position);
+        const f = forces[i].getForce(this.position, this);
         this.velocity.x += f.x * dt;
         this.velocity.y += f.y * dt;
       }
@@ -628,8 +1301,9 @@ var Particle = class _Particle {
     if (this.homePosition && this.homeConfig) {
       const dx = this.homePosition.x - this.position.x;
       const dy = this.homePosition.y - this.position.y;
-      const distSq = dx * dx + dy * dy;
-      const speedSq = this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y;
+      const dz = this.homePosition.z - this.position.z;
+      const distSq = dx * dx + dy * dy + dz * dz;
+      const speedSq = this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y + this.velocity.z * this.velocity.z;
       const isSettled = !this.preventSettle && distSq < this.homeThresholdSq && speedSq < this.velocityThresholdSq;
       if (this.homeConfig.idlePulseStrength > 0 && this.homeConfig.idlePulseIntervalMin > 0) {
         this.idleTicks += dt;
@@ -637,8 +1311,10 @@ var Particle = class _Particle {
       if (isSettled) {
         this.velocity.x = 0;
         this.velocity.y = 0;
+        this.velocity.z = 0;
         this.position.x = this.homePosition.x;
         this.position.y = this.homePosition.y;
+        this.position.z = this.homePosition.z;
         this.rotationVelocity = 0;
         this.rotation = 0;
         if (this.idleEnabled && this.homeConfig.idlePulseStrength > 0 && this.homeConfig.idlePulseIntervalMin > 0) {
@@ -660,9 +1336,11 @@ var Particle = class _Particle {
         const k = this.homeConfig.springStrength * this.springMultiplier;
         this.velocity.x += dx * k * dt;
         this.velocity.y += dy * k * dt;
+        if (dz !== 0) this.velocity.z += dz * k * dt;
         const dampFactor = Math.pow(this.homeConfig.springDamping, dt);
         this.velocity.x *= dampFactor;
         this.velocity.y *= dampFactor;
+        if (this.velocity.z !== 0) this.velocity.z *= dampFactor;
         if (this.homeConfig.returnNoise > 0) {
           const noise = this.homeConfig.returnNoise * dt;
           this.velocity.x += (Math.random() - 0.5) * noise;
@@ -677,6 +1355,7 @@ var Particle = class _Particle {
     }
     this.position.x += this.velocity.x * dt;
     this.position.y += this.velocity.y * dt;
+    if (this.velocity.z !== 0) this.position.z += this.velocity.z * dt;
     this.rotation = this.rotation + this.rotationVelocity * dt;
     const baseSize = Math.min(this.factoredSize + this.scaleStep * dt, this.size);
     if (this.idleEnabled && this.homePosition && this.homeConfig && this.homeConfig.breathingAmplitude > 0) {
@@ -726,6 +1405,7 @@ var Particle = class _Particle {
     if (seg) {
       seg.x = this.position.x;
       seg.y = this.position.y;
+      seg.z = this.position.z;
       seg.size = this.factoredSize;
       seg.rotation = this.rotation;
       seg.alpha = this.alpha;
@@ -735,6 +1415,7 @@ var Particle = class _Particle {
       this.trailSegments.push({
         x: this.position.x,
         y: this.position.y,
+        z: this.position.z,
         size: this.factoredSize,
         rotation: this.rotation,
         alpha: this.alpha,
@@ -785,11 +1466,14 @@ var _Particular = class _Particular {
     this.emitters = [];
     this.attractors = [];
     this.mouseForces = [];
+    this.flockingForces = [];
     this.renderers = [];
     this.maxCount = defaultParticular.maxCount;
     this.width = 0;
     this.height = 0;
     this.pixelRatio = 2;
+    /** Multiplier for kill-zone bounds. 3D renderers set this higher so perspective-visible particles aren't culled prematurely. */
+    this.boundsPadding = 1;
     this.continuous = false;
     this.container = null;
     this.animateRequest = null;
@@ -830,7 +1514,10 @@ var _Particular = class _Particular {
     this.isOn = true;
   }
   stop() {
-    this.isOn = false;
+    if (this.isOn) {
+      this.isOn = false;
+      this.dispatchEvent(_Particular.UPDATE_AFTER);
+    }
   }
   onResize() {
     if (this.container) {
@@ -874,6 +1561,15 @@ var _Particular = class _Particular {
       this.mouseForces.splice(index, 1);
     }
   }
+  addFlockingForce(flockingForce) {
+    this.flockingForces.push(flockingForce);
+  }
+  removeFlockingForce(flockingForce) {
+    const index = this.flockingForces.indexOf(flockingForce);
+    if (index !== -1) {
+      this.flockingForces.splice(index, 1);
+    }
+  }
   updateEmitters(dt = 1) {
     if (this.getCount() <= this.maxCount) {
       for (const emitter of this.emitters) {
@@ -883,18 +1579,31 @@ var _Particular = class _Particular {
     for (const mf of this.mouseForces) {
       mf.decay(dt);
     }
+    if (this.flockingForces.length > 0) {
+      const allParticles = this.getAllParticles();
+      for (const ff of this.flockingForces) {
+        ff.preCompute(allParticles, dt);
+      }
+    }
     let forces;
-    if (this.mouseForces.length > 0) {
+    const hasExtra = this.mouseForces.length > 0 || this.flockingForces.length > 0;
+    if (hasExtra) {
       const combined = this._combinedForces;
       combined.length = 0;
       for (const a of this.attractors) combined.push(a);
       for (const mf of this.mouseForces) combined.push(mf);
+      for (const ff of this.flockingForces) combined.push(ff);
       forces = combined;
     } else {
       forces = this.attractors;
     }
+    const margin = this.boundsPadding - 1;
+    const bx = this.width * (1 + margin);
+    const by = this.height * (1 + margin);
+    const mx = this.width * margin;
+    const my = this.height * margin;
     for (const emitter of this.emitters) {
-      emitter.update(this.width, this.height, forces, dt);
+      emitter.update(bx, by, mx, my, forces, dt);
     }
     let writeIdx = 0;
     for (let i = 0; i < this.emitters.length; i++) {
@@ -935,6 +1644,7 @@ var _Particular = class _Particular {
     destroy(this.renderers);
     destroy(this.emitters);
     this.attractors = [];
+    this.flockingForces = [];
     destroy(this.mouseForces);
   }
 };
@@ -973,13 +1683,20 @@ function generateHarmoniousPalette() {
 function createExplosionChild(parent, config, engine, fallbackColors) {
   const merged = { ...defaultExplosionChild, ...config };
   const size = getRandomInt(merged.sizeMin, merged.sizeMax);
-  const angle = Math.random() * Math.PI * 2;
   const spread = merged.velocitySpread;
   const speed = merged.velocity * (1 - spread + Math.random() * spread * 2);
-  const velocity = Vector.fromAngle(angle, speed);
+  let velocity;
+  if (merged.spread3d && merged.spread3d > 0) {
+    const azimuth = Math.random() * Math.PI * 2;
+    const elevation = (Math.random() - 0.5) * 2 * merged.spread3d;
+    velocity = Vector.fromSpherical(azimuth, elevation, speed);
+  } else {
+    const angle = Math.random() * Math.PI * 2;
+    velocity = Vector.fromAngle(angle, speed);
+  }
   const colors = merged.inheritColor ? [parent.color] : fallbackColors.length > 0 ? fallbackColors : [parent.color];
   const particle = Particle.create({
-    point: new Vector(parent.x, parent.y),
+    point: new Vector(parent.x, parent.y, parent.z ?? 0),
     velocity,
     acceleration: new Vector(0, 0),
     friction: merged.friction,
@@ -1037,7 +1754,7 @@ var Emitter = class {
   assignParticular(particular) {
     this.particular = particular;
   }
-  update(boundsX, boundsY, forces, dt = 1) {
+  update(boundsX, boundsY, marginX, marginY, forces, dt = 1) {
     let writeIdx = 0;
     const detonate = this.configuration.detonate;
     const newChildren = this._newChildren;
@@ -1045,7 +1762,7 @@ var Emitter = class {
     for (let i = 0; i < this.particles.length; i++) {
       const particle = this.particles[i];
       const pos = particle.position;
-      if (pos.x < 0 || pos.x > boundsX || pos.y < -boundsY || pos.y > boundsY) {
+      if (pos.x < -marginX || pos.x > boundsX || pos.y < -marginY || pos.y > boundsY) {
         if (particle.homePosition) {
           particle.update(forces, dt);
           this.particles[writeIdx++] = particle;
@@ -1074,6 +1791,7 @@ var Emitter = class {
             {
               x: particle.position.x,
               y: particle.position.y,
+              z: particle.position.z,
               color: particle.color,
               shape: particle.shape,
               blendMode: particle.blendMode
@@ -1120,6 +1838,9 @@ var Emitter = class {
       fadeTime,
       spawnWidth,
       spawnHeight,
+      spawnDepth,
+      spread3d,
+      emitDirection,
       shape,
       blendMode,
       glow,
@@ -1143,12 +1864,22 @@ var Emitter = class {
       friction: frictionBase,
       frictionSize
     } = this.configuration;
-    const angle = velocity.getAngle() + spread - Math.random() * spread * 2;
     const magnitude = velocity.getMagnitude();
     const offsetX = spawnWidth > 0 ? (Math.random() - 0.5) * spawnWidth : 0;
     const offsetY = spawnHeight > 0 ? (Math.random() - 0.5) * spawnHeight : 0;
-    const newPoint = new Vector(point.x + offsetX, point.y + offsetY);
-    const newVelocity = Vector.fromAngle(angle, magnitude);
+    const offsetZ = spawnDepth > 0 ? (Math.random() - 0.5) * spawnDepth : 0;
+    const newPoint = new Vector(point.x + offsetX, point.y + offsetY, point.z + offsetZ);
+    let newVelocity;
+    if (spread3d > 0) {
+      const baseAzimuth = Math.atan2(emitDirection.y, emitDirection.x);
+      const baseElevation = Math.atan2(emitDirection.z, Math.sqrt(emitDirection.x * emitDirection.x + emitDirection.y * emitDirection.y));
+      const azimuth = baseAzimuth + (Math.random() - 0.5) * 2 * Math.PI;
+      const elevation = baseElevation + (Math.random() - 0.5) * 2 * spread3d;
+      newVelocity = Vector.fromSpherical(azimuth, elevation, magnitude);
+    } else {
+      const angle = velocity.getAngle() + spread - Math.random() * spread * 2;
+      newVelocity = Vector.fromAngle(angle, magnitude);
+    }
     const size = getRandomInt(sizeMin, sizeMax);
     newVelocity.add({ x: 0, y: -((sizeMax - size) / 15) * velocityMultiplier });
     const friction = frictionBase + frictionSize * size;
@@ -1197,7 +1928,7 @@ var Attractor = class {
   constructor(config) {
     this._resolvedImage = null;
     const merged = { ...defaultAttractor, ...config };
-    this.position = new Vector(merged.x, merged.y);
+    this.position = new Vector(merged.x, merged.y, config.z ?? 0);
     this.strength = merged.strength;
     this.radius = merged.radius;
     this.visible = merged.visible;
@@ -1220,15 +1951,18 @@ var Attractor = class {
   getForce(particlePosition) {
     const dx = this.position.x - particlePosition.x;
     const dy = this.position.y - particlePosition.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
+    const dz = this.position.z - particlePosition.z;
+    const dist = dz === 0 ? Math.sqrt(dx * dx + dy * dy) : Math.sqrt(dx * dx + dy * dy + dz * dz);
     if (dist === 0 || dist > this.radius) {
       _tempForce.x = 0;
       _tempForce.y = 0;
+      _tempForce.z = 0;
       return _tempForce;
     }
     const scale = this.strength * (1 - dist / this.radius) / dist;
     _tempForce.x = dx * scale;
     _tempForce.y = dy * scale;
+    _tempForce.z = dz * scale;
     return _tempForce;
   }
   /** Returns a lightweight Particle-compatible object for use by renderers. */
@@ -1270,6 +2004,9 @@ var Attractor = class {
 var _tempForce2 = new Vector(0, 0);
 var MouseForce = class {
   constructor(config = {}) {
+    /** When set, particle positions are projected to screen space before computing distance.
+     *  Used by the 3D renderer so the mouse affects particles based on visual proximity. */
+    this.projectToScreen = null;
     this._trackListener = null;
     this._touchListener = null;
     this._trackTarget = null;
@@ -1376,8 +2113,20 @@ var MouseForce = class {
     this.velocity.y *= factor;
   }
   getForce(particlePosition) {
-    const dx = particlePosition.x - this.position.x;
-    const dy = particlePosition.y - this.position.y;
+    let px = particlePosition.x;
+    let py = particlePosition.y;
+    if (this.projectToScreen && particlePosition.z !== 0) {
+      const projected = this.projectToScreen(particlePosition.x, particlePosition.y, particlePosition.z);
+      if (!projected) {
+        _tempForce2.x = 0;
+        _tempForce2.y = 0;
+        return _tempForce2;
+      }
+      px = projected.x;
+      py = projected.y;
+    }
+    const dx = px - this.position.x;
+    const dy = py - this.position.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist === 0 || dist > this.radius) {
       _tempForce2.x = 0;
@@ -1397,6 +2146,197 @@ var MouseForce = class {
     _tempForce2.x = this.velocity.x * scale;
     _tempForce2.y = this.velocity.y * scale;
     return _tempForce2;
+  }
+};
+
+// src/particular/components/flockingForce.ts
+var _tempForce3 = new Vector(0, 0);
+function szudzikPair(a, b) {
+  const aa = a >= 0 ? 2 * a : -2 * a - 1;
+  const bb = b >= 0 ? 2 * b : -2 * b - 1;
+  return aa >= bb ? aa * aa + aa + bb : bb * bb + aa;
+}
+var SpatialHashGrid = class {
+  constructor(cellSize) {
+    this.cells = /* @__PURE__ */ new Map();
+    this.cellPool = [];
+    this.invCellSize = 1 / cellSize;
+  }
+  clear() {
+    this.cells.forEach((arr) => {
+      arr.length = 0;
+      this.cellPool.push(arr);
+    });
+    this.cells.clear();
+  }
+  insert(particle) {
+    const cx = Math.floor(particle.position.x * this.invCellSize);
+    const cy = Math.floor(particle.position.y * this.invCellSize);
+    const key = szudzikPair(cx, cy);
+    let cell = this.cells.get(key);
+    if (!cell) {
+      cell = this.cellPool.pop() || [];
+      this.cells.set(key, cell);
+    }
+    cell.push(particle);
+  }
+  queryNeighbors(particle, radius, has3D, callback) {
+    const px = particle.position.x;
+    const py = particle.position.y;
+    const pz = particle.position.z;
+    const cx = Math.floor(px * this.invCellSize);
+    const cy = Math.floor(py * this.invCellSize);
+    const radiusSq = radius * radius;
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        const key = szudzikPair(cx + dx, cy + dy);
+        const cell = this.cells.get(key);
+        if (!cell) continue;
+        for (let i = 0; i < cell.length; i++) {
+          const neighbor = cell[i];
+          if (neighbor === particle) continue;
+          const ddx = neighbor.position.x - px;
+          const ddy = neighbor.position.y - py;
+          let distSq = ddx * ddx + ddy * ddy;
+          if (has3D) {
+            const ddz = neighbor.position.z - pz;
+            distSq += ddz * ddz;
+          }
+          if (distSq < radiusSq) {
+            callback(neighbor, distSq);
+          }
+        }
+      }
+    }
+  }
+};
+var FlockingForce = class {
+  constructor(config) {
+    this.forceMap = /* @__PURE__ */ new WeakMap();
+    const merged = { ...defaultFlockingForce, ...config };
+    this.neighborRadius = merged.neighborRadius;
+    this.separationWeight = merged.separationWeight;
+    this.alignmentWeight = merged.alignmentWeight;
+    this.cohesionWeight = merged.cohesionWeight;
+    this.maxSteeringForce = merged.maxSteeringForce;
+    this.maxSpeed = merged.maxSpeed;
+    this.separationDistance = merged.separationDistance;
+    this.grid = new SpatialHashGrid(this.neighborRadius);
+  }
+  preCompute(particles, _dt) {
+    const grid = this.grid;
+    grid.clear();
+    let has3D = false;
+    for (let i = 0; i < particles.length; i++) {
+      if (particles[i].position.z !== 0) {
+        has3D = true;
+        break;
+      }
+    }
+    for (let i = 0; i < particles.length; i++) {
+      grid.insert(particles[i]);
+    }
+    const sepDistSq = this.separationDistance * this.separationDistance;
+    const maxSteer = this.maxSteeringForce;
+    const sepW = this.separationWeight;
+    const aliW = this.alignmentWeight;
+    const cohW = this.cohesionWeight;
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
+      let sepX = 0, sepY = 0, sepZ = 0;
+      let aliVX = 0, aliVY = 0, aliVZ = 0;
+      let cohX = 0, cohY = 0, cohZ = 0;
+      let neighborCount = 0;
+      let sepCount = 0;
+      grid.queryNeighbors(p, this.neighborRadius, has3D, (neighbor, distSq) => {
+        neighborCount++;
+        const nx = neighbor.position.x;
+        const ny = neighbor.position.y;
+        const nz = neighbor.position.z;
+        cohX += nx;
+        cohY += ny;
+        cohZ += nz;
+        aliVX += neighbor.velocity.x;
+        aliVY += neighbor.velocity.y;
+        aliVZ += neighbor.velocity.z;
+        if (distSq < sepDistSq && distSq > 0) {
+          const dist = Math.sqrt(distSq);
+          const invDist = 1 / dist;
+          sepX += (p.position.x - nx) * invDist;
+          sepY += (p.position.y - ny) * invDist;
+          if (has3D) sepZ += (p.position.z - nz) * invDist;
+          sepCount++;
+        }
+      });
+      let fx = 0, fy = 0, fz = 0;
+      if (neighborCount > 0) {
+        if (sepCount > 0) {
+          const invSep = 1 / sepCount;
+          fx += sepX * invSep * sepW;
+          fy += sepY * invSep * sepW;
+          fz += sepZ * invSep * sepW;
+        }
+        const invN = 1 / neighborCount;
+        const avgVX = aliVX * invN;
+        const avgVY = aliVY * invN;
+        const avgVZ = aliVZ * invN;
+        fx += (avgVX - p.velocity.x) * aliW;
+        fy += (avgVY - p.velocity.y) * aliW;
+        fz += (avgVZ - p.velocity.z) * aliW;
+        const avgPX = cohX * invN;
+        const avgPY = cohY * invN;
+        const avgPZ = cohZ * invN;
+        fx += (avgPX - p.position.x) * 0.01 * cohW;
+        fy += (avgPY - p.position.y) * 0.01 * cohW;
+        fz += (avgPZ - p.position.z) * 0.01 * cohW;
+      }
+      const magSq = fx * fx + fy * fy + fz * fz;
+      if (magSq > maxSteer * maxSteer) {
+        const invMag = maxSteer / Math.sqrt(magSq);
+        fx *= invMag;
+        fy *= invMag;
+        fz *= invMag;
+      }
+      let entry = this.forceMap.get(p);
+      if (entry) {
+        entry.x = fx;
+        entry.y = fy;
+        entry.z = fz;
+      } else {
+        entry = { x: fx, y: fy, z: fz };
+        this.forceMap.set(p, entry);
+      }
+    }
+  }
+  getForce(particlePosition, particle) {
+    if (!particle) {
+      _tempForce3.x = 0;
+      _tempForce3.y = 0;
+      _tempForce3.z = 0;
+      return _tempForce3;
+    }
+    const entry = this.forceMap.get(particle);
+    if (!entry) {
+      _tempForce3.x = 0;
+      _tempForce3.y = 0;
+      _tempForce3.z = 0;
+      return _tempForce3;
+    }
+    _tempForce3.x = entry.x;
+    _tempForce3.y = entry.y;
+    _tempForce3.z = entry.z;
+    const vx = particlePosition.x !== 0 ? particle.velocity.x + entry.x : particle.velocity.x + entry.x;
+    const vy = particle.velocity.y + entry.y;
+    const vz = particle.velocity.z + entry.z;
+    const speedSq = vx * vx + vy * vy + vz * vz;
+    if (speedSq > this.maxSpeed * this.maxSpeed) {
+      const speed = Math.sqrt(speedSq);
+      const scale = this.maxSpeed / speed;
+      _tempForce3.x = vx * scale - particle.velocity.x;
+      _tempForce3.y = vy * scale - particle.velocity.y;
+      _tempForce3.z = vz * scale - particle.velocity.z;
+    }
+    return _tempForce3;
   }
 };
 
@@ -1781,6 +2721,157 @@ var CanvasRenderer = class {
   }
 };
 
+// src/particular/renderers/webglShared.ts
+function compileShader(gl, type, source) {
+  const shader = gl.createShader(type);
+  if (!shader) throw new Error("Failed to create shader");
+  gl.shaderSource(shader, source);
+  gl.compileShader(shader);
+  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+    throw new Error("Shader compile error: " + gl.getShaderInfoLog(shader));
+  }
+  return shader;
+}
+function linkProgram(gl, vs, fs) {
+  const program = gl.createProgram();
+  if (!program) throw new Error("Failed to create program");
+  gl.attachShader(program, vs);
+  gl.attachShader(program, fs);
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    throw new Error("Shader link error: " + gl.getProgramInfoLog(program));
+  }
+  return program;
+}
+function hexToRgba(hex) {
+  const match = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+  if (!match) return [1, 1, 1, 1];
+  return [
+    parseInt(match[1], 16) / 255,
+    parseInt(match[2], 16) / 255,
+    parseInt(match[3], 16) / 255,
+    1
+  ];
+}
+function shapeToId(shape) {
+  switch (shape) {
+    case "square":
+    case "rectangle":
+      return 1;
+    case "triangle":
+      return 2;
+    case "star":
+      return 3;
+    case "roundedRectangle":
+      return 4;
+    case "ring":
+      return 5;
+    case "sparkle":
+      return 6;
+    default:
+      return 0;
+  }
+}
+function setBlendMode(gl, mode) {
+  gl.enable(gl.BLEND);
+  switch (mode) {
+    case "additive":
+      gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+      gl.blendEquation(gl.FUNC_ADD);
+      break;
+    case "multiply":
+      gl.blendFuncSeparate(gl.DST_COLOR, gl.ZERO, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+      gl.blendEquation(gl.FUNC_ADD);
+      break;
+    case "screen":
+      gl.blendFuncSeparate(gl.ONE, gl.ONE_MINUS_SRC_COLOR, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+      gl.blendEquation(gl.FUNC_ADD);
+      break;
+    default:
+      gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+      gl.blendEquation(gl.FUNC_ADD);
+  }
+}
+var SDF_SHAPE_FUNCTIONS = `
+float sdBox(vec2 p, vec2 b) {
+  vec2 d = abs(p) - b;
+  return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+}
+
+float sdRoundedBox(vec2 p, vec2 b, float r) {
+  vec2 q = abs(p) - b + vec2(r);
+  return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
+}
+
+float sdEquilateralTriangle(vec2 p) {
+  const float k = 1.7320508;
+  p.x = abs(p.x) - 1.0;
+  p.y = p.y + 1.0 / k;
+  if (p.x + k * p.y > 0.0) {
+    p = vec2(p.x - k * p.y, -k * p.x - p.y) / 2.0;
+  }
+  p.x -= clamp(p.x, -2.0, 0.0);
+  return -length(p) * sign(p.y);
+}
+
+float sdStar5(vec2 p, float r, float rf) {
+  const vec2 k1 = vec2(0.809016994375, -0.587785252292);
+  const vec2 k2 = vec2(-k1.x, k1.y);
+  p.x = abs(p.x);
+  p -= 2.0 * max(dot(k1, p), 0.0) * k1;
+  p -= 2.0 * max(dot(k2, p), 0.0) * k2;
+  p.x = abs(p.x);
+  p.y -= r;
+  vec2 ba = rf * vec2(-k1.y, k1.x) - vec2(0.0, 1.0);
+  float h = clamp(dot(p, ba) / dot(ba, ba), 0.0, r);
+  return length(p - ba * h) * sign(p.y * ba.x - p.x * ba.y);
+}
+
+float sdRing(vec2 p, float radius, float thickness) {
+  return abs(length(p) - radius) - thickness;
+}
+
+float sdSparkle(vec2 p) {
+  float armWidth = 0.15;
+  float d1 = abs(p.x) * 0.7 + abs(p.y) - 1.0;
+  float w1 = abs(p.x) - armWidth;
+  float arm1 = max(d1, w1);
+  float d2 = abs(p.y) * 0.7 + abs(p.x) - 1.0;
+  float w2 = abs(p.y) - armWidth;
+  float arm2 = max(d2, w2);
+  vec2 pr = vec2(p.x + p.y, p.y - p.x) * 0.7071;
+  float d3 = abs(pr.x) * 0.7 + abs(pr.y) - 0.7;
+  float w3 = abs(pr.x) - armWidth;
+  float arm3 = max(d3, w3);
+  float d4 = abs(pr.y) * 0.7 + abs(pr.x) - 0.7;
+  float w4 = abs(pr.y) - armWidth;
+  float arm4 = max(d4, w4);
+  return min(min(arm1, arm2), min(arm3, arm4));
+}
+
+float shapeSdf(vec2 p, float shapeId) {
+  if (shapeId < 0.5) {
+    return length(p) - 1.0;
+  }
+  if (shapeId < 1.5) {
+    return sdBox(p, vec2(1.0));
+  }
+  if (shapeId < 2.5) {
+    return sdEquilateralTriangle(p);
+  }
+  if (shapeId < 3.5) {
+    return sdStar5(p, 1.0, 0.45);
+  }
+  if (shapeId < 4.5) {
+    return sdRoundedBox(p, vec2(0.75), 0.25);
+  }
+  if (shapeId < 5.5) {
+    return sdRing(p, 0.75, 0.2);
+  }
+  return sdSparkle(p);
+}
+`;
+
 // src/particular/renderers/webglRenderer.ts
 var VERTEX_SHADER = `#version 300 es
 in vec2 a_position;
@@ -1828,86 +2919,7 @@ uniform float u_shadowBlur;
 
 out vec4 outColor;
 
-float sdBox(vec2 p, vec2 b) {
-  vec2 d = abs(p) - b;
-  return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
-}
-
-float sdRoundedBox(vec2 p, vec2 b, float r) {
-  vec2 q = abs(p) - b + vec2(r);
-  return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
-}
-
-float sdEquilateralTriangle(vec2 p) {
-  const float k = 1.7320508;
-  p.x = abs(p.x) - 1.0;
-  p.y = p.y + 1.0 / k;
-  if (p.x + k * p.y > 0.0) {
-    p = vec2(p.x - k * p.y, -k * p.x - p.y) / 2.0;
-  }
-  p.x -= clamp(p.x, -2.0, 0.0);
-  return -length(p) * sign(p.y);
-}
-
-float sdStar5(vec2 p, float r, float rf) {
-  const vec2 k1 = vec2(0.809016994375, -0.587785252292);
-  const vec2 k2 = vec2(-k1.x, k1.y);
-  p.x = abs(p.x);
-  p -= 2.0 * max(dot(k1, p), 0.0) * k1;
-  p -= 2.0 * max(dot(k2, p), 0.0) * k2;
-  p.x = abs(p.x);
-  p.y -= r;
-  vec2 ba = rf * vec2(-k1.y, k1.x) - vec2(0.0, 1.0);
-  float h = clamp(dot(p, ba) / dot(ba, ba), 0.0, r);
-  return length(p - ba * h) * sign(p.y * ba.x - p.x * ba.y);
-}
-
-float sdRing(vec2 p, float radius, float thickness) {
-  return abs(length(p) - radius) - thickness;
-}
-
-float sdSparkle(vec2 p) {
-  // 4-pointed star: union of two diamond shapes rotated 45 degrees
-  float armWidth = 0.15;
-  // Axis-aligned diamond (vertical/horizontal arms)
-  float d1 = abs(p.x) * 0.7 + abs(p.y) - 1.0;
-  float w1 = abs(p.x) - armWidth;
-  float arm1 = max(d1, w1);
-  float d2 = abs(p.y) * 0.7 + abs(p.x) - 1.0;
-  float w2 = abs(p.y) - armWidth;
-  float arm2 = max(d2, w2);
-  // Diagonal arms (rotated 45 degrees)
-  vec2 pr = vec2(p.x + p.y, p.y - p.x) * 0.7071;
-  float d3 = abs(pr.x) * 0.7 + abs(pr.y) - 0.7;
-  float w3 = abs(pr.x) - armWidth;
-  float arm3 = max(d3, w3);
-  float d4 = abs(pr.y) * 0.7 + abs(pr.x) - 0.7;
-  float w4 = abs(pr.y) - armWidth;
-  float arm4 = max(d4, w4);
-  return min(min(arm1, arm2), min(arm3, arm4));
-}
-
-float shapeSdf(vec2 p, float shapeId) {
-  if (shapeId < 0.5) {
-    return length(p) - 1.0; // circle
-  }
-  if (shapeId < 1.5) {
-    return sdBox(p, vec2(1.0)); // rectangle/square
-  }
-  if (shapeId < 2.5) {
-    return sdEquilateralTriangle(p); // triangle
-  }
-  if (shapeId < 3.5) {
-    return sdStar5(p, 1.0, 0.45); // star
-  }
-  if (shapeId < 4.5) {
-    return sdRoundedBox(p, vec2(0.75), 0.25); // rounded rectangle
-  }
-  if (shapeId < 5.5) {
-    return sdRing(p, 0.75, 0.2); // ring
-  }
-  return sdSparkle(p); // sparkle
-}
+${SDF_SHAPE_FUNCTIONS}
 
 void main() {
   float sd = shapeSdf(v_uv, v_particle_shape);
@@ -1929,7 +2941,6 @@ void main() {
     float glowScale = mix(0.75, 1.75, clamp((v_particle_size - 4.0) / 20.0, 0.0, 1.0));
     float glowRange = u_glowSize * glowScale;
     float halo = 1.0 - smoothstep(0.0, glowRange, sd);
-    // Quadratic tail softens the outer edge so glow fades more naturally.
     halo = halo * halo;
     float glowAlpha = halo * u_glowColor.a;
     alpha = max(alpha, glowAlpha);
@@ -2007,55 +3018,6 @@ void main() {
   outColor = vec4(rgb, tex.a * particleAlpha);
 }
 `;
-function hexToRgba(hex) {
-  const match = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
-  if (!match) return [1, 1, 1, 1];
-  return [
-    parseInt(match[1], 16) / 255,
-    parseInt(match[2], 16) / 255,
-    parseInt(match[3], 16) / 255,
-    1
-  ];
-}
-function shapeToId(shape) {
-  switch (shape) {
-    case "square":
-    case "rectangle":
-      return 1;
-    case "triangle":
-      return 2;
-    case "star":
-      return 3;
-    case "roundedRectangle":
-      return 4;
-    case "ring":
-      return 5;
-    case "sparkle":
-      return 6;
-    default:
-      return 0;
-  }
-}
-function setBlendMode(gl, mode) {
-  gl.enable(gl.BLEND);
-  switch (mode) {
-    case "additive":
-      gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-      gl.blendEquation(gl.FUNC_ADD);
-      break;
-    case "multiply":
-      gl.blendFuncSeparate(gl.DST_COLOR, gl.ZERO, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-      gl.blendEquation(gl.FUNC_ADD);
-      break;
-    case "screen":
-      gl.blendFuncSeparate(gl.ONE, gl.ONE_MINUS_SRC_COLOR, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-      gl.blendEquation(gl.FUNC_ADD);
-      break;
-    default:
-      gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-      gl.blendEquation(gl.FUNC_ADD);
-  }
-}
 var WebGLRenderer = class {
   constructor(target, options) {
     this.gl = null;
@@ -2276,17 +3238,7 @@ var WebGLRenderer = class {
     return tex;
   }
   compileShader(type, source) {
-    const gl = this.gl;
-    const shader = gl.createShader(type);
-    if (!shader) throw new Error("Failed to create shader");
-    gl.shaderSource(shader, source);
-    gl.compileShader(shader);
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-      throw new Error(
-        "Shader compile error: " + gl.getShaderInfoLog(shader)
-      );
-    }
-    return shader;
+    return compileShader(this.gl, type, source);
   }
   expandParticlesWithTrails(particles) {
     const expanded = this.expandedArr;
@@ -2306,6 +3258,7 @@ var WebGLRenderer = class {
         const ghost = this.acquireGhost();
         ghost.position.x = segment.x;
         ghost.position.y = segment.y;
+        ghost.position.z = segment.z;
         ghost.factoredSize = Math.max(0.1, segment.size * sizeScale);
         ghost.rotation = segment.rotation;
         ghost.alpha = segment.alpha * alphaScale;
@@ -2591,376 +3544,856 @@ var WebGLRenderer = class {
   }
 };
 
-// src/particular/presets.ts
-var snowPalette = ["#ffffff", "#f8f9fa", "#f1f3f5", "#e9ecef", "#dee2e6"];
-var grayscalePalette = ["#f8f9fa", "#dee2e6", "#adb5bd", "#868e96", "#495057", "#212529"];
-var coolBluePalette = ["#d0ebff", "#a5d8ff", "#74c0fc", "#4dabf7", "#339af0", "#228be6"];
-var bluePalette = ["#003d99", "#0057d9", "#0077ff", "#1a8cff", "#3da1ff", "#66b8ff"];
-var orangePalette = ["#b33600", "#cc4a00", "#e86100", "#f57c00", "#ff9500", "#ffad33"];
-var greenPalette = ["#006b3f", "#008c51", "#00a85e", "#00c46b", "#1edd80", "#4deda0"];
-var mutedPalette = ["#d4a373", "#ccd5ae", "#e9edc9", "#a8dadc", "#b5838d", "#e5989b", "#8d99ae"];
-var fireworksPalette = ["#ff4757", "#ffa502", "#2ed573", "#1e90ff", "#ff6b81", "#eccc68", "#7bed9f", "#70a1ff", "#ffffff"];
-var meteorPalette = ["#ffffff", "#e0f0ff", "#80d0ff", "#40a0e0", "#2060c0", "#6040ff", "#a080ff"];
-var waterPalette = ["#e0f7fa", "#b2ebf2", "#80deea", "#4dd0e1", "#26c6da", "#00acc1", "#ffffff"];
-var finlandPalette = ["#003580", "#002f6c", "#ffffff", "#f8f9fa"];
-var usaPalette = ["#B22234", "#ffffff", "#3C3B6E"];
-var Burst = {
-  /** Celebratory confetti burst: colorful rectangles fluttering outward and drifting down */
-  confetti: {
-    shape: "rectangle",
-    blendMode: "normal",
-    shadow: true,
-    rate: 20,
-    life: 28,
-    velocity: Vector.fromAngle(-90, 7),
-    spread: Math.PI * 0.85,
-    sizeMin: 3,
-    sizeMax: 10,
-    velocityMultiplier: 6,
-    fadeTime: 35,
-    gravity: 0.14,
-    gravityJitter: 0.2,
-    scaleStep: 1.2,
-    friction: 5e-3,
-    maxCount: 500,
-    colors: mutedPalette
-  },
-  /** Signature magical burst: glowing sparkles with soft trails */
-  magic: {
-    shape: "sparkle",
-    blendMode: "additive",
-    glow: true,
-    glowSize: 10,
-    glowColor: "#74c0fc",
-    glowAlpha: 0.35,
-    rate: 16,
-    life: 34,
-    velocity: Vector.fromAngle(-90, 5),
-    spread: Math.PI * 1.15,
-    sizeMin: 3,
-    sizeMax: 10,
-    velocityMultiplier: 5,
-    fadeTime: 35,
-    gravity: 0.08,
-    gravityJitter: 0.15,
-    scaleStep: 0.9,
-    friction: 5e-3,
-    maxCount: 400,
-    trail: true,
-    trailLength: 8,
-    trailFade: 0.35,
-    trailShrink: 0.5,
-    colors: ["#a5d8ff", "#74c0fc", "#4dabf7", "#d0bfff", "#b197fc", "#9775fa"]
-  },
-  /** Cinematic fireworks: glowing triangles with bright trailing bloom */
-  fireworks: {
-    shape: "triangle",
-    blendMode: "additive",
-    glow: true,
-    glowSize: 8,
-    glowColor: "#ff9500",
-    glowAlpha: 0.3,
-    rate: 22,
-    life: 24,
-    velocity: Vector.fromAngle(-90, 8.8),
-    spread: Math.PI * 1.05,
-    sizeMin: 3,
-    sizeMax: 10,
-    velocityMultiplier: 8,
-    fadeTime: 22,
-    gravity: 0.18,
-    gravityJitter: 0.2,
-    scaleStep: 1.15,
-    friction: 3e-3,
-    maxCount: 520,
-    trail: true,
-    trailLength: 10,
-    trailFade: 0.3,
-    trailShrink: 0.45,
-    colors: mutedPalette
-  },
-  /** Fireworks with timed detonation: narrow upward launch that auto-explodes into colorful sub-bursts */
-  fireworksDetonation: {
-    shape: "triangle",
-    blendMode: "additive",
-    glow: true,
-    glowSize: 8,
-    glowColor: "#74c0fc",
-    glowAlpha: 0.3,
-    rate: 22,
-    life: 24,
-    velocity: Vector.fromAngle(-Math.PI / 2, 8.8),
-    spread: Math.PI / 4,
-    sizeMin: 3,
-    sizeMax: 6,
-    velocityMultiplier: 8,
-    fadeTime: 20,
-    gravity: 0.08,
-    gravityJitter: 0.15,
-    scaleStep: 1.15,
-    maxCount: 3e3,
-    particleLife: 80,
-    trail: true,
-    trailLength: 6,
-    trailFade: 0.3,
-    trailShrink: 0.5,
-    detonate: {
-      at: 0.7,
-      childCount: 8,
-      velocity: 5,
-      velocitySpread: 0.6,
-      friction: 0.015,
-      scaleStep: 1,
-      childLife: 45,
-      sizeMin: 1,
-      sizeMax: 4,
-      fadeTime: 18,
-      inheritColor: true,
-      shape: "triangle",
-      trail: true,
-      trailLength: 4,
-      trailFade: 0.5,
-      trailShrink: 0.65
-    }
-  }
-};
-var Images = {
-  /** Tuned for icon/image particles (no tint by default). */
-  showcase: {
-    shape: "roundedRectangle",
-    blendMode: "normal",
-    imageTint: false,
-    glow: false,
-    rate: 12,
-    life: 36,
-    velocity: Vector.fromAngle(-90, 5),
-    spread: Math.PI * 1,
-    sizeMin: 5,
-    sizeMax: 22,
-    velocityMultiplier: 4,
-    fadeTime: 30,
-    gravity: 0.2,
-    scaleStep: 0.8,
-    maxCount: 380
-  }
-};
-var Ambient = {
-  /** Gentle snowfall: soft white particles drifting downward across the viewport */
-  snow: {
-    shape: "circle",
-    blendMode: "normal",
-    glow: true,
-    glowSize: 8,
-    glowColor: "#ffffff",
-    glowAlpha: 0.2,
-    rate: 0.4,
-    life: 999999,
-    particleLife: 500,
-    velocity: Vector.fromAngle(Math.PI / 2, 0.4),
-    spread: Math.PI * 0.15,
-    gravityJitter: 0.5,
-    sizeMin: 1,
-    sizeMax: 4,
-    velocityMultiplier: 0.3,
-    fadeTime: 60,
-    gravity: 5e-3,
-    acceleration: 0,
-    accelerationSize: 1e-3,
-    friction: 1e-3,
-    frictionSize: 3e-3,
-    scaleStep: 1,
-    maxCount: 200,
-    continuous: true,
-    autoStart: true,
-    colors: snowPalette
-  },
-  /** Meteors: fast diagonal streaks with long glowing trails, additive blending */
-  meteors: {
-    shape: "ring",
-    blendMode: "additive",
-    glow: true,
-    glowSize: 14,
-    glowColor: "#ff6d00",
-    glowAlpha: 0.5,
-    trail: true,
-    trailLength: 12,
-    trailFade: 0.25,
-    trailShrink: 0.4,
-    rate: 0.5,
-    life: 999999,
-    particleLife: 90,
-    velocity: Vector.fromAngle(Math.PI * 0.65, 14),
-    spread: Math.PI * 0.15,
-    sizeMin: 2,
-    sizeMax: 6,
-    velocityMultiplier: 2,
-    fadeTime: 20,
-    gravity: 0.12,
-    gravityJitter: 0.4,
-    acceleration: 0.04,
-    accelerationSize: 8e-3,
-    friction: 0,
-    frictionSize: 0,
-    scaleStep: 1,
-    maxCount: 100,
-    continuous: true,
-    autoStart: true,
-    colors: meteorPalette
-  },
-  /** Fireworks show: gentle rockets launch from the bottom and auto-explode into colorful bursts */
-  fireworksShow: {
-    shape: "triangle",
-    blendMode: "additive",
-    glow: true,
-    glowSize: 8,
-    glowColor: "#ff9500",
-    glowAlpha: 0.3,
-    trail: true,
-    trailLength: 6,
-    trailFade: 0.3,
-    trailShrink: 0.5,
-    rate: 0.25,
-    life: 999999,
-    particleLife: 120,
-    velocity: Vector.fromAngle(-Math.PI / 2, 7),
-    spread: Math.PI / 6,
-    sizeMin: 2,
-    sizeMax: 4,
-    velocityMultiplier: 3,
-    fadeTime: 15,
-    gravity: 0.05,
-    gravityJitter: 0.15,
-    scaleStep: 1,
-    maxCount: 1200,
-    continuous: true,
-    autoStart: true,
-    colors: fireworksPalette,
-    detonate: {
-      at: 0.65,
-      childCount: 10,
-      velocity: 4,
-      velocitySpread: 0.6,
-      friction: 0.02,
-      scaleStep: 0.8,
-      childLife: 50,
-      sizeMin: 1,
-      sizeMax: 3,
-      fadeTime: 20,
-      inheritColor: true,
-      shape: "triangle",
-      trail: true,
-      trailLength: 4,
-      trailFade: 0.5,
-      trailShrink: 0.6
-    }
-  },
-  /** River flow: horizontal stream of water particles, designed for use with attractors */
-  river: {
-    shape: "circle",
-    blendMode: "normal",
-    glow: true,
-    glowSize: 6,
-    glowColor: "#80deea",
-    glowAlpha: 0.25,
-    trail: true,
-    trailLength: 6,
-    trailFade: 0.5,
-    trailShrink: 0.4,
-    rate: 4,
-    life: 999999,
-    particleLife: 220,
-    velocity: Vector.fromAngle(0, 1.8),
-    spread: Math.PI / 10,
-    sizeMin: 1,
-    sizeMax: 4,
-    velocityMultiplier: 0,
-    fadeTime: 80,
-    gravity: 0,
-    friction: 0,
-    scaleStep: 1,
-    maxCount: 500,
-    continuous: true,
-    autoStart: true,
-    colors: waterPalette
-  }
-};
-var ImageParticles = {
-  /** High-fidelity text rendered as tiny particles with spring return. */
-  text: {
-    shape: "square",
-    blendMode: "normal",
-    glow: false,
-    maxCount: 1e4
-  },
-  /** Shape/icon rendered as particles with soft glow. */
-  shape: {
-    shape: "circle",
-    blendMode: "normal",
-    glow: true,
-    glowSize: 8,
-    glowAlpha: 0.3,
-    maxCount: 1e4
-  }
-};
-var Colors = {
-  /** White to offwhite range */
-  snow: { colors: snowPalette },
-  /** Full black-to-white range */
-  grayscale: { colors: grayscalePalette },
-  /** Single-hue cool blue range */
-  coolBlue: { colors: coolBluePalette },
-  /** Desaturated warm/cool mix */
-  muted: { colors: mutedPalette },
-  /** Bold saturated blue */
-  blue: { colors: bluePalette },
-  /** Bold saturated orange */
-  orange: { colors: orangePalette },
-  /** Bold saturated green */
-  green: { colors: greenPalette },
-  /** Finnish flag blue and white */
-  finland: { colors: finlandPalette },
-  /** American flag red, white, blue */
-  usa: { colors: usaPalette },
-  /** White-hot to deep red meteor palette */
-  meteor: { colors: meteorPalette },
-  /** Cyan-to-white water palette */
-  water: { colors: waterPalette }
-};
-var presetRegistry = {
-  confetti: Burst.confetti,
-  magic: Burst.magic,
-  fireworks: Burst.fireworks,
-  fireworksDetonation: Burst.fireworksDetonation,
-  images: Images.showcase,
-  imageText: ImageParticles.text,
-  imageShape: ImageParticles.shape,
-  snow: Ambient.snow,
-  meteors: Ambient.meteors,
-  river: Ambient.river,
-  fireworksShow: Ambient.fireworksShow
-};
-var presets = {
-  Burst,
-  Images,
-  ImageParticles,
-  Ambient,
-  Colors,
-  // Backward-compatible aliases
-  confetti: Burst.confetti,
-  magic: Burst.magic,
-  fireworks: Burst.fireworks,
-  fireworksDetonation: Burst.fireworksDetonation,
-  images: Images.showcase,
-  imageText: ImageParticles.text,
-  imageShape: ImageParticles.shape,
-  snow: Ambient.snow,
-  meteors: Ambient.meteors,
-  river: Ambient.river,
-  fireworksShow: Ambient.fireworksShow
-};
-function getPreset(name) {
-  return presetRegistry[name];
+// src/particular/utils/mat4.ts
+function perspective(fov, aspect, near, far) {
+  const m = new Float32Array(16);
+  const f = 1 / Math.tan(fov / 2);
+  const rangeInv = 1 / (near - far);
+  m[0] = f / aspect;
+  m[5] = f;
+  m[10] = (near + far) * rangeInv;
+  m[11] = -1;
+  m[14] = 2 * near * far * rangeInv;
+  return m;
 }
+function lookAt(eye, center, up) {
+  let fx = center.x - eye.x;
+  let fy = center.y - eye.y;
+  let fz = center.z - eye.z;
+  let len = Math.sqrt(fx * fx + fy * fy + fz * fz);
+  if (len > 0) {
+    fx /= len;
+    fy /= len;
+    fz /= len;
+  }
+  let sx = fy * up.z - fz * up.y;
+  let sy = fz * up.x - fx * up.z;
+  let sz = fx * up.y - fy * up.x;
+  len = Math.sqrt(sx * sx + sy * sy + sz * sz);
+  if (len > 0) {
+    sx /= len;
+    sy /= len;
+    sz /= len;
+  }
+  const ux = sy * fz - sz * fy;
+  const uy = sz * fx - sx * fz;
+  const uz = sx * fy - sy * fx;
+  const m = new Float32Array(16);
+  m[0] = sx;
+  m[1] = ux;
+  m[2] = -fx;
+  m[3] = 0;
+  m[4] = sy;
+  m[5] = uy;
+  m[6] = -fy;
+  m[7] = 0;
+  m[8] = sz;
+  m[9] = uz;
+  m[10] = -fz;
+  m[11] = 0;
+  m[12] = -(sx * eye.x + sy * eye.y + sz * eye.z);
+  m[13] = -(ux * eye.x + uy * eye.y + uz * eye.z);
+  m[14] = -(-fx * eye.x + -fy * eye.y + -fz * eye.z);
+  m[15] = 1;
+  return m;
+}
+function multiply(a, b) {
+  const out = new Float32Array(16);
+  for (let col = 0; col < 4; col++) {
+    for (let row = 0; row < 4; row++) {
+      out[col * 4 + row] = a[row] * b[col * 4] + a[4 + row] * b[col * 4 + 1] + a[8 + row] * b[col * 4 + 2] + a[12 + row] * b[col * 4 + 3];
+    }
+  }
+  return out;
+}
+
+// src/particular/renderers/camera.ts
+var defaultCamera = {
+  fov: 60,
+  position: { x: 0, y: 0, z: 500 },
+  target: { x: 0, y: 0, z: 0 },
+  up: { x: 0, y: 1, z: 0 },
+  near: 1,
+  far: 5e3
+};
+var Camera = class {
+  constructor(config) {
+    const c = { ...defaultCamera, ...config };
+    this.fov = c.fov;
+    this.position = { ...c.position };
+    this.target = { ...c.target };
+    this.up = { ...c.up };
+    this.near = c.near;
+    this.far = c.far;
+    this.viewProjection = new Float32Array(16);
+  }
+  /** Recompute viewProjection matrix. Call after changing position/target/fov. */
+  update(aspect) {
+    const fovRad = this.fov * Math.PI / 180;
+    const proj = perspective(fovRad, aspect, this.near, this.far);
+    const view = lookAt(this.position, this.target, this.up);
+    this.viewProjection = multiply(proj, view);
+  }
+  /** Set camera position from spherical coordinates around the target. */
+  orbit(azimuth, elevation, distance) {
+    const cosElev = Math.cos(elevation);
+    this.position.x = this.target.x + distance * cosElev * Math.cos(azimuth);
+    this.position.y = this.target.y + distance * Math.sin(elevation);
+    this.position.z = this.target.z + distance * cosElev * Math.sin(azimuth);
+  }
+  /** Attach mouse-drag orbit + scroll-zoom controls to a canvas. Returns cleanup function. */
+  enableOrbitControls(canvas) {
+    let azimuth = Math.atan2(
+      this.position.z - this.target.z,
+      this.position.x - this.target.x
+    );
+    let elevation = Math.asin(
+      Math.min(1, Math.max(
+        -1,
+        (this.position.y - this.target.y) / this.getDistance()
+      ))
+    );
+    let distance = this.getDistance();
+    let isDragging = false;
+    let lastX = 0;
+    let lastY = 0;
+    const prevPointerEvents = canvas.style.pointerEvents;
+    canvas.style.pointerEvents = "auto";
+    const onMouseDown = (e) => {
+      isDragging = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+    };
+    const onMouseMove = (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      azimuth -= dx * 5e-3;
+      elevation = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, elevation + dy * 5e-3));
+      this.orbit(azimuth, elevation, distance);
+    };
+    const onMouseUp = () => {
+      isDragging = false;
+    };
+    const onWheel = (e) => {
+      e.preventDefault();
+      distance = Math.max(this.near + 10, distance * (1 + e.deltaY * 1e-3));
+      this.orbit(azimuth, elevation, distance);
+    };
+    canvas.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    canvas.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      canvas.style.pointerEvents = prevPointerEvents;
+      canvas.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+      canvas.removeEventListener("wheel", onWheel);
+    };
+  }
+  getDistance() {
+    const dx = this.position.x - this.target.x;
+    const dy = this.position.y - this.target.y;
+    const dz = this.position.z - this.target.z;
+    return Math.sqrt(dx * dx + dy * dy + dz * dz);
+  }
+};
+
+// src/particular/renderers/webgl3dRenderer.ts
+var VERTEX_SHADER_3D = `#version 300 es
+in vec2 a_position;
+in vec3 a_particle_pos;
+in float a_particle_size;
+in float a_particle_rotation;
+in vec4 a_particle_color;
+in float a_particle_shape;
+
+uniform mat4 u_viewProjection;
+uniform vec2 u_resolution;
+uniform float u_worldScale;
+
+out vec4 v_color;
+out vec2 v_uv;
+out float v_particle_size;
+out float v_particle_shape;
+
+void main() {
+  // Convert engine coords (origin top-left, y-down) to world coords (origin center, y-up)
+  // worldScale maps engine viewport to camera frustum at the target plane
+  vec3 worldPos = vec3(
+    (a_particle_pos.x - u_resolution.x * 0.5) * u_worldScale,
+    -(a_particle_pos.y - u_resolution.y * 0.5) * u_worldScale,
+    a_particle_pos.z * u_worldScale
+  );
+
+  // Project particle center into clip space
+  vec4 center = u_viewProjection * vec4(worldPos, 1.0);
+
+  // Cull particles behind the camera (w <= 0 means behind or on the near plane)
+  if (center.w <= 0.0) {
+    gl_Position = vec4(2.0, 2.0, 2.0, 1.0); // move off-screen
+    v_color = vec4(0.0);
+    v_uv = a_position;
+    v_particle_size = 0.0;
+    v_particle_shape = a_particle_shape;
+    return;
+  }
+
+  // Billboarding: offset quad vertices in screen space (NDC)
+  float c = cos(a_particle_rotation);
+  float s = sin(a_particle_rotation);
+  vec2 rotated = vec2(a_position.x * c - a_position.y * s, a_position.x * s + a_position.y * c);
+
+  // Scale size by perspective: size in pixels / screen height * 2 * w
+  float sizeNDC = a_particle_size / u_resolution.y * 2.0;
+  vec2 offset = rotated * sizeNDC * center.w;
+
+  // Correct for aspect ratio (NDC x range is -1..1 regardless of width)
+  offset.x *= u_resolution.y / u_resolution.x;
+
+  gl_Position = vec4(center.xy + offset, center.z, center.w);
+
+  v_color = a_particle_color;
+  v_uv = a_position;
+  v_particle_size = a_particle_size;
+  v_particle_shape = a_particle_shape;
+}
+`;
+var FRAGMENT_SHADER_3D = `#version 300 es
+precision mediump float;
+
+in vec4 v_color;
+in vec2 v_uv;
+in float v_particle_size;
+in float v_particle_shape;
+
+uniform float u_softness;
+uniform float u_glow;
+uniform float u_glowSize;
+uniform vec4 u_glowColor;
+uniform float u_isShadow;
+uniform vec4 u_shadowColor;
+uniform float u_shadowBlur;
+
+out vec4 outColor;
+
+${SDF_SHAPE_FUNCTIONS}
+
+void main() {
+  float sd = shapeSdf(v_uv, v_particle_shape);
+  float particleAlpha = pow(clamp(v_color.a, 0.0, 1.0), 0.8);
+
+  if (u_isShadow > 0.0) {
+    float retraction = clamp(v_color.a, 0.0, 1.0);
+    float sizeScale = clamp(v_particle_size / 12.0, 0.45, 2.2);
+    float effectiveShadowBlur = u_shadowBlur * retraction * sizeScale;
+    float shadowAlpha = 1.0 - smoothstep(-0.02, effectiveShadowBlur, sd);
+    outColor = vec4(u_shadowColor.rgb, u_shadowColor.a * shadowAlpha * retraction);
+    return;
+  }
+
+  float coreAlpha = 1.0 - smoothstep(-u_softness, u_softness, sd);
+  float alpha = coreAlpha;
+  vec3 rgb = v_color.rgb;
+  if (u_glow > 0.0) {
+    float glowScale = mix(0.75, 1.75, clamp((v_particle_size - 4.0) / 20.0, 0.0, 1.0));
+    float glowRange = u_glowSize * glowScale;
+    float halo = 1.0 - smoothstep(0.0, glowRange, sd);
+    halo = halo * halo;
+    float glowAlpha = halo * u_glowColor.a;
+    alpha = max(alpha, glowAlpha);
+    float glowMix = clamp((1.0 - coreAlpha) * glowAlpha, 0.0, 1.0);
+    rgb = mix(rgb, u_glowColor.rgb, glowMix);
+  }
+  float finalAlpha = particleAlpha * alpha;
+  if (finalAlpha < 0.01) discard;
+  outColor = vec4(rgb, finalAlpha);
+}
+`;
+var IMAGE_VERTEX_SHADER_3D = `#version 300 es
+in vec2 a_position;
+in vec3 a_particle_pos;
+in float a_particle_size;
+in float a_particle_rotation;
+in vec4 a_particle_color;
+
+uniform mat4 u_viewProjection;
+uniform vec2 u_resolution;
+uniform float u_worldScale;
+
+out vec4 v_color;
+out vec2 v_uv;
+out float v_particle_size;
+
+void main() {
+  // Convert engine coords (origin top-left, y-down) to world coords (origin center, y-up)
+  vec3 worldPos = vec3(
+    (a_particle_pos.x - u_resolution.x * 0.5) * u_worldScale,
+    -(a_particle_pos.y - u_resolution.y * 0.5) * u_worldScale,
+    a_particle_pos.z * u_worldScale
+  );
+
+  vec4 center = u_viewProjection * vec4(worldPos, 1.0);
+
+  float c = cos(a_particle_rotation);
+  float s = sin(a_particle_rotation);
+  vec2 rotated = vec2(a_position.x * c - a_position.y * s, a_position.x * s + a_position.y * c);
+
+  float sizeNDC = a_particle_size / u_resolution.y * 2.0;
+  vec2 offset = rotated * sizeNDC * center.w;
+  offset.x *= u_resolution.y / u_resolution.x;
+
+  gl_Position = vec4(center.xy + offset, center.z, center.w);
+  v_color = a_particle_color;
+  v_uv = a_position * 0.5 + 0.5;
+  v_particle_size = a_particle_size;
+}
+`;
+var IMAGE_FRAGMENT_SHADER_3D = `#version 300 es
+precision mediump float;
+
+in vec4 v_color;
+in vec2 v_uv;
+in float v_particle_size;
+
+uniform sampler2D u_texture;
+uniform float u_tint;
+uniform float u_isShadow;
+uniform vec4 u_shadowColor;
+uniform float u_shadowBlur;
+
+out vec4 outColor;
+
+void main() {
+  vec4 tex = texture(u_texture, v_uv);
+
+  if (u_isShadow > 0.0) {
+    vec2 texel = 1.0 / vec2(textureSize(u_texture, 0));
+    float retraction = clamp(v_color.a, 0.0, 1.0);
+    float sizeScale = clamp(v_particle_size / 12.0, 0.45, 2.2);
+    vec2 blur = texel * (u_shadowBlur * retraction * sizeScale);
+    float a = tex.a * 0.28;
+    a += texture(u_texture, v_uv + vec2( blur.x, 0.0)).a * 0.12;
+    a += texture(u_texture, v_uv + vec2(-blur.x, 0.0)).a * 0.12;
+    a += texture(u_texture, v_uv + vec2(0.0,  blur.y)).a * 0.12;
+    a += texture(u_texture, v_uv + vec2(0.0, -blur.y)).a * 0.12;
+    a += texture(u_texture, v_uv + vec2( blur.x,  blur.y)).a * 0.06;
+    a += texture(u_texture, v_uv + vec2(-blur.x,  blur.y)).a * 0.06;
+    a += texture(u_texture, v_uv + vec2( blur.x, -blur.y)).a * 0.06;
+    a += texture(u_texture, v_uv + vec2(-blur.x, -blur.y)).a * 0.06;
+    outColor = vec4(u_shadowColor.rgb, min(1.0, a) * u_shadowColor.a * retraction);
+    return;
+  }
+
+  vec3 rgb = mix(tex.rgb, tex.rgb * v_color.rgb, u_tint);
+  float particleAlpha = pow(clamp(v_color.a, 0.0, 1.0), 0.8);
+  float finalAlpha = tex.a * particleAlpha;
+  if (finalAlpha < 0.01) discard;
+  outColor = vec4(rgb, finalAlpha);
+}
+`;
+var WebGL3DRenderer = class {
+  constructor(target, options) {
+    this.gl = null;
+    this.particular = null;
+    this.pixelRatio = 2;
+    this.program = null;
+    this.imageProgram = null;
+    this.quadBuffer = null;
+    this.circleQuadBuffer = null;
+    this.instanceBuffer = null;
+    // x, y, z, size, rotation, r, g, b, a, shape
+    this.instanceStride = 10;
+    // Circle program uniforms
+    this.vpUniform = null;
+    this.resUniform = null;
+    this.worldScaleUniform = null;
+    this.softnessUniform = null;
+    this.glowUniform = null;
+    this.glowSizeUniform = null;
+    this.glowColorUniform = null;
+    this.isShadowUniform = null;
+    this.shadowColorUniform = null;
+    this.shadowBlurUniform = null;
+    // Circle attribute locations
+    this.cAttrPos = -1;
+    this.cAttrPPos = -1;
+    this.cAttrSize = -1;
+    this.cAttrRot = -1;
+    this.cAttrColor = -1;
+    this.cAttrShape = -1;
+    // Image program uniforms
+    this.imgVpUniform = null;
+    this.imgResUniform = null;
+    this.imgWorldScaleUniform = null;
+    this.imgTintUniform = null;
+    this.imgIsShadowUniform = null;
+    this.imgShadowColorUniform = null;
+    this.imgShadowBlurUniform = null;
+    this.imgTexUniform = null;
+    // Image attribute locations
+    this.iAttrPos = -1;
+    this.iAttrPPos = -1;
+    this.iAttrSize = -1;
+    this.iAttrRot = -1;
+    this.iAttrColor = -1;
+    this.textureCache = /* @__PURE__ */ new Map();
+    // Pools
+    this.ghostPool = [];
+    this.ghostPoolIdx = 0;
+    this.expandedArr = [];
+    this.batchPool = [];
+    this.batchPoolIdx = 0;
+    this._batchResult = [];
+    // Sort scratch
+    this.sortArr = [];
+    this.resize = (args) => {
+      if (!args || !this.gl) return;
+      const { width, height } = args;
+      this.target.width = width;
+      this.target.height = height;
+      this.gl.viewport(0, 0, width, height);
+    };
+    this.onUpdate = () => {
+      if (!this.gl) return;
+      this.gl.clearColor(0, 0, 0, 0);
+      this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+    };
+    this.onUpdateAfter = () => {
+      if (!this.gl || !this.particular || !this.program) return;
+      const baseParticles = this.particular.getAllParticles();
+      const particles = this.expandParticlesWithTrails(baseParticles);
+      for (let ai = 0; ai < this.particular.attractors.length; ai++) {
+        const attractor = this.particular.attractors[ai];
+        if (attractor.visible) particles.push(attractor.toDrawable());
+      }
+      const w = this.target.width || this.particular.width;
+      const h = this.target.height || this.particular.height;
+      const pixelRatio = this.pixelRatio;
+      const logicalW = w / pixelRatio;
+      const logicalH = h / pixelRatio;
+      if (logicalW <= 0 || logicalH <= 0) return;
+      this.camera.update(logicalW / logicalH);
+      const fovRad = this.camera.fov * Math.PI / 180;
+      const camDist = this.camera.getDistance();
+      const visibleHalfH = camDist * Math.tan(fovRad / 2);
+      const worldScale = visibleHalfH / (logicalH / 2);
+      const batches = this.buildBatches(particles);
+      const gl = this.gl;
+      gl.useProgram(this.program);
+      gl.uniformMatrix4fv(this.vpUniform, false, this.camera.viewProjection);
+      gl.uniform2f(this.resUniform, logicalW, logicalH);
+      gl.uniform1f(this.worldScaleUniform, worldScale);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.circleQuadBuffer);
+      gl.enableVertexAttribArray(this.cAttrPos);
+      gl.vertexAttribPointer(this.cAttrPos, 2, gl.FLOAT, false, 0, 0);
+      gl.enable(gl.DEPTH_TEST);
+      gl.depthFunc(gl.LEQUAL);
+      const halfW = logicalW * 0.5;
+      const halfH = logicalH * 0.5;
+      for (let bi = 0; bi < batches.length; bi++) {
+        const batch = batches[bi];
+        if (batch.blendMode !== "additive") {
+          this.sortBackToFront(batch.particles, halfW, halfH, worldScale);
+        }
+        if (batch.type === "circle") {
+          this.drawCircleBatch(batch);
+        } else {
+          this.drawImageBatch(batch, logicalW, logicalH, worldScale);
+          gl.useProgram(this.program);
+          gl.uniformMatrix4fv(this.vpUniform, false, this.camera.viewProjection);
+          gl.uniform2f(this.resUniform, logicalW, logicalH);
+          gl.uniform1f(this.worldScaleUniform, worldScale);
+          gl.bindBuffer(gl.ARRAY_BUFFER, this.circleQuadBuffer);
+          gl.enableVertexAttribArray(this.cAttrPos);
+          gl.vertexAttribPointer(this.cAttrPos, 2, gl.FLOAT, false, 0, 0);
+        }
+      }
+      gl.disable(gl.DEPTH_TEST);
+    };
+    this.target = target;
+    this.maxInstances = options?.maxInstances ?? 16384;
+    this.instanceData = new Float32Array(this.maxInstances * this.instanceStride);
+    this.camera = new Camera(options?.camera);
+  }
+  init(particular, pixelRatio) {
+    this.particular = particular;
+    this.pixelRatio = pixelRatio;
+    particular.boundsPadding = 3;
+    const gl = this.target.getContext("webgl2", {
+      alpha: true,
+      premultipliedAlpha: true
+    });
+    if (!gl) throw new Error("WebGL2 not supported");
+    this.gl = gl;
+    const vs = compileShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER_3D);
+    const fs = compileShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER_3D);
+    this.program = linkProgram(gl, vs, fs);
+    this.vpUniform = gl.getUniformLocation(this.program, "u_viewProjection");
+    this.resUniform = gl.getUniformLocation(this.program, "u_resolution");
+    this.worldScaleUniform = gl.getUniformLocation(this.program, "u_worldScale");
+    this.softnessUniform = gl.getUniformLocation(this.program, "u_softness");
+    this.glowUniform = gl.getUniformLocation(this.program, "u_glow");
+    this.glowSizeUniform = gl.getUniformLocation(this.program, "u_glowSize");
+    this.glowColorUniform = gl.getUniformLocation(this.program, "u_glowColor");
+    this.isShadowUniform = gl.getUniformLocation(this.program, "u_isShadow");
+    this.shadowColorUniform = gl.getUniformLocation(this.program, "u_shadowColor");
+    this.shadowBlurUniform = gl.getUniformLocation(this.program, "u_shadowBlur");
+    this.cAttrPos = gl.getAttribLocation(this.program, "a_position");
+    this.cAttrPPos = gl.getAttribLocation(this.program, "a_particle_pos");
+    this.cAttrSize = gl.getAttribLocation(this.program, "a_particle_size");
+    this.cAttrRot = gl.getAttribLocation(this.program, "a_particle_rotation");
+    this.cAttrColor = gl.getAttribLocation(this.program, "a_particle_color");
+    this.cAttrShape = gl.getAttribLocation(this.program, "a_particle_shape");
+    const ivs = compileShader(gl, gl.VERTEX_SHADER, IMAGE_VERTEX_SHADER_3D);
+    const ifs = compileShader(gl, gl.FRAGMENT_SHADER, IMAGE_FRAGMENT_SHADER_3D);
+    this.imageProgram = linkProgram(gl, ivs, ifs);
+    this.imgVpUniform = gl.getUniformLocation(this.imageProgram, "u_viewProjection");
+    this.imgResUniform = gl.getUniformLocation(this.imageProgram, "u_resolution");
+    this.imgWorldScaleUniform = gl.getUniformLocation(this.imageProgram, "u_worldScale");
+    this.imgTintUniform = gl.getUniformLocation(this.imageProgram, "u_tint");
+    this.imgIsShadowUniform = gl.getUniformLocation(this.imageProgram, "u_isShadow");
+    this.imgShadowColorUniform = gl.getUniformLocation(this.imageProgram, "u_shadowColor");
+    this.imgShadowBlurUniform = gl.getUniformLocation(this.imageProgram, "u_shadowBlur");
+    this.imgTexUniform = gl.getUniformLocation(this.imageProgram, "u_texture");
+    this.iAttrPos = gl.getAttribLocation(this.imageProgram, "a_position");
+    this.iAttrPPos = gl.getAttribLocation(this.imageProgram, "a_particle_pos");
+    this.iAttrSize = gl.getAttribLocation(this.imageProgram, "a_particle_size");
+    this.iAttrRot = gl.getAttribLocation(this.imageProgram, "a_particle_rotation");
+    this.iAttrColor = gl.getAttribLocation(this.imageProgram, "a_particle_color");
+    const quadData = new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]);
+    this.quadBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, quadData, gl.STATIC_DRAW);
+    const circleQuadData = new Float32Array([-2, -2, 2, -2, -2, 2, -2, 2, 2, -2, 2, 2]);
+    this.circleQuadBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.circleQuadBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, circleQuadData, gl.STATIC_DRAW);
+    this.instanceBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, this.instanceData.byteLength, gl.DYNAMIC_DRAW);
+    particular.addEventListener("UPDATE", this.onUpdate);
+    particular.addEventListener("UPDATE_AFTER", this.onUpdateAfter);
+    particular.addEventListener("RESIZE", this.resize);
+  }
+  // ── Depth sorting ──────────────────────────────────────────────────────
+  sortBackToFront(particles, halfW, halfH, ws) {
+    const vp = this.camera.viewProjection;
+    const m2 = vp[2], m6 = vp[6], m10 = vp[10], m14 = vp[14];
+    const m3 = vp[3], m7 = vp[7], m11 = vp[11], m15 = vp[15];
+    const arr = this.sortArr;
+    arr.length = particles.length;
+    for (let i = 0; i < particles.length; i++) arr[i] = particles[i];
+    arr.sort((a, b) => {
+      const awx = (a.position.x - halfW) * ws;
+      const awy = -(a.position.y - halfH) * ws;
+      const awz = a.position.z * ws;
+      const az = m2 * awx + m6 * awy + m10 * awz + m14;
+      const aw = m3 * awx + m7 * awy + m11 * awz + m15;
+      const bwx = (b.position.x - halfW) * ws;
+      const bwy = -(b.position.y - halfH) * ws;
+      const bwz = b.position.z * ws;
+      const bz = m2 * bwx + m6 * bwy + m10 * bwz + m14;
+      const bw = m3 * bwx + m7 * bwy + m11 * bwz + m15;
+      return az / aw - bz / bw;
+    });
+    for (let i = 0; i < arr.length; i++) particles[i] = arr[i];
+  }
+  // ── Trail expansion ────────────────────────────────────────────────────
+  expandParticlesWithTrails(particles) {
+    const expanded = this.expandedArr;
+    expanded.length = 0;
+    this.ghostPoolIdx = 0;
+    for (let pi = 0; pi < particles.length; pi++) {
+      const particle = particles[pi];
+      expanded.push(particle);
+      if (!particle.trail || particle.trailSegments.length === 0) continue;
+      const maxAge = Math.max(1, Math.floor(particle.trailLength));
+      for (let si = 0; si < particle.trailSegments.length; si++) {
+        const segment = particle.trailSegments[si];
+        const life = 1 - segment.age / maxAge;
+        if (life <= 0) continue;
+        const sizeScale = particle.trailShrink + life * (1 - particle.trailShrink);
+        const alphaScale = life * particle.trailFade;
+        const ghost = this.acquireGhost();
+        ghost.position.x = segment.x;
+        ghost.position.y = segment.y;
+        ghost.position.z = segment.z;
+        ghost.factoredSize = Math.max(0.1, segment.size * sizeScale);
+        ghost.rotation = segment.rotation;
+        ghost.alpha = segment.alpha * alphaScale;
+        ghost.color = particle.color;
+        ghost.colorR = particle.colorR;
+        ghost.colorG = particle.colorG;
+        ghost.colorB = particle.colorB;
+        ghost.shape = particle.shape;
+        ghost.blendMode = particle.blendMode;
+        ghost.image = particle.image;
+        ghost.imageTint = particle.imageTint;
+        ghost.glow = false;
+        ghost.shadow = false;
+        expanded.push(ghost);
+      }
+    }
+    return expanded;
+  }
+  acquireGhost() {
+    if (this.ghostPoolIdx < this.ghostPool.length) {
+      return this.ghostPool[this.ghostPoolIdx++];
+    }
+    const ghost = {
+      position: { x: 0, y: 0, z: 0 },
+      factoredSize: 0,
+      rotation: 0,
+      alpha: 0,
+      color: "",
+      colorR: 0,
+      colorG: 0,
+      colorB: 0,
+      shape: "circle",
+      blendMode: "normal",
+      image: null,
+      imageTint: false,
+      glow: false,
+      shadow: false,
+      trail: false,
+      trailSegments: [],
+      shadowLightOrigin: null
+    };
+    this.ghostPool.push(ghost);
+    this.ghostPoolIdx++;
+    return ghost;
+  }
+  // ── Batching ───────────────────────────────────────────────────────────
+  buildBatches(particles) {
+    this.batchPoolIdx = 0;
+    const batches = this._batchResult;
+    batches.length = 0;
+    let current = null;
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
+      const img = p.image && p.image instanceof HTMLImageElement ? p.image : null;
+      const tex = img ? this.getOrCreateTexture(img) : null;
+      const isImage = !!tex;
+      const sameBatch = current && current.type === (isImage ? "image" : "circle") && current.blendMode === p.blendMode && current.shadow === p.shadow && (!p.shadow || current.shadowBlur === p.shadowBlur && current.shadowColor === p.shadowColor && current.shadowAlpha === p.shadowAlpha) && (isImage ? current.texture === tex && current.imageTint === !!p.imageTint : current.glow === p.glow && (!p.glow || current.glowSize === p.glowSize && current.glowColor === p.glowColor && current.glowAlpha === p.glowAlpha));
+      if (!sameBatch) {
+        current = this.acquireBatch();
+        current.type = isImage ? "image" : "circle";
+        current.blendMode = p.blendMode;
+        current.shadow = p.shadow;
+        current.shadowBlur = p.shadowBlur;
+        current.shadowColor = p.shadowColor;
+        current.shadowAlpha = p.shadowAlpha;
+        if (isImage && tex) {
+          current.texture = tex;
+          current.image = img;
+          current.imageTint = !!p.imageTint;
+        } else {
+          current.texture = void 0;
+          current.image = void 0;
+          current.imageTint = void 0;
+          current.glow = p.glow;
+          current.glowSize = p.glowSize;
+          current.glowColor = p.glowColor;
+          current.glowAlpha = p.glowAlpha;
+        }
+        batches.push(current);
+      }
+      current.particles.push(p);
+    }
+    return batches;
+  }
+  acquireBatch() {
+    if (this.batchPoolIdx < this.batchPool.length) {
+      const batch2 = this.batchPool[this.batchPoolIdx++];
+      batch2.particles.length = 0;
+      return batch2;
+    }
+    const batch = { type: "circle", blendMode: "normal", particles: [] };
+    this.batchPool.push(batch);
+    this.batchPoolIdx++;
+    return batch;
+  }
+  // ── Instance data fill ─────────────────────────────────────────────────
+  fillInstanceData(particles, startIdx, endIdx) {
+    let offset = 0;
+    for (let i = startIdx; i < endIdx; i++) {
+      const p = particles[i];
+      this.instanceData[offset++] = p.position.x;
+      this.instanceData[offset++] = p.position.y;
+      this.instanceData[offset++] = p.position.z;
+      this.instanceData[offset++] = p.factoredSize;
+      this.instanceData[offset++] = p.rotation * Math.PI / 180;
+      this.instanceData[offset++] = p.colorR;
+      this.instanceData[offset++] = p.colorG;
+      this.instanceData[offset++] = p.colorB;
+      this.instanceData[offset++] = p.alpha;
+      this.instanceData[offset++] = shapeToId(p.shape);
+    }
+  }
+  // ── Draw helpers ───────────────────────────────────────────────────────
+  drawCircleInstances(list) {
+    const gl = this.gl;
+    const stride = this.instanceStride;
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
+    gl.enableVertexAttribArray(this.cAttrPPos);
+    gl.vertexAttribPointer(this.cAttrPPos, 3, gl.FLOAT, false, stride * 4, 0);
+    gl.vertexAttribDivisor(this.cAttrPPos, 1);
+    gl.enableVertexAttribArray(this.cAttrSize);
+    gl.vertexAttribPointer(this.cAttrSize, 1, gl.FLOAT, false, stride * 4, 12);
+    gl.vertexAttribDivisor(this.cAttrSize, 1);
+    gl.enableVertexAttribArray(this.cAttrRot);
+    gl.vertexAttribPointer(this.cAttrRot, 1, gl.FLOAT, false, stride * 4, 16);
+    gl.vertexAttribDivisor(this.cAttrRot, 1);
+    gl.enableVertexAttribArray(this.cAttrColor);
+    gl.vertexAttribPointer(this.cAttrColor, 4, gl.FLOAT, false, stride * 4, 20);
+    gl.vertexAttribDivisor(this.cAttrColor, 1);
+    gl.enableVertexAttribArray(this.cAttrShape);
+    gl.vertexAttribPointer(this.cAttrShape, 1, gl.FLOAT, false, stride * 4, 36);
+    gl.vertexAttribDivisor(this.cAttrShape, 1);
+    for (let i = 0; i < list.length; i += this.maxInstances) {
+      const end = Math.min(i + this.maxInstances, list.length);
+      const count = end - i;
+      this.fillInstanceData(list, i, end);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.instanceData.subarray(0, count * stride));
+      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, count);
+    }
+    gl.vertexAttribDivisor(this.cAttrPPos, 0);
+    gl.vertexAttribDivisor(this.cAttrSize, 0);
+    gl.vertexAttribDivisor(this.cAttrRot, 0);
+    gl.vertexAttribDivisor(this.cAttrColor, 0);
+    gl.vertexAttribDivisor(this.cAttrShape, 0);
+  }
+  drawCircleBatch(batch) {
+    const gl = this.gl;
+    if (batch.shadow) {
+      const [sr, sg, sb] = hexToRgba(batch.shadowColor ?? "#000000");
+      const sa = batch.shadowAlpha ?? 0.5;
+      gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+      gl.blendEquation(gl.FUNC_ADD);
+      gl.uniform1f(this.isShadowUniform, 1);
+      gl.uniform4f(this.shadowColorUniform, sr, sg, sb, sa);
+      gl.uniform1f(this.shadowBlurUniform, Math.min(1, (batch.shadowBlur ?? 8) / 20));
+      gl.depthMask(false);
+      this.drawCircleInstances(batch.particles);
+      gl.depthMask(true);
+      gl.uniform1f(this.isShadowUniform, 0);
+    }
+    setBlendMode(gl, batch.blendMode);
+    gl.depthMask(false);
+    gl.uniform1f(this.softnessUniform, 0.1);
+    gl.uniform1f(this.glowUniform, batch.glow ? 1 : 0);
+    gl.uniform1f(this.glowSizeUniform, Math.min(0.5, (batch.glowSize ?? 10) / 30));
+    const [gr, gg, gb] = hexToRgba(batch.glowColor ?? "#ffffff");
+    gl.uniform4f(this.glowColorUniform, gr, gg, gb, Math.max(0, Math.min(1, batch.glowAlpha ?? 0.35)));
+    this.drawCircleInstances(batch.particles);
+    gl.depthMask(true);
+  }
+  drawImageInstances(list) {
+    const gl = this.gl;
+    const stride = this.instanceStride;
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
+    gl.enableVertexAttribArray(this.iAttrPPos);
+    gl.vertexAttribPointer(this.iAttrPPos, 3, gl.FLOAT, false, stride * 4, 0);
+    gl.vertexAttribDivisor(this.iAttrPPos, 1);
+    gl.enableVertexAttribArray(this.iAttrSize);
+    gl.vertexAttribPointer(this.iAttrSize, 1, gl.FLOAT, false, stride * 4, 12);
+    gl.vertexAttribDivisor(this.iAttrSize, 1);
+    gl.enableVertexAttribArray(this.iAttrRot);
+    gl.vertexAttribPointer(this.iAttrRot, 1, gl.FLOAT, false, stride * 4, 16);
+    gl.vertexAttribDivisor(this.iAttrRot, 1);
+    gl.enableVertexAttribArray(this.iAttrColor);
+    gl.vertexAttribPointer(this.iAttrColor, 4, gl.FLOAT, false, stride * 4, 20);
+    gl.vertexAttribDivisor(this.iAttrColor, 1);
+    for (let i = 0; i < list.length; i += this.maxInstances) {
+      const end = Math.min(i + this.maxInstances, list.length);
+      const count = end - i;
+      this.fillInstanceData(list, i, end);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.instanceData.subarray(0, count * stride));
+      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, count);
+    }
+    gl.vertexAttribDivisor(this.iAttrPPos, 0);
+    gl.vertexAttribDivisor(this.iAttrSize, 0);
+    gl.vertexAttribDivisor(this.iAttrRot, 0);
+    gl.vertexAttribDivisor(this.iAttrColor, 0);
+  }
+  drawImageBatch(batch, w, h, worldScale) {
+    const gl = this.gl;
+    if (!this.imageProgram || !batch.texture) return;
+    gl.useProgram(this.imageProgram);
+    gl.uniformMatrix4fv(this.imgVpUniform, false, this.camera.viewProjection);
+    gl.uniform2f(this.imgResUniform, w, h);
+    gl.uniform1f(this.imgWorldScaleUniform, worldScale);
+    gl.uniform1f(this.imgTintUniform, batch.imageTint ? 1 : 0);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, batch.texture);
+    gl.uniform1i(this.imgTexUniform, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuffer);
+    gl.enableVertexAttribArray(this.iAttrPos);
+    gl.vertexAttribPointer(this.iAttrPos, 2, gl.FLOAT, false, 0, 0);
+    if (batch.shadow) {
+      const [sr, sg, sb] = hexToRgba(batch.shadowColor ?? "#000000");
+      const sa = batch.shadowAlpha ?? 0.5;
+      gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+      gl.blendEquation(gl.FUNC_ADD);
+      gl.uniform1f(this.imgIsShadowUniform, 1);
+      gl.uniform4f(this.imgShadowColorUniform, sr, sg, sb, sa);
+      gl.uniform1f(this.imgShadowBlurUniform, Math.max(0, batch.shadowBlur ?? 8));
+      gl.depthMask(false);
+      this.drawImageInstances(batch.particles);
+      gl.depthMask(true);
+      gl.uniform1f(this.imgIsShadowUniform, 0);
+    }
+    setBlendMode(gl, batch.blendMode);
+    gl.depthMask(false);
+    this.drawImageInstances(batch.particles);
+    gl.depthMask(true);
+  }
+  getOrCreateTexture(image) {
+    if (!image.complete || image.naturalWidth === 0) return null;
+    let tex = this.textureCache.get(image);
+    if (tex) return tex;
+    const gl = this.gl;
+    tex = gl.createTexture();
+    if (!tex) return null;
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+    this.textureCache.set(image, tex);
+    return tex;
+  }
+  destroy() {
+    this.remove();
+  }
+  remove() {
+    if (!this.particular || !this.gl) return;
+    this.particular.removeEventListener("UPDATE", this.onUpdate);
+    this.particular.removeEventListener("UPDATE_AFTER", this.onUpdateAfter);
+    this.particular.removeEventListener("RESIZE", this.resize);
+    if (this.quadBuffer) this.gl.deleteBuffer(this.quadBuffer);
+    if (this.circleQuadBuffer) this.gl.deleteBuffer(this.circleQuadBuffer);
+    if (this.instanceBuffer) this.gl.deleteBuffer(this.instanceBuffer);
+    if (this.program) this.gl.deleteProgram(this.program);
+    if (this.imageProgram) this.gl.deleteProgram(this.imageProgram);
+    for (const tex of this.textureCache.values()) {
+      this.gl.deleteTexture(tex);
+    }
+    this.textureCache.clear();
+    this.particular = null;
+    this.gl = null;
+    this.program = null;
+    this.imageProgram = null;
+    this.quadBuffer = null;
+    this.circleQuadBuffer = null;
+    this.instanceBuffer = null;
+  }
+};
 
 // src/particular/canvasStyles.ts
 var DEFAULT_Z_INDEX = 1e4;
@@ -3104,7 +4537,15 @@ function createForces(engine, container, cleanups) {
     mouseForce.stopTracking();
     engine.removeMouseForce(mouseForce);
   };
-  return { addAttractor, removeAttractor, addRandomAttractors, removeAllAttractors, addMouseForce, removeMouseForce };
+  const addFlockingForce = (config) => {
+    const flockingForce = new FlockingForce(config);
+    engine.addFlockingForce(flockingForce);
+    return flockingForce;
+  };
+  const removeFlockingForce = (flockingForce) => {
+    engine.removeFlockingForce(flockingForce);
+  };
+  return { addAttractor, removeAttractor, addRandomAttractors, removeAllAttractors, addMouseForce, removeMouseForce, addFlockingForce, removeFlockingForce };
 }
 
 // src/particular/convenience/boundary.ts
@@ -3568,6 +5009,9 @@ function createEffects(engine, mergedConfig) {
       const magnitude = baseVelocity * (0.3 + Math.random() * 1.4);
       particle.velocity.x += Math.cos(angle) * magnitude;
       particle.velocity.y += Math.sin(angle) * magnitude;
+      if (particle.position.z !== 0 || particle.homePosition && particle.homePosition.z !== 0) {
+        particle.velocity.z += (Math.random() - 0.5) * magnitude;
+      }
       if (rotationImpulse > 0) {
         particle.rotationVelocity += (Math.random() - 0.5) * 2 * rotationImpulse;
       }
@@ -4910,7 +6354,15 @@ function createParticles({
   const basePreset = getPreset(preset);
   const mergedConfig = configureParticular({ ...basePreset, ...config, container });
   engine.initialize(mergedConfig);
-  if (renderer === "webgl") {
+  let camera3d = null;
+  if (renderer === "webgl3d") {
+    const renderer3d = new WebGL3DRenderer(canvas, {
+      maxInstances: mergedConfig.webglMaxInstances,
+      camera: config?.camera
+    });
+    camera3d = renderer3d.camera;
+    engine.addRenderer(renderer3d);
+  } else if (renderer === "webgl") {
     engine.addRenderer(
       new WebGLRenderer(canvas, {
         maxInstances: mergedConfig.webglMaxInstances
@@ -4976,6 +6428,20 @@ function createParticles({
     const cleanupClick = attachClickBurst(clickTarget ?? document);
     cleanups.push(cleanupClick);
   }
+  if (mergedConfig.autoStart) {
+    const size = getViewportSize(container);
+    const centerX = size.w / 2 / mergedConfig.pixelRatio;
+    const centerY = size.h / 2 / mergedConfig.pixelRatio;
+    const particleConfig = configureParticle({}, mergedConfig);
+    const emitter = new Emitter({
+      point: new Vector(centerX, centerY),
+      ...particleConfig,
+      icons: []
+    });
+    engine.addEmitter(emitter);
+    emitter.isEmitting = true;
+    emitter.emit();
+  }
   const forces = createForces(engine, container, cleanups);
   const boundary = createBoundaryHelper(engine, container, cleanups);
   const containerGlow = createContainerGlowHelper(engine, container, cleanups);
@@ -4985,8 +6451,76 @@ function createParticles({
   const imageShatter = createImageShatterHelper(engine, mergedConfig, container);
   if (mouseForce) {
     const mouseConfig = mouseForce === true ? { track: true } : { track: true, ...mouseForce };
-    forces.addMouseForce(mouseConfig);
+    const mf = forces.addMouseForce(mouseConfig);
+    if (camera3d) {
+      mf.projectToScreen = (px, py, pz) => {
+        const cam = camera3d;
+        const w = engine.width;
+        const h = engine.height;
+        const pr = engine.pixelRatio;
+        const logicalW = w / pr;
+        const logicalH = h / pr;
+        if (logicalW <= 0 || logicalH <= 0) return null;
+        const fovRad = cam.fov * Math.PI / 180;
+        const camDist = cam.getDistance();
+        const visibleHalfH = camDist * Math.tan(fovRad / 2);
+        const ws = visibleHalfH / (logicalH / 2);
+        const wx = (px - logicalW * 0.5) * ws;
+        const wy = -(py - logicalH * 0.5) * ws;
+        const wz = pz * ws;
+        const vp = cam.viewProjection;
+        const clipW = vp[3] * wx + vp[7] * wy + vp[11] * wz + vp[15];
+        if (clipW <= 0) return null;
+        const clipX = vp[0] * wx + vp[4] * wy + vp[8] * wz + vp[12];
+        const clipY = vp[1] * wx + vp[5] * wy + vp[9] * wz + vp[13];
+        return {
+          x: (clipX / clipW + 1) * 0.5 * logicalW,
+          y: (1 - clipY / clipW) * 0.5 * logicalH
+        };
+      };
+    }
   }
+  const setCameraPosition = (x, y, z) => {
+    if (!camera3d) return;
+    camera3d.position.x = x;
+    camera3d.position.y = y;
+    camera3d.position.z = z;
+  };
+  const orbitCamera = (azimuth, elevation, distance) => {
+    if (!camera3d) return;
+    camera3d.orbit(azimuth, elevation, distance);
+  };
+  const enableOrbitControls = () => {
+    if (!camera3d) return null;
+    const cleanup = camera3d.enableOrbitControls(canvas);
+    cleanups.push(cleanup);
+    return cleanup;
+  };
+  const enableAutoOrbit = (speed = 0.3) => {
+    if (!camera3d) return null;
+    let lastTime = performance.now();
+    const onUpdate = () => {
+      const now = performance.now();
+      const dt = (now - lastTime) / 1e3;
+      lastTime = now;
+      const cam = camera3d;
+      const azimuth = Math.atan2(
+        cam.position.z - cam.target.z,
+        cam.position.x - cam.target.x
+      );
+      const elevation = Math.asin(
+        Math.min(1, Math.max(
+          -1,
+          (cam.position.y - cam.target.y) / cam.getDistance()
+        ))
+      );
+      cam.orbit(azimuth + speed * dt, elevation, cam.getDistance());
+    };
+    engine.addEventListener("UPDATE", onUpdate);
+    const cleanup = () => engine.removeEventListener("UPDATE", onUpdate);
+    cleanups.push(cleanup);
+    return cleanup;
+  };
   const destroy2 = () => {
     for (const cleanup of cleanups) cleanup();
     engine.destroy();
@@ -4997,6 +6531,7 @@ function createParticles({
   return {
     engine,
     canvas,
+    camera: camera3d,
     burst,
     attachClickBurst,
     ...forces,
@@ -5006,6 +6541,10 @@ function createParticles({
     ...effects,
     ...imageApi,
     ...imageShatter,
+    setCameraPosition,
+    orbitCamera,
+    enableOrbitControls,
+    enableAutoOrbit,
     destroy: destroy2
   };
 }
@@ -5024,7 +6563,9 @@ function startScreensaver({
   const mergedConfig = {
     ...basePreset,
     continuous: true,
-    ...config
+    ...config,
+    autoStart: false
+    // screensaver creates its own emitter — don't double-spawn
   };
   const controller = createParticles({
     canvas,
@@ -5136,6 +6677,6 @@ function showFPSOverlay(options = {}) {
   };
 }
 
-export { Attractor, CanvasRenderer, Emitter, MouseForce, Particle, Particular, Vector, WebGLRenderer, applyCanvasStyles, canvasToDataURL, configureParticle, createHeartImage, createParticles, createTextImage, getParticlesBackgroundLayerStyle, getParticlesContainerLayerStyle, particlesBackgroundLayerStyle, particlesContainerLayerStyle, DEFAULT_Z_INDEX as particlesDefaultZIndex, presets, setParticlePoolSize, showFPSOverlay, startScreensaver };
+export { Attractor, Camera, CanvasRenderer, Emitter, FlockingForce, MouseForce, Particle, Particular, Vector, WebGL3DRenderer, WebGLRenderer, applyCanvasStyles, canvasToDataURL, colorPalettes, configureParticle, createHeartImage, createParticles, createTextImage, defaultCamera, getParticlesBackgroundLayerStyle, getParticlesContainerLayerStyle, particlesBackgroundLayerStyle, particlesContainerLayerStyle, DEFAULT_Z_INDEX as particlesDefaultZIndex, presets, setParticlePoolSize, showFPSOverlay, startScreensaver };
 //# sourceMappingURL=standalone.js.map
 //# sourceMappingURL=standalone.js.map

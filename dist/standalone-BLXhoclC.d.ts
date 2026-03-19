@@ -21,22 +21,29 @@ declare class EventDispatcher implements IEventDispatcher {
 declare class Vector {
     x: number;
     y: number;
-    constructor(x?: number, y?: number);
+    z: number;
+    constructor(x?: number, y?: number, z?: number);
     getMagnitude(): number;
     add(vector: {
         x: number;
         y: number;
+        z?: number;
     }, scale?: number): void;
     addFriction(friction: number, dt?: number): void;
     addGravity(gravity: number, dt?: number): void;
     subtract(vector: {
         x: number;
         y: number;
+        z?: number;
     }): void;
     normalize(): void;
     scale(scalar: number): void;
     getAngle(): number;
+    /** Elevation angle from the XY plane (radians). 0 = in-plane, +PI/2 = up z-axis. */
+    getElevation(): number;
     static fromAngle(angle: number, magnitude: number): Vector;
+    /** Create a Vector from spherical coordinates (azimuth in XY plane, elevation from XY, magnitude). */
+    static fromSpherical(azimuth: number, elevation: number, magnitude: number): Vector;
 }
 
 /** Particle rendering shape. Each shape is supported in both Canvas 2D and WebGL renderers. */
@@ -133,6 +140,8 @@ interface ChildExplosionConfig {
     trailLength?: number;
     trailFade?: number;
     trailShrink?: number;
+    /** When > 0, children emit in a spherical burst instead of 2D ring. Full sphere = PI. Default 0. */
+    spread3d?: number;
 }
 /** Options for manual controller.explode(). */
 interface ExplodeOptions extends ChildExplosionConfig {
@@ -178,6 +187,18 @@ interface ParticleConfig extends ShapeConfig {
     spawnWidth?: number;
     /** Height of the rectangular spawn area centered on the emitter point. Default 0 (point spawn). */
     spawnHeight?: number;
+    /** Depth of the spawn volume along the z-axis. Particles spawn at random z within ±spawnDepth/2. Default 0 (flat). */
+    spawnDepth?: number;
+    /** 3D emission spread (radians). When > 0, particles emit in a spherical cone using
+     *  `Vector.fromSpherical()` instead of 2D angle+spread. Full sphere = PI. Default 0 (2D emission). */
+    spread3d?: number;
+    /** 3D emission direction. When spread3d > 0, this is the central axis of the emission cone.
+     *  Default { x: 0, y: -1, z: 0 } (upward). */
+    emitDirection?: {
+        x: number;
+        y: number;
+        z: number;
+    };
     /** Color palette for particles. When provided, particles pick a random color from this array.
      *  Empty array = emitter generates a harmonious HSL palette automatically. */
     colors?: string[];
@@ -208,6 +229,13 @@ interface EmitterConfiguration extends ParticleConfig {
     fadeTime: number;
     spawnWidth: number;
     spawnHeight: number;
+    spawnDepth: number;
+    spread3d: number;
+    emitDirection: {
+        x: number;
+        y: number;
+        z: number;
+    };
     colors: string[];
     acceleration: number;
     accelerationSize: number;
@@ -359,6 +387,8 @@ interface FullParticularConfig extends ParticularConfig, ParticleConfig {
 interface AttractorConfig {
     x: number;
     y: number;
+    /** Z-position for 3D scenes. Default 0. */
+    z?: number;
     strength?: number;
     radius?: number;
     visible?: boolean;
@@ -372,7 +402,8 @@ interface AttractorConfig {
     glowAlpha?: number;
 }
 interface ForceSource {
-    getForce(particlePosition: Vector): Vector;
+    getForce(particlePosition: Vector, particle?: Particle): Vector;
+    preCompute?(particles: Particle[], dt: number): void;
 }
 interface MouseForceConfig {
     x?: number;
@@ -388,6 +419,25 @@ interface MouseForceConfig {
     falloff?: number;
     /** EventTarget to track mouse on. `true` = window. Omitted/`false` = manual. */
     track?: EventTarget | boolean;
+}
+/** Configuration for boids flocking behavior. Particles self-organize into swarm patterns
+ *  via three steering rules: separation (avoid crowding), alignment (match neighbor heading),
+ *  cohesion (steer toward neighbor center). Composes with existing forces. */
+interface FlockingForceConfig {
+    /** Radius within which other particles are considered neighbors. Default 100. */
+    neighborRadius?: number;
+    /** Weight for separation rule (avoid crowding). Default 1.5. */
+    separationWeight?: number;
+    /** Weight for alignment rule (match neighbor heading). Default 1.0. */
+    alignmentWeight?: number;
+    /** Weight for cohesion rule (steer toward neighbor center). Default 1.0. */
+    cohesionWeight?: number;
+    /** Maximum steering force magnitude per frame. Default 0.5. */
+    maxSteeringForce?: number;
+    /** Maximum particle speed (velocity clamped to this). Default 4. */
+    maxSpeed?: number;
+    /** Minimum distance before separation kicks in. Default 25. */
+    separationDistance?: number;
 }
 /** Configuration for an element-based repulsion boundary. */
 interface BoundaryConfig {
@@ -540,12 +590,14 @@ interface WobbleConfig {
     mouseStrength?: number;
 }
 /** Rendering backend. 'webgl' (default) uses WebGL2 instanced drawing for best performance.
- *  'canvas' uses Canvas 2D — broader compatibility but slower with many particles. */
-type RendererType = 'canvas' | 'webgl';
+ *  'canvas' uses Canvas 2D — broader compatibility but slower with many particles.
+ *  'webgl3d' uses WebGL2 with perspective projection for 3D particle scenes. */
+type RendererType = 'canvas' | 'webgl' | 'webgl3d';
 
 interface TrailSegment {
     x: number;
     y: number;
+    z: number;
     size: number;
     rotation: number;
     alpha: number;
@@ -655,7 +707,7 @@ declare class Emitter {
     constructor(configuration: EmitterConfiguration);
     emit(dt?: number): void;
     assignParticular(particular: Particular): void;
-    update(boundsX: number, boundsY: number, forces?: ForceSource[], dt?: number): void;
+    update(boundsX: number, boundsY: number, marginX: number, marginY: number, forces?: ForceSource[], dt?: number): void;
     isAlive(): boolean;
     createParticle(): Particle;
     destroy(): void;
@@ -681,6 +733,11 @@ declare class Attractor {
     toDrawable(): Particle;
 }
 
+/** Projects a 3D particle position to 2D engine coords (screen space). */
+type ScreenProjection = (px: number, py: number, pz: number) => {
+    x: number;
+    y: number;
+} | null;
 declare class MouseForce implements ForceSource {
     position: Vector;
     velocity: Vector;
@@ -689,6 +746,9 @@ declare class MouseForce implements ForceSource {
     damping: number;
     maxSpeed: number;
     falloff: number;
+    /** When set, particle positions are projected to screen space before computing distance.
+     *  Used by the 3D renderer so the mouse affects particles based on visual proximity. */
+    projectToScreen: ScreenProjection | null;
     private _trackListener;
     private _touchListener;
     private _trackTarget;
@@ -708,6 +768,21 @@ declare class MouseForce implements ForceSource {
     getForce(particlePosition: Vector): Vector;
 }
 
+declare class FlockingForce implements ForceSource {
+    neighborRadius: number;
+    separationWeight: number;
+    alignmentWeight: number;
+    cohesionWeight: number;
+    maxSteeringForce: number;
+    maxSpeed: number;
+    separationDistance: number;
+    private grid;
+    private forceMap;
+    constructor(config?: FlockingForceConfig);
+    preCompute(particles: Particle[], _dt: number): void;
+    getForce(particlePosition: Vector, particle?: Particle): Vector;
+}
+
 interface Renderer {
     init(particular: Particular, pixelRatio: number): void;
     destroy(): void;
@@ -720,11 +795,14 @@ declare class Particular implements IEventDispatcher {
     emitters: Emitter[];
     attractors: Attractor[];
     mouseForces: MouseForce[];
+    flockingForces: FlockingForce[];
     renderers: Renderer[];
     maxCount: number;
     width: number;
     height: number;
     pixelRatio: number;
+    /** Multiplier for kill-zone bounds. 3D renderers set this higher so perspective-visible particles aren't culled prematurely. */
+    boundsPadding: number;
     continuous: boolean;
     container: HTMLElement | null;
     private animateRequest;
@@ -746,6 +824,8 @@ declare class Particular implements IEventDispatcher {
     removeAttractor(attractor: Attractor): void;
     addMouseForce(mouseForce: MouseForce): void;
     removeMouseForce(mouseForce: MouseForce): void;
+    addFlockingForce(flockingForce: FlockingForce): void;
+    removeFlockingForce(flockingForce: FlockingForce): void;
     update: (timestamp?: DOMHighResTimeStamp) => void;
     updateEmitters(dt?: number): void;
     getCount(): number;
@@ -871,6 +951,160 @@ declare class WebGLRenderer {
     private drawImageInstances;
     private drawImageBatch;
     onUpdateAfter: () => void;
+    destroy(): void;
+    remove(): void;
+}
+
+/**
+ * Minimal 4×4 matrix math for 3D projection. Column-major Float32Array layout
+ * matching WebGL's uniform convention. Zero dependencies.
+ */
+type Mat4 = Float32Array;
+
+/**
+ * Camera for 3D particle scenes. Computes a viewProjection matrix
+ * from position/target/fov. Provides orbit controls for interactive demos.
+ */
+
+interface CameraConfig {
+    /** Vertical field of view in degrees. Default 60. */
+    fov?: number;
+    /** Camera position. Default { x: 0, y: 0, z: 500 }. */
+    position?: {
+        x: number;
+        y: number;
+        z: number;
+    };
+    /** Look-at target. Default { x: 0, y: 0, z: 0 }. */
+    target?: {
+        x: number;
+        y: number;
+        z: number;
+    };
+    /** Up direction. Default { x: 0, y: 1, z: 0 }. */
+    up?: {
+        x: number;
+        y: number;
+        z: number;
+    };
+    /** Near clip plane. Default 1. */
+    near?: number;
+    /** Far clip plane. Default 5000. */
+    far?: number;
+}
+declare const defaultCamera: Required<CameraConfig>;
+declare class Camera {
+    fov: number;
+    position: {
+        x: number;
+        y: number;
+        z: number;
+    };
+    target: {
+        x: number;
+        y: number;
+        z: number;
+    };
+    up: {
+        x: number;
+        y: number;
+        z: number;
+    };
+    near: number;
+    far: number;
+    viewProjection: Mat4;
+    constructor(config?: CameraConfig);
+    /** Recompute viewProjection matrix. Call after changing position/target/fov. */
+    update(aspect: number): void;
+    /** Set camera position from spherical coordinates around the target. */
+    orbit(azimuth: number, elevation: number, distance: number): void;
+    /** Attach mouse-drag orbit + scroll-zoom controls to a canvas. Returns cleanup function. */
+    enableOrbitControls(canvas: HTMLCanvasElement): () => void;
+    getDistance(): number;
+}
+
+/**
+ * WebGL2 3D particle renderer with perspective projection.
+ *
+ * Particles are rendered as camera-facing billboarded quads using SDF shapes.
+ * All existing 2D shapes (circle, star, sparkle, etc.) work without modification.
+ * Non-additive batches are sorted back-to-front for correct transparency.
+ */
+
+interface WebGL3DRendererOptions {
+    maxInstances?: number;
+    camera?: CameraConfig;
+}
+declare class WebGL3DRenderer {
+    target: HTMLCanvasElement;
+    camera: Camera;
+    gl: WebGL2RenderingContext | null;
+    particular: Particular | null;
+    pixelRatio: number;
+    private program;
+    private imageProgram;
+    private quadBuffer;
+    private circleQuadBuffer;
+    private instanceBuffer;
+    private instanceData;
+    private maxInstances;
+    private instanceStride;
+    private vpUniform;
+    private resUniform;
+    private worldScaleUniform;
+    private softnessUniform;
+    private glowUniform;
+    private glowSizeUniform;
+    private glowColorUniform;
+    private isShadowUniform;
+    private shadowColorUniform;
+    private shadowBlurUniform;
+    private cAttrPos;
+    private cAttrPPos;
+    private cAttrSize;
+    private cAttrRot;
+    private cAttrColor;
+    private cAttrShape;
+    private imgVpUniform;
+    private imgResUniform;
+    private imgWorldScaleUniform;
+    private imgTintUniform;
+    private imgIsShadowUniform;
+    private imgShadowColorUniform;
+    private imgShadowBlurUniform;
+    private imgTexUniform;
+    private iAttrPos;
+    private iAttrPPos;
+    private iAttrSize;
+    private iAttrRot;
+    private iAttrColor;
+    private textureCache;
+    private ghostPool;
+    private ghostPoolIdx;
+    private expandedArr;
+    private batchPool;
+    private batchPoolIdx;
+    private _batchResult;
+    private sortArr;
+    constructor(target: HTMLCanvasElement, options?: WebGL3DRendererOptions);
+    init(particular: Particular, pixelRatio: number): void;
+    resize: (args?: {
+        width: number;
+        height: number;
+    }) => void;
+    onUpdate: () => void;
+    onUpdateAfter: () => void;
+    private sortBackToFront;
+    private expandParticlesWithTrails;
+    private acquireGhost;
+    private buildBatches;
+    private acquireBatch;
+    private fillInstanceData;
+    private drawCircleInstances;
+    private drawCircleBatch;
+    private drawImageInstances;
+    private drawImageBatch;
+    private getOrCreateTexture;
     destroy(): void;
     remove(): void;
 }
@@ -1081,6 +1315,37 @@ declare const presetRegistry: {
         autoStart: true;
         colors: string[];
     };
+    readonly flock: {
+        shape: "triangle";
+        blendMode: "additive";
+        glow: true;
+        glowSize: number;
+        glowColor: string;
+        glowAlpha: number;
+        trail: true;
+        trailLength: number;
+        trailFade: number;
+        trailShrink: number;
+        rate: number;
+        life: number;
+        particleLife: number;
+        velocity: Vector;
+        spread: number;
+        sizeMin: number;
+        sizeMax: number;
+        velocityMultiplier: number;
+        fadeTime: number;
+        gravity: number;
+        acceleration: number;
+        accelerationSize: number;
+        friction: number;
+        frictionSize: number;
+        scaleStep: number;
+        maxCount: number;
+        continuous: true;
+        autoStart: true;
+        colors: string[];
+    };
     readonly river: {
         shape: "circle";
         blendMode: "normal";
@@ -1153,6 +1418,148 @@ declare const presetRegistry: {
             trailLength: number;
             trailFade: number;
             trailShrink: number;
+        };
+    };
+    readonly galaxySpin: {
+        shape: "ring";
+        blendMode: "additive";
+        glow: true;
+        glowSize: number;
+        glowColor: string;
+        glowAlpha: number;
+        trail: true;
+        trailLength: number;
+        trailFade: number;
+        trailShrink: number;
+        rate: number;
+        life: number;
+        particleLife: number;
+        velocity: Vector;
+        spread: number;
+        spread3d: number;
+        spawnDepth: number;
+        sizeMin: number;
+        sizeMax: number;
+        velocityMultiplier: number;
+        gravityJitter: number;
+        fadeTime: number;
+        gravity: number;
+        acceleration: number;
+        accelerationSize: number;
+        friction: number;
+        scaleStep: number;
+        maxCount: number;
+        continuous: true;
+        autoStart: true;
+        colors: string[];
+    };
+    readonly depthField: {
+        shape: "circle";
+        blendMode: "normal";
+        glow: true;
+        glowSize: number;
+        glowColor: string;
+        glowAlpha: number;
+        rate: number;
+        life: number;
+        particleLife: number;
+        velocity: Vector;
+        spread: number;
+        spawnDepth: number;
+        spawnWidth: number;
+        sizeMin: number;
+        sizeMax: number;
+        velocityMultiplier: number;
+        fadeTime: number;
+        gravity: number;
+        friction: number;
+        scaleStep: number;
+        maxCount: number;
+        continuous: true;
+        autoStart: true;
+        colors: string[];
+    };
+    readonly supernova: {
+        shape: "star";
+        blendMode: "additive";
+        glow: true;
+        glowSize: number;
+        glowColor: string;
+        glowAlpha: number;
+        trail: true;
+        trailLength: number;
+        trailFade: number;
+        trailShrink: number;
+        rate: number;
+        life: number;
+        particleLife: number;
+        velocity: Vector;
+        spread: number;
+        spread3d: number;
+        sizeMin: number;
+        sizeMax: number;
+        velocityMultiplier: number;
+        fadeTime: number;
+        gravity: number;
+        friction: number;
+        scaleStep: number;
+        maxCount: number;
+        colors: string[];
+    };
+    readonly fireworks3d: {
+        shape: "triangle";
+        blendMode: "additive";
+        glow: true;
+        glowSize: number;
+        glowColor: string;
+        glowAlpha: number;
+        trail: true;
+        trailLength: number;
+        trailFade: number;
+        trailShrink: number;
+        rate: number;
+        life: number;
+        particleLife: number;
+        velocity: Vector;
+        spread: number;
+        spread3d: number;
+        spawnDepth: number;
+        spawnWidth: number;
+        sizeMin: number;
+        sizeMax: number;
+        velocityMultiplier: number;
+        fadeTime: number;
+        gravity: number;
+        acceleration: number;
+        accelerationSize: number;
+        friction: number;
+        scaleStep: number;
+        maxCount: number;
+        continuous: true;
+        autoStart: true;
+        colors: string[];
+        detonate: {
+            at: number;
+            childCount: number;
+            velocity: number;
+            velocitySpread: number;
+            friction: number;
+            scaleStep: number;
+            childLife: number;
+            sizeMin: number;
+            sizeMax: number;
+            fadeTime: number;
+            inheritColor: true;
+            shape: "sparkle";
+            spread3d: number;
+            trail: true;
+            trailLength: number;
+            trailFade: number;
+            trailShrink: number;
+            glow: true;
+            glowSize: number;
+            glowColor: string;
+            glowAlpha: number;
         };
     };
 };
@@ -1274,6 +1681,154 @@ declare const presets: {
                 trailLength: number;
                 trailFade: number;
                 trailShrink: number;
+            };
+        };
+    };
+    readonly Burst3D: {
+        /** Spinning galaxy: spherical emission with slow orbit drift */
+        readonly galaxySpin: {
+            shape: "ring";
+            blendMode: "additive";
+            glow: true;
+            glowSize: number;
+            glowColor: string;
+            glowAlpha: number;
+            trail: true;
+            trailLength: number;
+            trailFade: number;
+            trailShrink: number;
+            rate: number;
+            life: number;
+            particleLife: number;
+            velocity: Vector;
+            spread: number;
+            spread3d: number;
+            spawnDepth: number;
+            sizeMin: number;
+            sizeMax: number;
+            velocityMultiplier: number;
+            gravityJitter: number;
+            fadeTime: number;
+            gravity: number;
+            acceleration: number;
+            accelerationSize: number;
+            friction: number;
+            scaleStep: number;
+            maxCount: number;
+            continuous: true;
+            autoStart: true;
+            colors: string[];
+        };
+        /** Depth field: particles spread along z-axis for parallax effect */
+        readonly depthField: {
+            shape: "circle";
+            blendMode: "normal";
+            glow: true;
+            glowSize: number;
+            glowColor: string;
+            glowAlpha: number;
+            rate: number;
+            life: number;
+            particleLife: number;
+            velocity: Vector;
+            spread: number;
+            spawnDepth: number;
+            spawnWidth: number;
+            sizeMin: number;
+            sizeMax: number;
+            velocityMultiplier: number;
+            fadeTime: number;
+            gravity: number;
+            friction: number;
+            scaleStep: number;
+            maxCount: number;
+            continuous: true;
+            autoStart: true;
+            colors: string[];
+        };
+        /** Supernova: explosive 3D burst with spherical emission */
+        readonly supernova: {
+            shape: "star";
+            blendMode: "additive";
+            glow: true;
+            glowSize: number;
+            glowColor: string;
+            glowAlpha: number;
+            trail: true;
+            trailLength: number;
+            trailFade: number;
+            trailShrink: number;
+            rate: number;
+            life: number;
+            particleLife: number;
+            velocity: Vector;
+            spread: number;
+            spread3d: number;
+            sizeMin: number;
+            sizeMax: number;
+            velocityMultiplier: number;
+            fadeTime: number;
+            gravity: number;
+            friction: number;
+            scaleStep: number;
+            maxCount: number;
+            colors: string[];
+        };
+        /** 3D fireworks show: rockets launch upward and detonate into spherical sub-bursts */
+        readonly fireworks3d: {
+            shape: "triangle";
+            blendMode: "additive";
+            glow: true;
+            glowSize: number;
+            glowColor: string;
+            glowAlpha: number;
+            trail: true;
+            trailLength: number;
+            trailFade: number;
+            trailShrink: number;
+            rate: number;
+            life: number;
+            particleLife: number;
+            velocity: Vector;
+            spread: number;
+            spread3d: number;
+            spawnDepth: number;
+            spawnWidth: number;
+            sizeMin: number;
+            sizeMax: number;
+            velocityMultiplier: number;
+            fadeTime: number;
+            gravity: number;
+            acceleration: number;
+            accelerationSize: number;
+            friction: number;
+            scaleStep: number;
+            maxCount: number;
+            continuous: true;
+            autoStart: true;
+            colors: string[];
+            detonate: {
+                at: number;
+                childCount: number;
+                velocity: number;
+                velocitySpread: number;
+                friction: number;
+                scaleStep: number;
+                childLife: number;
+                sizeMin: number;
+                sizeMax: number;
+                fadeTime: number;
+                inheritColor: true;
+                shape: "sparkle";
+                spread3d: number;
+                trail: true;
+                trailLength: number;
+                trailFade: number;
+                trailShrink: number;
+                glow: true;
+                glowSize: number;
+                glowColor: string;
+                glowAlpha: number;
             };
         };
     };
@@ -1425,6 +1980,38 @@ declare const presets: {
                 trailShrink: number;
             };
         };
+        /** Boids flock: self-organizing swarm of triangles. Use with addFlockingForce() for full effect. */
+        readonly flock: {
+            shape: "triangle";
+            blendMode: "additive";
+            glow: true;
+            glowSize: number;
+            glowColor: string;
+            glowAlpha: number;
+            trail: true;
+            trailLength: number;
+            trailFade: number;
+            trailShrink: number;
+            rate: number;
+            life: number;
+            particleLife: number;
+            velocity: Vector;
+            spread: number;
+            sizeMin: number;
+            sizeMax: number;
+            velocityMultiplier: number;
+            fadeTime: number;
+            gravity: number;
+            acceleration: number;
+            accelerationSize: number;
+            friction: number;
+            frictionSize: number;
+            scaleStep: number;
+            maxCount: number;
+            continuous: true;
+            autoStart: true;
+            colors: string[];
+        };
         /** River flow: horizontal stream of water particles, designed for use with attractors */
         readonly river: {
             shape: "circle";
@@ -1498,6 +2085,58 @@ declare const presets: {
         };
         /** Cyan-to-white water palette */
         readonly water: {
+            readonly colors: string[];
+        };
+        /** Blue-purple sparkle (magic preset signature) */
+        readonly magic: {
+            readonly colors: string[];
+        };
+        /** Extended blue-purple-pink (galaxy/nebula effects) */
+        readonly nebula: {
+            readonly colors: string[];
+        };
+        /** Hot reds, oranges, whites (explosions/supernova) */
+        readonly solar: {
+            readonly colors: string[];
+        };
+        /** Earth tones: deep reds, burnt orange, sienna */
+        readonly autumn: {
+            readonly colors: string[];
+        };
+        /** Dark greys for subtle/muted backgrounds */
+        readonly ash: {
+            readonly colors: string[];
+        };
+        /** Dark blue-grey tones */
+        readonly slate: {
+            readonly colors: string[];
+        };
+        /** Pastel blue, purple, teal, mint mix */
+        readonly fairy: {
+            readonly colors: string[];
+        };
+        /** Warm glowing orange-gold */
+        readonly amber: {
+            readonly colors: string[];
+        };
+        /** Soft pink gradient from hot to pastel */
+        readonly rose: {
+            readonly colors: string[];
+        };
+        /** Warm yellow-orange gradient */
+        readonly gold: {
+            readonly colors: string[];
+        };
+        /** Deep violet-purple range */
+        readonly violet: {
+            readonly colors: string[];
+        };
+        /** Bright green to pastel mint */
+        readonly emerald: {
+            readonly colors: string[];
+        };
+        /** Multicolor vivid fireworks */
+        readonly fireworks: {
             readonly colors: string[];
         };
     };
@@ -1706,6 +2345,37 @@ declare const presets: {
         autoStart: true;
         colors: string[];
     };
+    readonly flock: {
+        shape: "triangle";
+        blendMode: "additive";
+        glow: true;
+        glowSize: number;
+        glowColor: string;
+        glowAlpha: number;
+        trail: true;
+        trailLength: number;
+        trailFade: number;
+        trailShrink: number;
+        rate: number;
+        life: number;
+        particleLife: number;
+        velocity: Vector;
+        spread: number;
+        sizeMin: number;
+        sizeMax: number;
+        velocityMultiplier: number;
+        fadeTime: number;
+        gravity: number;
+        acceleration: number;
+        accelerationSize: number;
+        friction: number;
+        frictionSize: number;
+        scaleStep: number;
+        maxCount: number;
+        continuous: true;
+        autoStart: true;
+        colors: string[];
+    };
     readonly river: {
         shape: "circle";
         blendMode: "normal";
@@ -1780,8 +2450,152 @@ declare const presets: {
             trailShrink: number;
         };
     };
+    readonly galaxySpin: {
+        shape: "ring";
+        blendMode: "additive";
+        glow: true;
+        glowSize: number;
+        glowColor: string;
+        glowAlpha: number;
+        trail: true;
+        trailLength: number;
+        trailFade: number;
+        trailShrink: number;
+        rate: number;
+        life: number;
+        particleLife: number;
+        velocity: Vector;
+        spread: number;
+        spread3d: number;
+        spawnDepth: number;
+        sizeMin: number;
+        sizeMax: number;
+        velocityMultiplier: number;
+        gravityJitter: number;
+        fadeTime: number;
+        gravity: number;
+        acceleration: number;
+        accelerationSize: number;
+        friction: number;
+        scaleStep: number;
+        maxCount: number;
+        continuous: true;
+        autoStart: true;
+        colors: string[];
+    };
+    readonly depthField: {
+        shape: "circle";
+        blendMode: "normal";
+        glow: true;
+        glowSize: number;
+        glowColor: string;
+        glowAlpha: number;
+        rate: number;
+        life: number;
+        particleLife: number;
+        velocity: Vector;
+        spread: number;
+        spawnDepth: number;
+        spawnWidth: number;
+        sizeMin: number;
+        sizeMax: number;
+        velocityMultiplier: number;
+        fadeTime: number;
+        gravity: number;
+        friction: number;
+        scaleStep: number;
+        maxCount: number;
+        continuous: true;
+        autoStart: true;
+        colors: string[];
+    };
+    readonly supernova: {
+        shape: "star";
+        blendMode: "additive";
+        glow: true;
+        glowSize: number;
+        glowColor: string;
+        glowAlpha: number;
+        trail: true;
+        trailLength: number;
+        trailFade: number;
+        trailShrink: number;
+        rate: number;
+        life: number;
+        particleLife: number;
+        velocity: Vector;
+        spread: number;
+        spread3d: number;
+        sizeMin: number;
+        sizeMax: number;
+        velocityMultiplier: number;
+        fadeTime: number;
+        gravity: number;
+        friction: number;
+        scaleStep: number;
+        maxCount: number;
+        colors: string[];
+    };
+    readonly fireworks3d: {
+        shape: "triangle";
+        blendMode: "additive";
+        glow: true;
+        glowSize: number;
+        glowColor: string;
+        glowAlpha: number;
+        trail: true;
+        trailLength: number;
+        trailFade: number;
+        trailShrink: number;
+        rate: number;
+        life: number;
+        particleLife: number;
+        velocity: Vector;
+        spread: number;
+        spread3d: number;
+        spawnDepth: number;
+        spawnWidth: number;
+        sizeMin: number;
+        sizeMax: number;
+        velocityMultiplier: number;
+        fadeTime: number;
+        gravity: number;
+        acceleration: number;
+        accelerationSize: number;
+        friction: number;
+        scaleStep: number;
+        maxCount: number;
+        continuous: true;
+        autoStart: true;
+        colors: string[];
+        detonate: {
+            at: number;
+            childCount: number;
+            velocity: number;
+            velocitySpread: number;
+            friction: number;
+            scaleStep: number;
+            childLife: number;
+            sizeMin: number;
+            sizeMax: number;
+            fadeTime: number;
+            inheritColor: true;
+            shape: "sparkle";
+            spread3d: number;
+            trail: true;
+            trailLength: number;
+            trailFade: number;
+            trailShrink: number;
+            glow: true;
+            glowSize: number;
+            glowColor: string;
+            glowAlpha: number;
+        };
+    };
 };
 type PresetName = keyof typeof presetRegistry;
+/** Mutable lookup of all named color palettes, for Storybook controls. */
+declare const colorPalettes: Record<string, string[]>;
 
 declare const DEFAULT_Z_INDEX = 10000;
 /**
@@ -1814,8 +2628,10 @@ interface CreateParticlesOptions {
     /** Canvas element. If omitted, one is auto-created and appended to `container` or `document.body`. */
     canvas?: HTMLCanvasElement;
     preset?: PresetName;
-    config?: Partial<FullParticularConfig>;
-    /** Rendering backend. Default `'webgl'`. */
+    config?: Partial<FullParticularConfig> & {
+        camera?: CameraConfig;
+    };
+    /** Rendering backend. Default `'webgl'`. Use `'webgl3d'` for perspective projection with 3D particles. */
     renderer?: RendererType;
     autoResize?: boolean;
     autoClick?: boolean;
@@ -1857,6 +2673,8 @@ interface ParticlesController {
     engine: Particular;
     /** The canvas element used by this controller (may have been auto-created). */
     canvas: HTMLCanvasElement;
+    /** Camera instance (only available when renderer is 'webgl3d'). */
+    camera: Camera | null;
     burst: (options: BurstOptions) => Emitter;
     attachClickBurst: (target?: EventTarget, overrides?: Partial<FullParticularConfig>) => () => void;
     addAttractor: (config: AttractorConfig) => Attractor;
@@ -1865,6 +2683,10 @@ interface ParticlesController {
     removeAllAttractors: () => void;
     addMouseForce: (config?: MouseForceConfig) => MouseForce;
     removeMouseForce: (mouseForce: MouseForce) => void;
+    /** Add a boids flocking force. Particles self-organize into swarm patterns via
+     *  separation, alignment, and cohesion steering rules. Composes with attractors and mouse force. */
+    addFlockingForce: (config?: FlockingForceConfig) => FlockingForce;
+    removeFlockingForce: (flockingForce: FlockingForce) => void;
     /** Create a repulsion boundary around an HTML element. Particles are pushed away from its edges.
      *  The boundary auto-syncs when the element resizes or scrolls. Returns a handle to update or remove it. */
     addBoundary: (config: BoundaryConfig) => BoundaryHandle;
@@ -1907,6 +2729,15 @@ interface ParticlesController {
     /** Toggle idle animations (breathing, wiggle, wave, pulse) on all particles with home positions.
      *  Spring return still works when idle is disabled — particles return home but stay still once there. */
     setIdleEffect: (enabled: boolean) => void;
+    /** Set the camera position (only works when renderer is 'webgl3d'). */
+    setCameraPosition: (x: number, y: number, z: number) => void;
+    /** Set camera position from spherical coordinates around the target (only works when renderer is 'webgl3d'). */
+    orbitCamera: (azimuth: number, elevation: number, distance: number) => void;
+    /** Enable mouse-drag orbit + scroll-zoom controls (only works when renderer is 'webgl3d'). Returns cleanup function. */
+    enableOrbitControls: () => (() => void) | null;
+    /** Start automatic camera orbit around the target (only works when renderer is 'webgl3d').
+     *  Speed is radians per second (default 0.3). Returns cleanup function. */
+    enableAutoOrbit: (speed?: number) => (() => void) | null;
     destroy: () => void;
 }
 interface ScreensaverOptions {
@@ -1993,4 +2824,4 @@ interface FPSOverlayController {
 }
 declare function showFPSOverlay(options?: FPSOverlayOptions): FPSOverlayController;
 
-export { createTextImage as $, Attractor as A, type BurstSettings as B, CanvasRenderer as C, type DetonateConfig as D, type ExplodeOptions as E, type FullParticularConfig as F, type ParticleConstructorParams as G, type HomePositionConfig as H, type ImageParticlesConfig as I, type ParticleShape as J, type ParticularConfig as K, type ScreensaverOptions as L, type MouseForceConfig as M, type ShapeConfig as N, WebGLRenderer as O, Particular as P, type WebGLRendererOptions as Q, type RendererType as R, type ScreensaverController as S, type TextImageConfig as T, applyCanvasStyles as U, Vector as V, type WobbleConfig as W, canvasToDataURL as X, configureParticle as Y, createHeartImage as Z, createParticles as _, type ParticleConfig as a, getParticlesBackgroundLayerStyle as a0, getParticlesContainerLayerStyle as a1, particlesBackgroundLayerStyle as a2, particlesContainerLayerStyle as a3, DEFAULT_Z_INDEX as a4, presets as a5, setParticlePoolSize as a6, showFPSOverlay as a7, startScreensaver as a8, type PresetName as b, configureParticular as c, type ParticlesController as d, type BurstOptions as e, type ElementParticlesConfig as f, type ImageShatterConfig as g, type AttractorConfig as h, type BlendMode as i, type BoundaryConfig as j, type BoundaryHandle as k, type ChildExplosionConfig as l, type ContainerGlowConfig as m, type ContainerGlowHandle as n, type CreateParticlesOptions as o, Emitter as p, type EmitterConfiguration as q, type FPSOverlayController as r, type FPSOverlayOptions as s, type ForceSource as t, type IntroConfig as u, type IntroMode as v, MouseForce as w, type MouseTrailConfig as x, type MouseTrailHandle as y, Particle as z };
+export { type WebGLRendererOptions as $, Attractor as A, type BurstSettings as B, Camera as C, type DetonateConfig as D, type ExplodeOptions as E, type FullParticularConfig as F, MouseForce as G, type HomePositionConfig as H, type ImageParticlesConfig as I, type MouseTrailConfig as J, type MouseTrailHandle as K, Particle as L, type MouseForceConfig as M, type ParticleConstructorParams as N, type ParticleShape as O, Particular as P, type ParticularConfig as Q, type RendererType as R, type ScreensaverController as S, type TextImageConfig as T, type ScreensaverOptions as U, type ShapeConfig as V, type WobbleConfig as W, Vector as X, WebGL3DRenderer as Y, type WebGL3DRendererOptions as Z, WebGLRenderer as _, type ParticleConfig as a, applyCanvasStyles as a0, canvasToDataURL as a1, colorPalettes as a2, configureParticle as a3, createHeartImage as a4, createParticles as a5, createTextImage as a6, defaultCamera as a7, getParticlesBackgroundLayerStyle as a8, getParticlesContainerLayerStyle as a9, particlesBackgroundLayerStyle as aa, particlesContainerLayerStyle as ab, DEFAULT_Z_INDEX as ac, presets as ad, setParticlePoolSize as ae, showFPSOverlay as af, startScreensaver as ag, type PresetName as b, configureParticular as c, type ParticlesController as d, type BurstOptions as e, type ElementParticlesConfig as f, type ImageShatterConfig as g, type AttractorConfig as h, type BlendMode as i, type BoundaryConfig as j, type BoundaryHandle as k, type CameraConfig as l, CanvasRenderer as m, type ChildExplosionConfig as n, type ContainerGlowConfig as o, type ContainerGlowHandle as p, type CreateParticlesOptions as q, Emitter as r, type EmitterConfiguration as s, type FPSOverlayController as t, type FPSOverlayOptions as u, FlockingForce as v, type FlockingForceConfig as w, type ForceSource as x, type IntroConfig as y, type IntroMode as z };

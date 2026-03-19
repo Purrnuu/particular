@@ -154,6 +154,14 @@ function Snow() {
 </script>
 ```
 
+## Renderers
+
+| Renderer | Description |
+|----------|-------------|
+| `"webgl"` | WebGL2 instanced rendering (default). Fast 2D particle pipeline |
+| `"canvas"` | Canvas 2D fallback. Supports all shapes and effects |
+| `"webgl3d"` | WebGL2 3D perspective rendering. Billboarded quads with depth sorting, camera controls, and spherical emission |
+
 ## Presets
 
 | Name | Type | Description |
@@ -166,9 +174,14 @@ function Snow() {
 | `"snow"` | Ambient | Gentle snowfall drifting across the viewport |
 | `"meteors"` | Ambient | Fast diagonal ring streaks with icy blue-violet trails |
 | `"fireworksShow"` | Ambient | Continuous fireworks — rockets launch and auto-detonate |
+| `"flock"` | Ambient | Self-organizing boids swarm, use with `addFlockingForce()` |
 | `"river"` | Ambient | Horizontal water stream, designed for use with attractors |
 | `"imageText"` | Image | Tuned for text rendered as particle grid |
 | `"imageShape"` | Image | Tuned for images/icons rendered as particle grid |
+| `"galaxySpin"` | Burst3D | Full spherical emission, continuous orbit, long trails, additive |
+| `"depthField"` | Burst3D | Z-spread parallax field, gentle continuous emission |
+| `"supernova"` | Burst3D | Spherical burst with dramatic detonation |
+| `"fireworks3d"` | Burst3D | 3D fireworks with spherical detonation |
 
 ## Controller API
 
@@ -183,10 +196,16 @@ function Snow() {
 | `textToParticles(text)` | Convert text to an interactive particle grid |
 | `setIdleEffect(enabled)` | Toggle idle animations on image/text particles |
 | `addMouseForce({ track, strength, radius })` | Add mouse-driven push force |
+| `addFlockingForce(config?)` | Add boids flocking behavior (separation, alignment, cohesion) |
 | `addAttractor({ x, y, strength, radius })` | Add a gravity attractor point |
 | `addBoundary({ element })` | Create repulsion boundary around a DOM element |
 | `attachClickBurst(target)` | Auto-burst on click events |
 | `destroy()` | Clean up all resources and listeners |
+| `camera` | Camera instance (null if not webgl3d) |
+| `setCameraPosition(position, target?)` | Update camera position and optional target |
+| `orbitCamera(azimuth, elevation, distance?)` | Orbit camera around target point |
+| `enableOrbitControls()` | Mouse-drag orbit + scroll zoom on canvas |
+| `enableAutoOrbit(speed?)` | Continuous camera orbit around target |
 
 Image/text particles have spring physics — they return to their home positions after being pushed. Press E (in the examples) to scatter them.
 
@@ -211,6 +230,33 @@ The library is designed for zero-config usage:
 - **Image/text**: Auto-centered with sensible dimensions when `x`/`y`/`width` are omitted
 - **Mouse force**: `mouseForce: true` shorthand adds tracking with sensible defaults
 - **Styles**: Positioning and `pointer-events: none` applied automatically
+
+## 3D Rendering
+
+Use `renderer: 'webgl3d'` for 3D perspective rendering with depth, camera controls, and spherical emission. All 2D shapes work automatically as billboarded quads.
+
+```js
+import { createParticles } from "particular";
+
+const p = createParticles({
+  container: document.getElementById("hero"),
+  preset: "galaxySpin",
+  renderer: "webgl3d",
+  config: {
+    camera: { fov: 60, position: { x: 0, y: 0, z: 500 } },
+  },
+});
+p.enableOrbitControls(); // drag to orbit, scroll to zoom
+```
+
+### 3D Config Fields
+
+| Field | Description |
+|-------|-------------|
+| `camera` | Camera settings: `{ fov, position, target, up, near, far }` |
+| `spawnDepth` | Randomize particle z within `[-spawnDepth/2, +spawnDepth/2]` |
+| `spread3d` | Spherical emission cone in radians. `Math.PI * 2` = full sphere |
+| `emitDirection` | Base direction for spherical emission: `{ x, y, z }` |
 
 ## Container Mode
 

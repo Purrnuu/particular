@@ -1,9 +1,11 @@
 import Vector from '../utils/vector';
+import { magicPalette } from '../presets';
 import type {
   ParticularConfig,
   ParticleConfig,
   AttractorConfig,
   MouseForceConfig,
+  FlockingForceConfig,
   FullParticularConfig,
   RendererType,
   ChildExplosionConfig,
@@ -91,6 +93,16 @@ export const defaultMouseForce: Required<Omit<MouseForceConfig, 'track'>> = {
   falloff: 1,
 };
 
+export const defaultFlockingForce: Required<FlockingForceConfig> = {
+  neighborRadius: 100,
+  separationWeight: 1.5,
+  alignmentWeight: 1.0,
+  cohesionWeight: 1.0,
+  maxSteeringForce: 0.5,
+  maxSpeed: 4,
+  separationDistance: 25,
+};
+
 export const defaultExplosionChild: Required<ChildExplosionConfig> = {
   childCount: 5,
   childLife: 40,
@@ -155,7 +167,7 @@ export const defaultElementParticles: Partial<ElementParticlesConfig> = {
 
 /** Default container glow config — soft blue/purple halo with gentle pulse. */
 export const defaultContainerGlow: Required<Omit<ContainerGlowConfig, 'element'>> = {
-  colors: ['#a5d8ff', '#74c0fc', '#4dabf7', '#d0bfff', '#b197fc', '#9775fa'],
+  colors: magicPalette,
   rate: 0.5,
   sizeMin: 0.5,
   sizeMax: 2,
@@ -176,7 +188,7 @@ export const defaultContainerGlow: Required<Omit<ContainerGlowConfig, 'element'>
 
 /** Default mouse trail config — magical wisps streaming from cursor. */
 export const defaultMouseTrail: Required<Omit<MouseTrailConfig, 'target'>> = {
-  colors: ['#a5d8ff', '#74c0fc', '#4dabf7', '#d0bfff', '#b197fc', '#9775fa'],
+  colors: magicPalette,
   rate: 1.5,
   sizeMin: 1,
   sizeMax: 3,

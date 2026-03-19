@@ -6,6 +6,7 @@ export { default as Emitter } from './particular/components/emitter';
 export { default as Particle, setParticlePoolSize } from './particular/components/particle';
 export { default as Attractor } from './particular/components/attractor';
 export { default as MouseForce } from './particular/components/mouseForce';
+export { default as FlockingForce } from './particular/components/flockingForce';
 export { default as CanvasRenderer } from './particular/renderers/canvasRenderer';
 export {
   default as WebGLRenderer,
@@ -16,7 +17,7 @@ export {
   type WebGL3DRendererOptions,
 } from './particular/renderers/webgl3dRenderer';
 export { Camera, type CameraConfig, defaultCamera } from './particular/renderers/camera';
-export { presets } from './particular/presets';
+export { presets, colorPalettes } from './particular/presets';
 export {
   particlesBackgroundLayerStyle,
   getParticlesBackgroundLayerStyle,
@@ -45,6 +46,7 @@ export type {
   ShapeConfig,
   AttractorConfig,
   MouseForceConfig,
+  FlockingForceConfig,
   ForceSource,
   RendererType,
   ChildExplosionConfig,

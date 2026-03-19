@@ -76,7 +76,7 @@ Main entry point. Creates engine, canvas, and returns controller.
 
 Options (all optional):
 - canvas: HTMLCanvasElement          — if omitted, auto-created and appended to container or document.body
-- preset: PresetName                 — default "magic". One of: "magic", "confetti", "fireworks", "fireworksDetonation", "snow", "meteors", "fireworksShow", "river", "imageText", "imageShape", "images", "galaxySpin", "depthField", "supernova", "fireworks3d"
+- preset: PresetName                 — default "magic". One of: "magic", "confetti", "fireworks", "fireworksDetonation", "snow", "meteors", "flock", "fireworksShow", "river", "imageText", "imageShape", "images", "galaxySpin", "depthField", "supernova", "fireworks3d"
 - config: Partial<FullParticularConfig> — override any particle/engine config field
 - renderer: "webgl" | "canvas" | "webgl3d" — default "webgl". Use "webgl3d" for 3D perspective rendering
 - autoResize: boolean                — default true
@@ -101,6 +101,8 @@ Returned by createParticles(). Methods:
 - removeAllAttractors() → void
 - addMouseForce(config?) → MouseForce               — config: { track?, strength?, radius?, damping?, maxSpeed?, falloff? }
 - removeMouseForce(mouseForce) → void
+- addFlockingForce(config?) → FlockingForce          — boids flocking: separation, alignment, cohesion. See FlockingForceConfig
+- removeFlockingForce(flockingForce) → void
 - addBoundary({ element, strength?, radius?, inset? }) → BoundaryHandle — repulsion boundary around DOM element
 - addContainerGlow(config) → ContainerGlowHandle                     — glowing particle halo around DOM element. See ContainerGlowConfig
 - addMouseTrail(config?) → MouseTrailHandle                          — particle trail following cursor. See MouseTrailConfig
@@ -263,6 +265,15 @@ Extends ImageParticlesConfig (minus `image`). Position and size auto-derived fro
 - color?: string                    — default "#adb5bd"
 - shape?: ParticleShape
 
+### FlockingForceConfig (for addFlockingForce)
+- neighborRadius?: number           — radius for neighbor detection. Default 100
+- separationWeight?: number         — avoid crowding weight. Default 1.5
+- alignmentWeight?: number          — match neighbor heading weight. Default 1.0
+- cohesionWeight?: number           — steer toward neighbor center weight. Default 1.0
+- maxSteeringForce?: number         — max force magnitude per frame. Default 0.5
+- maxSpeed?: number                 — max particle speed (velocity clamped). Default 4
+- separationDistance?: number       — min distance before separation kicks in. Default 25
+
 ### BoundaryConfig
 - element: HTMLElement              — REQUIRED. DOM element to create boundary around
 - strength?: number                 — default -1.5 (repulsion)
@@ -400,6 +411,7 @@ Pool auto-shrinks if new limit is smaller than current pool size. Default 2000.
 | "snow"                | Ambient | Gentle snowfall, continuous, gravity jitter for natural drift |
 | "meteors"             | Ambient | Bright diagonal streaks with glowing trails          |
 | "fireworksShow"       | Ambient | Continuous fireworks — triangle rockets launch and detonate |
+| "flock"               | Ambient | Self-organizing boids swarm, use with addFlockingForce() |
 | "river"               | Ambient | Horizontal water stream for use with attractors      |
 | "imageText"           | Image   | Tiny square particles for text rendering             |
 | "imageShape"          | Image   | Circle particles with glow for image/icon rendering  |
@@ -413,7 +425,14 @@ Pool auto-shrinks if new limit is smaller than current pool size. Default 2000.
 
 Override colors on any preset: `createParticles({ config: { colors: ["#ff0000", "#00ff00"] } })`
 
-Built-in (via `presets.Colors.xxx`): snow, grayscale, coolBlue, muted, blue, orange, green, meteor, water, finland, usa.
+Built-in palettes (via `presets.Colors.xxx` or `colorPalettes.xxx`):
+- **Naturals**: snow, grayscale, ash (dark grey), slate (dark blue-grey)
+- **Blues**: coolBlue, blue, magic (blue-purple sparkle), nebula (blue-purple-pink), fairy (pastel mix)
+- **Warms**: orange, amber (warm orange-gold), gold (yellow-orange), solar (hot reds/whites), meteor (white-hot to red)
+- **Accents**: green, emerald (green to mint), rose (pink gradient), violet (deep purple), muted (warm/cool mix)
+- **Multi**: fireworks (vivid multicolor), water (cyan-white)
+- **Flags**: finland, usa
+
 Empty colors array = auto-generated harmonious HSL palette per emitter.
 
 ## Container Mode
@@ -586,6 +605,21 @@ p.enableAutoOrbit(0.08);
 const p = createParticles({ renderer: 'webgl3d', preset: 'galaxySpin' });
 p.addAttractor({ x: 100, y: 0, z: 100, strength: 0.8, radius: 300 });
 p.enableOrbitControls();
+```
+
+### Boids flock (self-organizing swarm)
+```js
+const p = createParticles({ preset: "flock" });
+p.addFlockingForce(); // particles self-organize via separation, alignment, cohesion
+p.burst({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+// Custom weights: p.addFlockingForce({ separationWeight: 2, maxSpeed: 6 })
+```
+
+### Flock with predator mouse
+```js
+const p = createParticles({ preset: "flock", mouseForce: { strength: -2, radius: 150, track: true } });
+p.addFlockingForce();
+p.burst({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
 ```
 
 ### Custom colors

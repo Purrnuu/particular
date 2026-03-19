@@ -2,12 +2,14 @@ import type Particular from '../core/particular';
 import type Emitter from '../components/emitter';
 import type Attractor from '../components/attractor';
 import type MouseForce from '../components/mouseForce';
+import type FlockingForce from '../components/flockingForce';
 import type { Camera, CameraConfig } from '../renderers/camera';
 import type {
   FullParticularConfig,
   RendererType,
   AttractorConfig,
   MouseForceConfig,
+  FlockingForceConfig,
   ExplodeOptions,
   ImageParticlesConfig,
   TextImageConfig,
@@ -93,6 +95,10 @@ export interface ParticlesController {
   removeAllAttractors: () => void;
   addMouseForce: (config?: MouseForceConfig) => MouseForce;
   removeMouseForce: (mouseForce: MouseForce) => void;
+  /** Add a boids flocking force. Particles self-organize into swarm patterns via
+   *  separation, alignment, and cohesion steering rules. Composes with attractors and mouse force. */
+  addFlockingForce: (config?: FlockingForceConfig) => FlockingForce;
+  removeFlockingForce: (flockingForce: FlockingForce) => void;
   /** Create a repulsion boundary around an HTML element. Particles are pushed away from its edges.
    *  The boundary auto-syncs when the element resizes or scrolls. Returns a handle to update or remove it. */
   addBoundary: (config: BoundaryConfig) => BoundaryHandle;

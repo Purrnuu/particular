@@ -1,4 +1,5 @@
 import Vector from './utils/vector';
+import type Particle from './components/particle';
 
 /** Particle rendering shape. Each shape is supported in both Canvas 2D and WebGL renderers. */
 export type ParticleShape =
@@ -377,7 +378,8 @@ export interface AttractorConfig {
 }
 
 export interface ForceSource {
-  getForce(particlePosition: Vector): Vector;
+  getForce(particlePosition: Vector, particle?: Particle): Vector;
+  preCompute?(particles: Particle[], dt: number): void;
 }
 
 export interface MouseForceConfig {
@@ -394,6 +396,26 @@ export interface MouseForceConfig {
   falloff?: number;
   /** EventTarget to track mouse on. `true` = window. Omitted/`false` = manual. */
   track?: EventTarget | boolean;
+}
+
+/** Configuration for boids flocking behavior. Particles self-organize into swarm patterns
+ *  via three steering rules: separation (avoid crowding), alignment (match neighbor heading),
+ *  cohesion (steer toward neighbor center). Composes with existing forces. */
+export interface FlockingForceConfig {
+  /** Radius within which other particles are considered neighbors. Default 100. */
+  neighborRadius?: number;
+  /** Weight for separation rule (avoid crowding). Default 1.5. */
+  separationWeight?: number;
+  /** Weight for alignment rule (match neighbor heading). Default 1.0. */
+  alignmentWeight?: number;
+  /** Weight for cohesion rule (steer toward neighbor center). Default 1.0. */
+  cohesionWeight?: number;
+  /** Maximum steering force magnitude per frame. Default 0.5. */
+  maxSteeringForce?: number;
+  /** Maximum particle speed (velocity clamped to this). Default 4. */
+  maxSpeed?: number;
+  /** Minimum distance before separation kicks in. Default 25. */
+  separationDistance?: number;
 }
 
 /** Configuration for an element-based repulsion boundary. */

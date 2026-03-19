@@ -59,6 +59,7 @@ src/particular/components/particle.ts    # Single particle: physics, lifetime, a
 src/particular/components/emitter.ts     # Particle factory + emission logic (burst & continuous)
 src/particular/components/attractor.ts   # Point force (attraction/repulsion), optional visible rendering
 src/particular/components/mouseForce.ts  # Directional force from mouse velocity
+src/particular/components/flockingForce.ts    # Boids flocking: spatial hash + separation/alignment/cohesion steering
 src/particular/components/icons.ts       # Image loading/processing for image particles
 ```
 
@@ -108,6 +109,7 @@ src/ImageShatter.stories.tsx            # Image shatter demos (click-to-shatter,
 src/ContainerGlow.stories.tsx           # Container glow demos (continuous, hover text, multiple cards)
 src/MouseTrail.stories.tsx              # Mouse trail demos (wisps, warm, snow dust)
 src/Showcase.stories.tsx                 # Combined showcase demos
+src/Boids.stories.tsx                    # Boids flocking demos: basic flock, predator mouse, attractor, 3D
 src/3D.stories.tsx                       # 3D demos: burst, orbit, snow, spherical burst, galaxy, attractor, fireworks
 ```
 
@@ -136,6 +138,7 @@ tests/camera.test.ts                     # Camera: constructor, update viewProje
 tests/mouseForce.test.ts                 # MouseForce: velocity tracking, decay, force falloff, speed capping
 tests/defaults.test.ts                   # Config merge: configureParticular, configureParticle, default key existence
 tests/particle.test.ts                   # Particle physics: pool lifecycle, velocity integration, friction, gravity, forces, alpha fade, home spring, size, trail
+tests/flockingForce.test.ts              # FlockingForce: boids rules, spatial hash, 3D distance, force clamping
 tests/emitter.test.ts                    # Emission: rate accumulation, lifecycle budget, bounds, continuous mode
 ```
 

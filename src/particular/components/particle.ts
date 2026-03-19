@@ -351,7 +351,7 @@ export default class Particle {
       // Only evaluate external forces — everything else would be a no-op
       if (forces && forces.length > 0) {
         for (let i = 0; i < forces.length; i++) {
-          const f = forces[i]!.getForce(this.position);
+          const f = forces[i]!.getForce(this.position, this);
           this.velocity.x += f.x * dt;
           this.velocity.y += f.y * dt;
         }
@@ -422,10 +422,10 @@ export default class Particle {
       this.velocity.y += this.gravity * dt;
     }
 
-    // External forces (attractors, mouse)
+    // External forces (attractors, mouse, flocking)
     if (forces && forces.length > 0) {
       for (let i = 0; i < forces.length; i++) {
-        const f = forces[i]!.getForce(this.position);
+        const f = forces[i]!.getForce(this.position, this);
         this.velocity.x += f.x * dt;
         this.velocity.y += f.y * dt;
       }

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 
-import { createParticles, startScreensaver, presets } from './index';
+import { createParticles, startScreensaver, presets, colorPalettes } from './index';
 import type { ParticlesController, ScreensaverController, BoundaryHandle } from './index';
 import type Particular from './particular/core/particular';
 import Emitter from './particular/components/emitter';
@@ -50,13 +50,10 @@ const sectionSubStyle: React.CSSProperties = {
   maxWidth: 520,
 };
 
-/* ─── Subtle snow palette ─── */
+/* ─── Named palettes from presets ─── */
 
-const subtleSnowColors = ['#555566', '#606070', '#6a6a7a', '#757585', '#808090'];
-
-/* ─── Muted river palette — dimmed cyans that read as subtle accents ─── */
-
-const mutedRiverColors = ['#3a4a4f', '#455558', '#4f6065', '#5a6b70', '#647578'];
+const subtleSnowColors = colorPalettes.ash!;
+const mutedRiverColors = colorPalettes.slate!;
 
 /* ─── Responsive CSS (injected once) — inline styles can't do media queries ─── */
 
@@ -164,12 +161,12 @@ const DemoLabel: React.FC<{ title: string; desc: string }> = ({ title, desc }) =
 /* ─── Demo: Click Burst (rotating palettes) ─── */
 
 const burstPalettes = [
-  { colors: ['#b33600', '#cc4a00', '#e86100', '#f57c00', '#ff9500', '#ffad33'], glow: '#ff9500' },
-  { colors: ['#a5d8ff', '#74c0fc', '#4dabf7', '#d0bfff', '#b197fc', '#9775fa'], glow: '#74c0fc' },
-  { colors: ['#006b3f', '#00a85e', '#1edd80', '#4deda0', '#96f2c8', '#c3fae8'], glow: '#1edd80' },
-  { colors: ['#ff4757', '#ff6b81', '#ff8fa3', '#ffa8b8', '#ffc9d3', '#ffe0e6'], glow: '#ff6b81' },
-  { colors: ['#ffd699', '#ffcc66', '#ffad33', '#ff9500', '#f57c00', '#e86100'], glow: '#ffcc66' },
-  { colors: ['#d0bfff', '#b197fc', '#9775fa', '#845ef7', '#7048e8', '#5f3dc4'], glow: '#9775fa' },
+  { colors: colorPalettes.orange!, glow: '#ff9500' },
+  { colors: colorPalettes.magic!, glow: '#74c0fc' },
+  { colors: colorPalettes.emerald!, glow: '#1edd80' },
+  { colors: colorPalettes.rose!, glow: '#ff6b81' },
+  { colors: colorPalettes.gold!, glow: '#ffcc66' },
+  { colors: colorPalettes.violet!, glow: '#9775fa' },
 ];
 
 const BurstDemo: React.FC = () => {
@@ -623,7 +620,7 @@ const WelcomeDemo: React.FC = () => {
       fadeTime: 20,
       velocity: 0.8,
       spread: 0.5,
-      colors: ['#a5d8ff', '#74c0fc', '#d0bfff', '#b197fc', '#99e9f2', '#c3fae8'],
+      colors: colorPalettes.fairy!,
       glow: true,
       glowSize: 6,
       glowAlpha: 0.25,
@@ -840,7 +837,7 @@ const WelcomeDemo: React.FC = () => {
     });
     ctrl.addContainerGlow({
       element: badge,
-      colors: ['#ffad33', '#ff9500', '#f57c00', '#e86100', '#ffcc66', '#ffd699'],
+      colors: colorPalettes.amber!,
       rate: 0.6,
       sizeMin: 0.5,
       sizeMax: 2,
