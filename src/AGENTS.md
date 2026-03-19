@@ -14,7 +14,7 @@ Types in `src/particular/types.ts`:
 
 Config merge chain: `configureParticular({ ...preset, ...userConfig })` — user config always wins over preset.
 
-Defaults in `src/particular/core/defaults.ts`: `defaultParticular`, `defaultParticle`, `defaultMouseForce` (base physics), `defaultMouseWind` (screensaver wind overrides), `defaultContainerGlow` (glow particle halo), `defaultMouseTrail` (cursor trail wisps), `defaultImageShatter` (glass-break explosion), `defaultWobble` (per-frame velocity/rotation nudges + mouse-reactive tracking config). `MouseForce` constructor merges config with `defaultMouseForce`.
+Defaults in `src/particular/core/defaults.ts`: `defaultParticular`, `defaultParticle`, `defaultMouseForce` (base physics), `defaultMouseWind` (screensaver wind overrides), `defaultFlockingForce` (boids flocking weights and radii), `defaultContainerGlow` (glow particle halo), `defaultMouseTrail` (cursor trail wisps), `defaultImageShatter` (glass-break explosion), `defaultWobble` (per-frame velocity/rotation nudges + mouse-reactive tracking config). `MouseForce` constructor merges config with `defaultMouseForce`. `FlockingForce` constructor merges config with `defaultFlockingForce`.
 
 Key fields with non-obvious behavior:
 
@@ -66,7 +66,7 @@ Design: WebGL2 only, instanced drawing, separate circle and image shader program
 Key features: blend modes (normal/additive/multiply/screen), image support with optional tint, glow with size-scaled width and smoothed edge falloff, shadow pass (directional vector from burst origin, blur/offset retract with eased alpha during fade).
 
 Implementation notes:
-- Circle rendering uses a larger quad than image rendering to accommodate glow outside core radius.
+- Glow rendering: quads are expanded in the vertex shader via `u_glowExpand` uniform (UV-space expansion: `expand = 1.0 + u_glowExpand`). The SDF shape stays at original size while the quad grows to accommodate glow overflow. Glow falloff uses `smoothstep(-0.2, glowRange, sd)` — starting at -0.2 bleeds glow slightly inside the shape edge for visibility on dark backgrounds.
 - Shadow drawn as separate pass before main pass.
 - Particle alpha clamped to `[0, 1]` in `Particle.update()`.
 
@@ -217,7 +217,15 @@ Uses `preCompute(particles, dt)` hook — called once per frame in `Particular.u
 
 ### Config
 
-`FlockingForceConfig`: `neighborRadius` (100), `separationWeight` (1.5), `alignmentWeight` (1.0), `cohesionWeight` (1.0), `maxSteeringForce` (0.5), `maxSpeed` (4), `separationDistance` (25). Defaults in `defaultFlockingForce`.
+`FlockingForceConfig`: `neighborRadius` (100), `separationWeight` (1.5), `alignmentWeight` (1.5), `cohesionWeight` (0.3), `maxSteeringForce` (0.5), `maxSpeed` (4), `separationDistance` (25). Defaults in `defaultFlockingForce`.
+
+### Edge Avoidance
+
+When `boundsWidth` and `boundsHeight` are set (engine sets these automatically from viewport/pixelRatio), particles within `neighborRadius` of screen edges receive a soft linear repulsion force. This keeps the flock on screen without hard boundaries.
+
+### Force Smoothing
+
+Per-particle forces are exponentially smoothed (2% blend per frame) to prevent jittery movement. Stored forces blend with new: `entry.x += (fx - entry.x) * 0.02`. This creates graceful arcing motion instead of sudden direction changes.
 
 ### Speed Clamping
 
@@ -245,6 +253,7 @@ Built-in palettes (all in `presets.ts`, exported via `colorPalettes` map and `pr
 - **Warms**: orange, amber (warm orange-gold glow), gold (yellow-orange), solar (hot reds/whites, used by supernova), meteor (white-hot to deep red)
 - **Accents**: green, emerald (green to pastel mint), rose (hot-to-pastel pink), violet (deep purple), muted (desaturated warm/cool)
 - **Multi**: fireworks (vivid multicolor), water (cyan-white)
+- **Themed**: birds (earthy brown-grey), sunset (warm orange-red-purple, used by flock preset)
 - **Flags**: finland, usa
 
 The `colorPalettes` export from `presets.ts` provides a `Record<string, string[]>` lookup of all named palettes, used by Storybook's `colorPalette` select control.
@@ -262,7 +271,7 @@ Curated and intentionally limited. Polish over quantity.
 - `presets.Ambient.snow` — gentle snowfall (continuous, low rate, long life, gravityJitter 0.5 for natural drift)
 - `presets.Ambient.meteors` — bright diagonal streaks with glowing trails, accelerating as they fall, gravityJitter 0.3
 - `presets.Ambient.fireworksShow` — continuous fireworks screensaver: triangle rockets launch from bottom, auto-detonate into trailing triangle bursts (vivid palette), gravityJitter 0.15
-- `presets.Ambient.flock` — boids swarm: triangles with glow, trails, zero gravity, continuous emission, coolBlue palette. Use with `addFlockingForce()` for self-organizing behavior.
+- `presets.Ambient.flock` — boids swarm: triangles with rotateToVelocity, additive blending, glow (ethereal white-peach), trails, zero gravity, continuous emission, sunset palette. Use with `addFlockingForce()` for self-organizing behavior. Edge avoidance keeps particles on screen.
 - `presets.Ambient.river` — horizontal water stream with cyan glow and short trails, designed for use with attractors (water palette)
 - `presets.Images.showcase` — tuned for icon/image particles
 - `presets.ImageParticles.text` — high-fidelity text as tiny square particles
@@ -670,4 +679,4 @@ Per-frame allocations eliminated via index-based pools and array reuse:
 
 ## Stable Public API
 
-From `src/index.ts`: `Particular`, `Emitter`, `Particle`, `Attractor`, `MouseForce`, `CanvasRenderer`, `WebGLRenderer`, `WebGL3DRenderer`, `Camera`, `ParticularWrapper`, `useParticles`, `useScreensaver`, `createParticles`, `startScreensaver`, `presets`, `applyCanvasStyles`, and all public types (including `ImageShatterConfig`, `CameraConfig`, `WebGL3DRendererOptions`, `defaultCamera`). Avoid breaking these exports.
+From `src/index.ts`: `Particular`, `Emitter`, `Particle`, `Attractor`, `MouseForce`, `FlockingForce`, `CanvasRenderer`, `WebGLRenderer`, `WebGL3DRenderer`, `Camera`, `ParticularWrapper`, `useParticles`, `useScreensaver`, `createParticles`, `startScreensaver`, `presets`, `applyCanvasStyles`, and all public types (including `FlockingForceConfig`, `ImageShatterConfig`, `CameraConfig`, `WebGL3DRendererOptions`, `defaultCamera`, `defaultFlockingForce`). Avoid breaking these exports.

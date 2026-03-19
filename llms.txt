@@ -268,8 +268,8 @@ Extends ImageParticlesConfig (minus `image`). Position and size auto-derived fro
 ### FlockingForceConfig (for addFlockingForce)
 - neighborRadius?: number           — radius for neighbor detection. Default 100
 - separationWeight?: number         — avoid crowding weight. Default 1.5
-- alignmentWeight?: number          — match neighbor heading weight. Default 1.0
-- cohesionWeight?: number           — steer toward neighbor center weight. Default 1.0
+- alignmentWeight?: number          — match neighbor heading weight. Default 1.5
+- cohesionWeight?: number           — steer toward neighbor center weight. Default 0.3
 - maxSteeringForce?: number         — max force magnitude per frame. Default 0.5
 - maxSpeed?: number                 — max particle speed (velocity clamped). Default 4
 - separationDistance?: number       — min distance before separation kicks in. Default 25
@@ -432,6 +432,7 @@ Built-in palettes (via `presets.Colors.xxx` or `colorPalettes.xxx`):
 - **Warms**: orange, amber (warm orange-gold), gold (yellow-orange), solar (hot reds/whites), meteor (white-hot to red)
 - **Accents**: green, emerald (green to mint), rose (pink gradient), violet (deep purple), muted (warm/cool mix)
 - **Multi**: fireworks (vivid multicolor), water (cyan-white)
+- **Themed**: birds (earthy brown-grey), sunset (warm orange-red-purple)
 - **Flags**: finland, usa
 
 Empty colors array = auto-generated harmonious HSL palette per emitter.
