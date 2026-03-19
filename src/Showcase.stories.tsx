@@ -9,6 +9,7 @@ import { configureParticle } from './particular/core/defaults';
 import Vector from './particular/utils/vector';
 import { particlesContainerLayerStyle } from './particular/canvasStyles';
 import vikingPng from './icons/viking.png';
+import woltLogoSvg from './icons/woltLogo.svg';
 
 /* ─── Shared Styles ─── */
 
@@ -189,8 +190,14 @@ const BurstDemo: React.FC = () => {
         zIndex: 1,
         sizeMin: 2,
         sizeMax: 7,
+        spawnDepth: 100,
+        camera: {
+          fov: 50,
+          position: { x: 0, y: 0, z: 300 },
+          target: { x: 0, y: 0, z: 0 },
+        },
       },
-      renderer: 'webgl',
+      renderer: 'webgl3d',
       autoResize: true,
     });
     ctrlRef.current = ctrl;
@@ -321,9 +328,9 @@ const ShatterDemo: React.FC = () => {
   );
 };
 
-/* ─── Demo: Text Particles ─── */
+/* ─── Demo: Wolt Logo Particles ─── */
 
-const TextDemo: React.FC = () => {
+const LogoDemo: React.FC = () => {
   const ref = useRef<HTMLDivElement>(null);
   const engineRef = useRef<Particular | null>(null);
 
@@ -335,15 +342,15 @@ const TextDemo: React.FC = () => {
     const ctrl = createParticles({
       container: el,
       preset: 'imageText',
-      config: { maxCount: 2000, continuous: true, zIndex: 1 },
+      config: { maxCount: 5000, continuous: true, zIndex: 1 },
       renderer: 'webgl',
       autoResize: true,
     });
     engineRef.current = ctrl.engine;
 
-    ctrl.textToParticles('Hello', {
-      height: el.clientHeight * 0.45,
-      resolution: 100,
+    ctrl.imageToParticles({
+      image: woltLogoSvg,
+      resolution: 200,
       shape: 'circle',
     });
     ctrl.addMouseForce({ track: true, strength: 2, radius: 50 });
@@ -353,7 +360,7 @@ const TextDemo: React.FC = () => {
 
   return (
     <div ref={ref} style={demoCellStyle}>
-      <DemoLabel title="Text Particles" desc="Interactive mouse force" />
+      <DemoLabel title="Logo Particles" desc="Interactive mouse force" />
     </div>
   );
 };
@@ -698,19 +705,40 @@ const WelcomeDemo: React.FC = () => {
   }, []);
 
   // Fireworks — separate non-continuous controller, triggered by scroll
+  // Uses a viewport-fixed canvas (not container-aware) because the 3D camera
+  // has a fixed frustum that can't account for scroll offset like the 2D renderer.
   useEffect(() => {
     const canvas = fireworksCanvasRef.current;
-    const container = containerRef.current;
-    if (!canvas || !container) return;
+    if (!canvas) return;
 
     const controller = createParticles({
       canvas,
-      container,
-      preset: 'fireworksShow',
-      config: { maxCount: 2000, continuous: false, autoStart: false },
-      renderer: 'webgl',
+      preset: 'fireworks3d',
+      config: {
+        maxCount: 2000,
+        continuous: false,
+        autoStart: false,
+        camera: {
+          fov: 60,
+          position: { x: 0, y: -200, z: 600 },
+          target: { x: 0, y: 100, z: 0 },
+        },
+      },
+      // Note: no container — 3D camera can't handle scroll offset.
+      // applyCanvasStyles will set position:fixed, so we restore our
+      // desired absolute positioning after createParticles returns.
+      renderer: 'webgl3d',
       autoResize: true,
     });
+
+    // Restore absolute positioning — createParticles sets position:fixed for non-container canvases
+    canvas.style.position = 'absolute';
+    canvas.style.inset = 'auto';
+    canvas.style.bottom = '0';
+    canvas.style.left = '0';
+    canvas.style.width = '100%';
+    canvas.style.height = '100vh';
+    canvas.style.zIndex = '0';
 
     fireworksControllerRef.current = controller;
 
@@ -724,31 +752,32 @@ const WelcomeDemo: React.FC = () => {
         firedFireworksRef.current = true;
 
         const pr = controller.engine.pixelRatio;
-        const w = container.clientWidth / pr;
-        const h = container.clientHeight / pr;
+        const w = window.innerWidth / pr;
+        const h = window.innerHeight / pr;
 
-        // Fireworks barrage — two waves of rockets across the width
+        // Fireworks barrage — three waves of rockets from center-bottom
         const fwConfig = configureParticle({
-          ...presets.Ambient.fireworksShow,
+          ...presets.Burst3D.fireworks3d,
           rate: 1,
-          life: 3,
+          life: 5,
         });
-        const wave1 = [0.15, 0.35, 0.55, 0.75, 0.9];
-        const wave2 = [0.25, 0.45, 0.65, 0.85];
+        const wave1 = [0.3, 0.42, 0.5, 0.58, 0.7];
+        const wave2 = [0.35, 0.45, 0.55, 0.65];
+        const wave3 = [0.38, 0.5, 0.62];
 
         wave1.forEach((xFrac, i) => {
           setTimeout(() => {
             const emitter = new Emitter({
               point: new Vector(w * xFrac, h),
               ...fwConfig,
-              spawnWidth: w * 0.06,
+              spawnWidth: w * 0.08,
               spawnHeight: 0,
               icons: [],
             });
             controller.engine.addEmitter(emitter);
             emitter.isEmitting = true;
             emitter.emit();
-          }, i * 400);
+          }, i * 300);
         });
 
         wave2.forEach((xFrac, i) => {
@@ -756,14 +785,29 @@ const WelcomeDemo: React.FC = () => {
             const emitter = new Emitter({
               point: new Vector(w * xFrac, h),
               ...fwConfig,
-              spawnWidth: w * 0.06,
+              spawnWidth: w * 0.08,
               spawnHeight: 0,
               icons: [],
             });
             controller.engine.addEmitter(emitter);
             emitter.isEmitting = true;
             emitter.emit();
-          }, 2200 + i * 500);
+          }, 1800 + i * 350);
+        });
+
+        wave3.forEach((xFrac, i) => {
+          setTimeout(() => {
+            const emitter = new Emitter({
+              point: new Vector(w * xFrac, h),
+              ...fwConfig,
+              spawnWidth: w * 0.08,
+              spawnHeight: 0,
+              icons: [],
+            });
+            controller.engine.addEmitter(emitter);
+            emitter.isEmitting = true;
+            emitter.emit();
+          }, 3400 + i * 400);
         });
 
         // Allow re-triggering after cooldown
@@ -886,8 +930,6 @@ const WelcomeDemo: React.FC = () => {
       {/* Text particles canvas — container-aware, scrolls with page */}
       <canvas ref={textCanvasRef} style={particlesContainerLayerStyle} />
 
-      {/* Fireworks canvas — triggered on scroll to bottom */}
-      <canvas ref={fireworksCanvasRef} style={particlesContainerLayerStyle} />
 
       {/* Hero — text particles render at ~38% viewport height, subtitle sits below */}
       <section
@@ -973,7 +1015,7 @@ const WelcomeDemo: React.FC = () => {
           <BurstDemo />
           <MeteorDemo />
           <ShatterDemo />
-          <TextDemo />
+          <LogoDemo />
           <GlowDemo />
           <ScatterDemo />
         </div>
@@ -1054,6 +1096,17 @@ const WelcomeDemo: React.FC = () => {
           Particles flow around every element on this page.
         </p>
       </section>
+
+      {/* Fireworks canvas — pinned to bottom of page, behind content, viewport-height for 3D camera */}
+      <canvas ref={fireworksCanvasRef} style={{
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        width: '100%',
+        height: '100vh',
+        pointerEvents: 'none',
+        zIndex: 0,
+      }} />
     </div>
   );
 };

@@ -26,6 +26,8 @@ export default class Particular implements IEventDispatcher {
   width = 0;
   height = 0;
   pixelRatio = 2;
+  /** Multiplier for kill-zone bounds. 3D renderers set this higher so perspective-visible particles aren't culled prematurely. */
+  boundsPadding = 1;
   continuous = false;
   container: HTMLElement | null = null;
   private animateRequest: number | null = null;
@@ -59,7 +61,11 @@ export default class Particular implements IEventDispatcher {
   }
 
   stop(): void {
-    this.isOn = false;
+    if (this.isOn) {
+      this.isOn = false;
+      // Fire one final render so particles that just settled are drawn at their snapped home positions.
+      this.dispatchEvent(Particular.UPDATE_AFTER);
+    }
   }
 
   onResize(): void {
@@ -156,8 +162,13 @@ export default class Particular implements IEventDispatcher {
       forces = this.attractors;
     }
 
+    const margin = this.boundsPadding - 1;
+    const bx = this.width * (1 + margin);
+    const by = this.height * (1 + margin);
+    const mx = this.width * margin;
+    const my = this.height * margin;
     for (const emitter of this.emitters) {
-      emitter.update(this.width, this.height, forces, dt);
+      emitter.update(bx, by, mx, my, forces, dt);
     }
 
     // Compact in-place instead of filter() to avoid array allocation

@@ -123,11 +123,11 @@ describe('Emitter', () => {
       e.particular = mockParticular();
       e.isEmitting = true;
       e.emit(1); // 10 particles, lifeCycle = 10
-      e.update(1000, 1000, undefined, 1);
+      e.update(1000, 1000, 0, 0, undefined, 1);
       expect(e.isEmitting).toBe(true); // still under budget (10 < 15)
 
       e.emit(1); // 10 more, lifeCycle = 20
-      e.update(1000, 1000, undefined, 1);
+      e.update(1000, 1000, 0, 0, undefined, 1);
       expect(e.isEmitting).toBe(false); // exceeded budget (20 >= 15)
     });
 
@@ -136,7 +136,7 @@ describe('Emitter', () => {
       e.particular = mockParticular({ continuous: true });
       e.isEmitting = true;
       e.emit(1);
-      e.update(1000, 1000, undefined, 1);
+      e.update(1000, 1000, 0, 0, undefined, 1);
       expect(e.isEmitting).toBe(true);
     });
 
@@ -147,7 +147,7 @@ describe('Emitter', () => {
       e.emit(1);
       // Move particle far out of bounds
       e.particles[0]!.position.x = -100;
-      e.update(500, 500, undefined, 1);
+      e.update(500, 500, 0, 0, undefined, 1);
       expect(e.particles.length).toBe(0);
     });
 
@@ -178,7 +178,7 @@ describe('Emitter', () => {
       };
       // Move out of bounds
       p.position.x = -100;
-      e.update(500, 500, undefined, 1);
+      e.update(500, 500, 0, 0, undefined, 1);
       // Should survive — home particles are never killed by bounds
       expect(e.particles.length).toBe(1);
     });

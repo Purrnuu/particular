@@ -378,6 +378,9 @@ export default class Particle {
       // Size + breathing still need to run (particle may not have reached target size yet)
       if (this.factoredSize < this.size) {
         this.factoredSize = Math.min(this.factoredSize + this.scaleStep * dt, this.size);
+      } else if (this.factoredSize > this.size) {
+        // Clamp down — factoredSize can start above target (e.g. default 1 with size < 1)
+        this.factoredSize = this.size;
       } else if (this.idleEnabled && this.homeConfig.breathingAmplitude > 0) {
         this.breathingPhase += this.homeConfig.breathingSpeed * dt;
         this.factoredSize = this.size * (1 + Math.sin(this.breathingPhase) * this.homeConfig.breathingAmplitude);

@@ -47,7 +47,7 @@ export default class Emitter {
     this.particular = particular;
   }
 
-  update(boundsX: number, boundsY: number, forces?: ForceSource[], dt = 1): void {
+  update(boundsX: number, boundsY: number, marginX: number, marginY: number, forces?: ForceSource[], dt = 1): void {
     let writeIdx = 0;
     const detonate = this.configuration.detonate;
     const newChildren = this._newChildren;
@@ -56,7 +56,7 @@ export default class Emitter {
     for (let i = 0; i < this.particles.length; i++) {
       const particle = this.particles[i]!;
       const pos = particle.position;
-      if (pos.x < 0 || pos.x > boundsX || pos.y < -boundsY || pos.y > boundsY) {
+      if (pos.x < -marginX || pos.x > boundsX || pos.y < -marginY || pos.y > boundsY) {
         // Particles with a home position are never killed by bounds — they'll spring back
         if (particle.homePosition) {
           particle.update(forces, dt);

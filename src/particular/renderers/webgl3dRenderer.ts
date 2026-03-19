@@ -52,6 +52,16 @@ void main() {
   // Project particle center into clip space
   vec4 center = u_viewProjection * vec4(worldPos, 1.0);
 
+  // Cull particles behind the camera (w <= 0 means behind or on the near plane)
+  if (center.w <= 0.0) {
+    gl_Position = vec4(2.0, 2.0, 2.0, 1.0); // move off-screen
+    v_color = vec4(0.0);
+    v_uv = a_position;
+    v_particle_size = 0.0;
+    v_particle_shape = a_particle_shape;
+    return;
+  }
+
   // Billboarding: offset quad vertices in screen space (NDC)
   float c = cos(a_particle_rotation);
   float s = sin(a_particle_rotation);
@@ -292,6 +302,9 @@ export default class WebGL3DRenderer {
   init(particular: Particular, pixelRatio: number): void {
     this.particular = particular;
     this.pixelRatio = pixelRatio;
+    // Widen kill-zone bounds — perspective projection means particles outside
+    // 2D engine bounds can still be visible on screen (and vice versa).
+    particular.boundsPadding = 3;
 
     const gl = this.target.getContext('webgl2', {
       alpha: true,
