@@ -5,7 +5,7 @@ import type { InputType } from '@storybook/core/types';
 import { createParticles } from './index';
 import type { ParticlesController, ImageShatterConfig } from './index';
 import { defaultImageShatter } from './particular/core/defaults';
-import vikingPng from './icons/viking.png';
+import viking2Png from './icons/viking_2.png';
 import alpacaPng from './icons/alpaca.png';
 
 /* ─── Story args ─── */
@@ -441,7 +441,7 @@ type Story = StoryObj<typeof meta>;
 /* ─── Destructive explosion stories ─── */
 
 export const Viking: Story = {
-  render: (args) => <ClickToShatter {...(args as ShatterStoryArgs)} imageSrc={vikingPng} />,
+  render: (args) => <ClickToShatter {...(args as ShatterStoryArgs)} imageSrc={viking2Png} />,
 };
 
 export const Alpaca: Story = {
@@ -456,7 +456,7 @@ export const FinePieces: Story = {
     gravity: 0.15,
     rotationSpeed: 6,
   },
-  render: (args) => <ClickToShatter {...(args as ShatterStoryArgs)} imageSrc={vikingPng} />,
+  render: (args) => <ClickToShatter {...(args as ShatterStoryArgs)} imageSrc={viking2Png} />,
 };
 
 export const BigChunks: Story = {
@@ -475,7 +475,7 @@ export const BigChunks: Story = {
 
 export const HoverImage: Story = {
   render: (args) => (
-    <HoverShatter renderer={(args as ShatterStoryArgs).renderer} imageSrc={vikingPng} chunkCount={48} />
+    <HoverShatter renderer={(args as ShatterStoryArgs).renderer} imageSrc={viking2Png} chunkCount={48} />
   ),
 };
 

@@ -9,6 +9,7 @@ import { configureParticle } from './particular/core/defaults';
 import Vector from './particular/utils/vector';
 import { particlesContainerLayerStyle } from './particular/canvasStyles';
 import vikingPng from './icons/viking.png';
+import viking2Png from './icons/viking_2.png';
 import woltLogoSvg from './icons/woltLogo.svg';
 
 /* ─── Shared Styles ─── */
@@ -295,7 +296,7 @@ const ShatterDemo: React.FC = () => {
       if (h > maxH) { h = maxH; w = h * aspect; }
 
       ctrl.shatterImage({
-        image: vikingPng,
+        image: viking2Png,
         width: w,
         height: h,
         chunkCount: 20,
@@ -307,7 +308,7 @@ const ShatterDemo: React.FC = () => {
         },
       }).then(() => { readyRef.current = true; });
     };
-    img.src = vikingPng;
+    img.src = viking2Png;
 
     return () => { ctrl.destroy(); ctrlRef.current = null; engineRef.current = null; readyRef.current = false; };
   }, []);
