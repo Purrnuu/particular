@@ -22,8 +22,8 @@ describe('FlockingForce', () => {
       const ff = new FlockingForce({ neighborRadius: 200, separationWeight: 3 });
       expect(ff.neighborRadius).toBe(200);
       expect(ff.separationWeight).toBe(3);
-      expect(ff.alignmentWeight).toBe(1.0); // default
-      expect(ff.cohesionWeight).toBe(1.0); // default
+      expect(ff.alignmentWeight).toBe(1.5); // default
+      expect(ff.cohesionWeight).toBe(0.3); // default
       expect(ff.maxSteeringForce).toBe(0.5); // default
       expect(ff.maxSpeed).toBe(4); // default
       expect(ff.separationDistance).toBe(25); // default
@@ -33,8 +33,8 @@ describe('FlockingForce', () => {
       const ff = new FlockingForce();
       expect(ff.neighborRadius).toBe(100);
       expect(ff.separationWeight).toBe(1.5);
-      expect(ff.alignmentWeight).toBe(1.0);
-      expect(ff.cohesionWeight).toBe(1.0);
+      expect(ff.alignmentWeight).toBe(1.5);
+      expect(ff.cohesionWeight).toBe(0.3);
       expect(ff.maxSteeringForce).toBe(0.5);
       expect(ff.maxSpeed).toBe(4);
       expect(ff.separationDistance).toBe(25);

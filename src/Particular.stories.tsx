@@ -101,6 +101,7 @@ function toStoryArgs(config: Partial<FullParticularConfig>): StoryArgs {
     accelerationSize: merged.accelerationSize,
     friction: merged.friction,
     frictionSize: merged.frictionSize,
+    rotateToVelocity: merged.rotateToVelocity,
     particleLife: merged.particleLife,
     fadeTime: merged.fadeTime,
     maxCount: merged.maxCount,

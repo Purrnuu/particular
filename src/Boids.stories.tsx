@@ -105,9 +105,11 @@ const FlockAttractorComponent: React.FC = () => {
       config: { autoStart: false },
     });
 
-    const cx = rect.width / 2;
-    const cy = rect.height / 2;
-    controller.addAttractor({ x: cx, y: cy, strength: 0.3, radius: 500, visible: true });
+    const pixelRatio = controller.engine.pixelRatio;
+    const cx = rect.width / 2 / pixelRatio;
+    const cy = rect.height / 2 / pixelRatio;
+    controller.addAttractor({ x: cx - 100, y: cy, strength: 0.3, radius: 400, visible: true });
+    controller.addAttractor({ x: cx + 100, y: cy, strength: 0.3, radius: 400, visible: true });
     controller.addFlockingForce();
     controller.burst({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
 

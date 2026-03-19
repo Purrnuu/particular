@@ -34,6 +34,7 @@ in float a_particle_shape;
 uniform mat4 u_viewProjection;
 uniform vec2 u_resolution;
 uniform float u_worldScale;
+uniform float u_glowExpand;
 
 out vec4 v_color;
 out vec2 v_uv;
@@ -41,6 +42,7 @@ out float v_particle_size;
 out float v_particle_shape;
 
 void main() {
+  float expand = 1.0 + u_glowExpand;
   // Convert engine coords (origin top-left, y-down) to world coords (origin center, y-up)
   // worldScale maps engine viewport to camera frustum at the target plane
   vec3 worldPos = vec3(
@@ -67,8 +69,8 @@ void main() {
   float s = sin(a_particle_rotation);
   vec2 rotated = vec2(a_position.x * c - a_position.y * s, a_position.x * s + a_position.y * c);
 
-  // Scale size by perspective: size in pixels / screen height * 2 * w
-  float sizeNDC = a_particle_size / u_resolution.y * 2.0;
+  // Scale size by perspective: size in pixels / screen height * 2 * w (expand accounts for glow)
+  float sizeNDC = a_particle_size * expand / u_resolution.y * 2.0;
   vec2 offset = rotated * sizeNDC * center.w;
 
   // Correct for aspect ratio (NDC x range is -1..1 regardless of width)
@@ -77,7 +79,7 @@ void main() {
   gl_Position = vec4(center.xy + offset, center.z, center.w);
 
   v_color = a_particle_color;
-  v_uv = a_position;
+  v_uv = a_position * expand;
   v_particle_size = a_particle_size;
   v_particle_shape = a_particle_shape;
 }
@@ -124,8 +126,7 @@ void main() {
   if (u_glow > 0.0) {
     float glowScale = mix(0.75, 1.75, clamp((v_particle_size - 4.0) / 20.0, 0.0, 1.0));
     float glowRange = u_glowSize * glowScale;
-    float halo = 1.0 - smoothstep(0.0, glowRange, sd);
-    halo = halo * halo;
+    float halo = 1.0 - smoothstep(-0.2, glowRange, sd);
     float glowAlpha = halo * u_glowColor.a;
     alpha = max(alpha, glowAlpha);
     float glowMix = clamp((1.0 - coreAlpha) * glowAlpha, 0.0, 1.0);
@@ -252,6 +253,7 @@ export default class WebGL3DRenderer {
   private worldScaleUniform: WebGLUniformLocation | null = null;
   private softnessUniform: WebGLUniformLocation | null = null;
   private glowUniform: WebGLUniformLocation | null = null;
+  private glowExpandUniform: WebGLUniformLocation | null = null;
   private glowSizeUniform: WebGLUniformLocation | null = null;
   private glowColorUniform: WebGLUniformLocation | null = null;
   private isShadowUniform: WebGLUniformLocation | null = null;
@@ -322,6 +324,7 @@ export default class WebGL3DRenderer {
     this.worldScaleUniform = gl.getUniformLocation(this.program, 'u_worldScale');
     this.softnessUniform = gl.getUniformLocation(this.program, 'u_softness');
     this.glowUniform = gl.getUniformLocation(this.program, 'u_glow');
+    this.glowExpandUniform = gl.getUniformLocation(this.program, 'u_glowExpand');
     this.glowSizeUniform = gl.getUniformLocation(this.program, 'u_glowSize');
     this.glowColorUniform = gl.getUniformLocation(this.program, 'u_glowColor');
     this.isShadowUniform = gl.getUniformLocation(this.program, 'u_isShadow');
@@ -704,6 +707,7 @@ export default class WebGL3DRenderer {
       gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
       gl.blendEquation(gl.FUNC_ADD);
       gl.uniform1f(this.isShadowUniform!, 1);
+      gl.uniform1f(this.glowExpandUniform!, 0);
       gl.uniform4f(this.shadowColorUniform!, sr, sg, sb, sa);
       gl.uniform1f(this.shadowBlurUniform!, Math.min(1.0, (batch.shadowBlur ?? 8) / 20));
       gl.depthMask(false);
@@ -718,7 +722,9 @@ export default class WebGL3DRenderer {
     gl.depthMask(false);
     gl.uniform1f(this.softnessUniform!, 0.1);
     gl.uniform1f(this.glowUniform!, batch.glow ? 1 : 0);
-    gl.uniform1f(this.glowSizeUniform!, Math.min(0.5, (batch.glowSize ?? 10) / 30));
+    const glowUV = Math.min(1.0, (batch.glowSize ?? 10) / 30) * 1.75;
+    gl.uniform1f(this.glowExpandUniform!, batch.glow ? glowUV : 0);
+    gl.uniform1f(this.glowSizeUniform!, Math.min(1.0, (batch.glowSize ?? 10) / 30));
     const [gr, gg, gb] = hexToRgba(batch.glowColor ?? '#ffffff');
     gl.uniform4f(this.glowColorUniform!, gr, gg, gb, Math.max(0, Math.min(1, batch.glowAlpha ?? 0.35)));
     this.drawCircleInstances(batch.particles);

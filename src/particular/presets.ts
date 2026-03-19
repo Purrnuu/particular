@@ -27,6 +27,8 @@ const rosePalette: string[] = ['#ff4757', '#ff6b81', '#ff8fa3', '#ffa8b8', '#ffc
 const goldPalette: string[] = ['#ffd699', '#ffcc66', '#ffad33', '#ff9500', '#f57c00', '#e86100'];
 const violetPalette: string[] = ['#d0bfff', '#b197fc', '#9775fa', '#845ef7', '#7048e8', '#5f3dc4'];
 const emeraldPalette: string[] = ['#006b3f', '#00a85e', '#1edd80', '#4deda0', '#96f2c8', '#c3fae8'];
+const birdsPalette: string[] = ['#2c2c2c', '#4a4a4a', '#6b5b4f', '#8b7355', '#a0926b', '#c4b8a0', '#d4cfc4', '#f5f0e8'];
+const sunsetPalette: string[] = ['#ff6b35', '#e84545', '#c9184a', '#a4133c', '#ff8c42', '#d4a05a', '#845ec2', '#2c003e'];
 
 // ── Presets ─────────────────────────────────────────────────────────────────
 
@@ -298,38 +300,39 @@ const Ambient = {
     },
   } satisfies FullParticularConfig,
 
-  /** Boids flock: self-organizing swarm of triangles. Use with addFlockingForce() for full effect. */
+  /** Boids flock: self-organizing swarm of bird-like triangles. Use with addFlockingForce() for full effect. */
   flock: {
     shape: 'triangle' as const,
     blendMode: 'additive' as const,
     glow: true,
-    glowSize: 8,
-    glowColor: '#74c0fc',
-    glowAlpha: 0.3,
+    glowSize: 12,
+    glowColor: '#ffe0d0',
+    glowAlpha: 0.5,
 
     trail: true,
-    trailLength: 6,
-    trailFade: 0.35,
-    trailShrink: 0.5,
-    rate: 2,
+    trailLength: 10,
+    trailFade: 0.5,
+    trailShrink: 0.8,
+    rate: 1,
     life: 999999,
     particleLife: 600,
     velocity: Vector.fromAngle(0, 2),
     spread: Math.PI * 2,
+    colors: sunsetPalette,
     sizeMin: 3,
-    sizeMax: 7,
+    sizeMax: 6,
     velocityMultiplier: 3,
     fadeTime: 80,
     gravity: 0,
     acceleration: 0,
     accelerationSize: 0,
-    friction: 0.005,
+    friction: 0.01,
     frictionSize: 0,
+    rotateToVelocity: true,
     scaleStep: 1,
-    maxCount: 300,
+    maxCount: 150,
     continuous: true,
     autoStart: true,
-    colors: coolBluePalette,
   } satisfies FullParticularConfig,
 
   /** River flow: horizontal stream of water particles, designed for use with attractors */
@@ -591,6 +594,10 @@ const Colors = {
   violet: { colors: violetPalette },
   /** Bright green to pastel mint */
   emerald: { colors: emeraldPalette },
+  /** Natural bird flock: charcoals, browns, warm grays */
+  birds: { colors: birdsPalette },
+  /** Sunset murmuration: deep oranges, magentas, dusky purples */
+  sunset: { colors: sunsetPalette },
   /** Multicolor vivid fireworks */
   fireworks: { colors: fireworksPalette },
 } as const;
@@ -673,5 +680,7 @@ export const colorPalettes: Record<string, string[]> = {
   gold: goldPalette,
   violet: violetPalette,
   emerald: emeraldPalette,
+  birds: birdsPalette,
+  sunset: sunsetPalette,
   fireworks: fireworksPalette,
 };

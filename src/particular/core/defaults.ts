@@ -51,6 +51,7 @@ export const defaultParticle: Required<Omit<ParticleConfig, 'detonate'>> = {
   accelerationSize: 0.01,
   friction: 0,
   frictionSize: 0.0005,
+  rotateToVelocity: false,
   shape: 'circle',
   blendMode: 'normal',
   glow: false,
@@ -96,8 +97,8 @@ export const defaultMouseForce: Required<Omit<MouseForceConfig, 'track'>> = {
 export const defaultFlockingForce: Required<FlockingForceConfig> = {
   neighborRadius: 100,
   separationWeight: 1.5,
-  alignmentWeight: 1.0,
-  cohesionWeight: 1.0,
+  alignmentWeight: 1.5,
+  cohesionWeight: 0.3,
   maxSteeringForce: 0.5,
   maxSpeed: 4,
   separationDistance: 25,

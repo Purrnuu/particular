@@ -167,6 +167,8 @@ export default class Particular implements IEventDispatcher {
     if (this.flockingForces.length > 0) {
       const allParticles = this.getAllParticles();
       for (const ff of this.flockingForces) {
+        ff.boundsWidth = this.width / this.pixelRatio;
+        ff.boundsHeight = this.height / this.pixelRatio;
         ff.preCompute(allParticles, dt);
       }
     }

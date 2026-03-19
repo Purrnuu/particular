@@ -180,6 +180,9 @@ export interface ParticleConfig extends ShapeConfig {
   friction?: number;
   /** Size-coupled friction coefficient — multiplied by particle size. Default 0.0005. */
   frictionSize?: number;
+  /** When true, particle rotation tracks velocity direction instead of spinning freely.
+   *  Useful for triangle/arrow shapes that should point where they're moving (e.g. boids). Default false. */
+  rotateToVelocity?: boolean;
   /** Timed detonation config — particles auto-explode into sub-bursts at a lifetime fraction. */
   detonate?: DetonateConfig;
 }
@@ -285,6 +288,8 @@ export interface ParticleConstructorParams extends ShapeConfig {
   homeCenter?: Vector;
   /** Home position spring + idle animation config. */
   homeConfig?: HomePositionConfig;
+  /** When true, particle rotation tracks velocity direction instead of spinning. */
+  rotateToVelocity?: boolean;
 }
 
 export type IntroMode = 'scatter' | 'scaleIn' | 'ripple' | 'paint';

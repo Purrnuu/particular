@@ -168,6 +168,7 @@ export default class Emitter {
       shadowOffsetY,
       shadowColor,
       shadowAlpha,
+      rotateToVelocity,
       colors,
       acceleration: accelBase,
       accelerationSize,
@@ -231,6 +232,7 @@ export default class Emitter {
       shadowOffsetY,
       shadowColor,
       shadowAlpha,
+      rotateToVelocity,
       colors,
     });
   }

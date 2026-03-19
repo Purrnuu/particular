@@ -95,6 +95,10 @@ export default class FlockingForce implements ForceSource {
   maxSpeed: number;
   separationDistance: number;
 
+  /** Engine bounds — set automatically by the engine before preCompute. Used for edge avoidance. */
+  boundsWidth = 0;
+  boundsHeight = 0;
+
   private grid: SpatialHashGrid;
   private forceMap = new WeakMap<Particle, { x: number; y: number; z: number }>();
 
@@ -199,6 +203,19 @@ export default class FlockingForce implements ForceSource {
         fz += (avgPZ - p.position.z) * 0.01 * cohW;
       }
 
+      // Edge avoidance: soft repulsion from screen edges
+      const bw = this.boundsWidth;
+      const bh = this.boundsHeight;
+      if (bw > 0 && bh > 0) {
+        const edgeMargin = this.neighborRadius;
+        const px = p.position.x;
+        const py = p.position.y;
+        if (px < edgeMargin) fx += (edgeMargin - px) / edgeMargin * maxSteer;
+        else if (px > bw - edgeMargin) fx -= (px - (bw - edgeMargin)) / edgeMargin * maxSteer;
+        if (py < edgeMargin) fy += (edgeMargin - py) / edgeMargin * maxSteer;
+        else if (py > bh - edgeMargin) fy -= (py - (bh - edgeMargin)) / edgeMargin * maxSteer;
+      }
+
       // Clamp to maxSteeringForce
       const magSq = fx * fx + fy * fy + fz * fz;
       if (magSq > maxSteer * maxSteer) {
@@ -208,12 +225,13 @@ export default class FlockingForce implements ForceSource {
         fz *= invMag;
       }
 
-      // Store pre-computed force
+      // Store pre-computed force with exponential smoothing to reduce jitter
+      const smooth = 0.02; // lower = smoother (blend 2% new, 98% previous)
       let entry = this.forceMap.get(p);
       if (entry) {
-        entry.x = fx;
-        entry.y = fy;
-        entry.z = fz;
+        entry.x += (fx - entry.x) * smooth;
+        entry.y += (fy - entry.y) * smooth;
+        entry.z += (fz - entry.z) * smooth;
       } else {
         entry = { x: fx, y: fy, z: fz };
         this.forceMap.set(p, entry);

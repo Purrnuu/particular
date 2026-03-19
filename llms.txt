@@ -399,6 +399,7 @@ Pool auto-shrinks if new limit is smaller than current pool size. Default 2000.
 - spawnDepth: number                — randomize particle z within [-spawnDepth/2, +spawnDepth/2]. Default 0
 - spread3d: number                  — spherical emission cone (radians). 0 = 2D only. PI = full hemisphere. Default 0
 - emitDirection: { x, y, z }       — base direction for spherical emission. Default { x: 0, y: -1, z: 0 }
+- rotateToVelocity: boolean        — when true, particle rotation tracks velocity direction instead of spinning. Useful for flocking/directional effects. Default false
 
 ## Presets
 

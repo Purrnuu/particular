@@ -58,6 +58,7 @@ export default class Particle {
   particular: Particular | null = null;
   image: string | HTMLImageElement | null = null;
   isDetonationChild = false;
+  rotateToVelocity = false;
 
   // Shape configuration
   shape: ParticleShape;
@@ -198,6 +199,7 @@ export default class Particle {
     shadowOffsetY = 3,
     shadowColor = '#000000',
     shadowAlpha = 0.3,
+    rotateToVelocity = false,
     colors,
     homePosition,
     homeCenter,
@@ -235,9 +237,16 @@ export default class Particle {
     }
 
     this.friction = friction ?? 0;
-    this.rotation = Math.random() * 360;
+    this.rotateToVelocity = rotateToVelocity;
+    if (rotateToVelocity && velocity) {
+      // Point in velocity direction from the start (atan2 returns radians, convert to degrees; -90° because triangle tip is at negative y)
+      this.rotation = Math.atan2(velocity.y, velocity.x) * (180 / Math.PI) - 90;
+      this.rotationVelocity = 0;
+    } else {
+      this.rotation = Math.random() * 360;
+      this.rotationVelocity = (Math.random() > 0.5 ? 1 : -1) * getRandomInt(1, 3);
+    }
     this.rotationDirection = Math.random() > 0.5 ? 1 : -1;
-    this.rotationVelocity = this.rotationDirection * getRandomInt(1, 3);
     this.factoredSize = 1;
     this.lifeTime = particleLife === Infinity ? Infinity : getRandomInt(Math.round(particleLife * 0.75), particleLife);
     this.lifeTick = 0;
@@ -497,7 +506,12 @@ export default class Particle {
     this.position.x += this.velocity.x * dt;
     this.position.y += this.velocity.y * dt;
     if (this.velocity.z !== 0) this.position.z += this.velocity.z * dt;
-    this.rotation = this.rotation + this.rotationVelocity * dt;
+    if (this.rotateToVelocity) {
+      // Point in velocity direction (-90° because triangle tip is at negative y)
+      this.rotation = Math.atan2(this.velocity.y, this.velocity.x) * (180 / Math.PI) - 90;
+    } else {
+      this.rotation = this.rotation + this.rotationVelocity * dt;
+    }
 
     // Size: grow toward target, apply breathing if configured and idle is enabled
     const baseSize = Math.min(this.factoredSize + this.scaleStep * dt, this.size);
