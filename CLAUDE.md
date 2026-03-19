@@ -66,6 +66,9 @@ src/particular/components/icons.ts       # Image loading/processing for image pa
 ```
 src/particular/renderers/canvasRenderer.ts   # Canvas 2D pipeline: shapes, glow, shadow, trails (425 LOC)
 src/particular/renderers/webglRenderer.ts    # WebGL2 instanced pipeline: shaders, batching, effects (826 LOC, largest file)
+src/particular/renderers/webgl3dRenderer.ts  # WebGL2 3D instanced pipeline: perspective projection, billboarded quads, depth sorting (~500 LOC)
+src/particular/renderers/webglShared.ts      # Shared WebGL utilities: compileShader, hexToRgba, shapeToId, setBlendMode, SDF fragment shader
+src/particular/renderers/camera.ts           # Camera class: perspective + lookAt matrices, orbit controls, CameraConfig
 ```
 
 ### Public APIs
@@ -105,11 +108,13 @@ src/ImageShatter.stories.tsx            # Image shatter demos (click-to-shatter,
 src/ContainerGlow.stories.tsx           # Container glow demos (continuous, hover text, multiple cards)
 src/MouseTrail.stories.tsx              # Mouse trail demos (wisps, warm, snow dust)
 src/Showcase.stories.tsx                 # Combined showcase demos
+src/3D.stories.tsx                       # 3D demos: burst, orbit, snow, spherical burst, galaxy, attractor, fireworks
 ```
 
 ### Utils
 ```
-src/particular/utils/vector.ts           # 2D vector class (angle, magnitude, add, scale)
+src/particular/utils/vector.ts           # 3D vector class (x, y, z; angle, magnitude, add, scale, fromSpherical)
+src/particular/utils/mat4.ts             # Minimal 4x4 matrix math: identity, perspective, lookAt, multiply (column-major Float32Array)
 src/particular/utils/math.ts             # Clamp, lerp, etc.
 src/particular/utils/genericUtils.ts     # Misc helpers
 src/particular/utils/eventDispatcher.ts  # Simple pub/sub for engine events
@@ -124,8 +129,10 @@ src/particular/utils/imageChunker.ts    # Jittered-grid polygon chunker for imag
 ### Tests
 ```
 tests/embed.test.ts                      # Smoke tests: IIFE global + React hook mount
-tests/vector.test.ts                     # Vector math: magnitude, add, friction (pow), gravity, normalize, angle
-tests/attractor.test.ts                  # Attractor force: falloff, attract/repel, direction, radius boundary
+tests/vector.test.ts                     # Vector math: magnitude, add, friction (pow), gravity, normalize, angle, 3D z-axis, fromSpherical
+tests/attractor.test.ts                  # Attractor force: falloff, attract/repel, direction, radius boundary, 3D distance
+tests/mat4.test.ts                       # Mat4: identity, perspective, lookAt, multiply
+tests/camera.test.ts                     # Camera: constructor, update viewProjection, orbit
 tests/mouseForce.test.ts                 # MouseForce: velocity tracking, decay, force falloff, speed capping
 tests/defaults.test.ts                   # Config merge: configureParticular, configureParticle, default key existence
 tests/particle.test.ts                   # Particle physics: pool lifecycle, velocity integration, friction, gravity, forces, alpha fade, home spring, size, trail
@@ -186,6 +193,22 @@ tests/emitter.test.ts                    # Emission: rate accumulation, lifecycl
 5. standalone.ts   — export if needed for CDN
 6. AGENTS.md       — document the new module and its behavior
 7. Verify          — npm run type-check && npm run build:lib
+```
+
+### Adding a 3D feature
+```
+1. vector.ts       — ensure z is handled (most ops already include z)
+2. particle.ts     — if new physics, include z in velocity/position integration
+3. emitter.ts      — if spawn-related, handle spawnDepth and spread3d
+4. camera.ts       — if camera-related, update Camera class or CameraConfig
+5. webgl3dRenderer.ts — implement in 3D renderer (instance stride = 10 floats: x,y,z,size,rot,r,g,b,a,shape)
+6. webglRenderer.ts   — no changes needed (2D renderer ignores z)
+7. canvasRenderer.ts  — no changes needed (stays purely 2D)
+8. types.ts        — add config fields (z?, spread3d?, spawnDepth?, camera?)
+9. defaults.ts     — add default values
+10. presets.ts     — update Burst3D presets if applicable (galaxySpin, depthField, supernova)
+11. 3D.stories.tsx — add or update 3D story
+12. Verify         — npm run type-check && npm test && npm run build, check 3D stories in Storybook
 ```
 
 ### Modifying Storybook controls

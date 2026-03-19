@@ -3,22 +3,31 @@ import Vector from '../src/particular/utils/vector';
 
 describe('Vector', () => {
   describe('constructor', () => {
-    it('defaults to (0, 0)', () => {
+    it('defaults to (0, 0, 0)', () => {
       const v = new Vector();
       expect(v.x).toBe(0);
       expect(v.y).toBe(0);
+      expect(v.z).toBe(0);
     });
 
     it('accepts x and y', () => {
       const v = new Vector(3, 4);
       expect(v.x).toBe(3);
       expect(v.y).toBe(4);
+      expect(v.z).toBe(0);
     });
 
     it('defaults y to 0 when only x provided', () => {
       const v = new Vector(5);
       expect(v.x).toBe(5);
       expect(v.y).toBe(0);
+    });
+
+    it('accepts x, y, and z', () => {
+      const v = new Vector(1, 2, 3);
+      expect(v.x).toBe(1);
+      expect(v.y).toBe(2);
+      expect(v.z).toBe(3);
     });
   });
 
@@ -33,6 +42,16 @@ describe('Vector', () => {
 
     it('returns correct magnitude for axis-aligned vector', () => {
       expect(new Vector(0, -7).getMagnitude()).toBe(7);
+    });
+
+    it('returns 3D magnitude when z is non-zero', () => {
+      // 2, 3, 6 → sqrt(4+9+36) = sqrt(49) = 7
+      expect(new Vector(2, 3, 6).getMagnitude()).toBe(7);
+    });
+
+    it('uses fast 2D path when z is 0', () => {
+      const v = new Vector(3, 4, 0);
+      expect(v.getMagnitude()).toBe(5);
     });
   });
 
@@ -56,6 +75,18 @@ describe('Vector', () => {
       v.add({ x: 3, y: 4 }, -1);
       expect(v.x).toBe(7);
       expect(v.y).toBe(6);
+    });
+
+    it('adds z component when provided', () => {
+      const v = new Vector(1, 2, 3);
+      v.add({ x: 1, y: 1, z: 5 });
+      expect(v.z).toBe(8);
+    });
+
+    it('leaves z unchanged when adding 2D vector', () => {
+      const v = new Vector(1, 2, 3);
+      v.add({ x: 1, y: 1 });
+      expect(v.z).toBe(3);
     });
   });
 
@@ -161,6 +192,15 @@ describe('Vector', () => {
       expect(v.x).toBeCloseTo(-0.6, 10);
       expect(v.y).toBeCloseTo(-0.8, 10);
     });
+
+    it('normalizes 3D vector to unit length', () => {
+      const v = new Vector(2, 3, 6);
+      v.normalize();
+      expect(v.getMagnitude()).toBeCloseTo(1, 10);
+      expect(v.x).toBeCloseTo(2 / 7, 10);
+      expect(v.y).toBeCloseTo(3 / 7, 10);
+      expect(v.z).toBeCloseTo(6 / 7, 10);
+    });
   });
 
   describe('scale', () => {
@@ -231,6 +271,51 @@ describe('Vector', () => {
       const v = Vector.fromAngle(angle, mag);
       expect(v.getAngle()).toBeCloseTo(angle, 5);
       expect(v.getMagnitude()).toBeCloseTo(mag, 5);
+    });
+  });
+
+  describe('fromSpherical', () => {
+    it('azimuth 0, elevation 0 gives vector along +x', () => {
+      const v = Vector.fromSpherical(0, 0, 5);
+      expect(v.x).toBeCloseTo(5, 10);
+      expect(v.y).toBeCloseTo(0, 10);
+      expect(v.z).toBeCloseTo(0, 10);
+    });
+
+    it('elevation PI/2 gives vector along +z', () => {
+      const v = Vector.fromSpherical(0, Math.PI / 2, 5);
+      expect(v.x).toBeCloseTo(0, 10);
+      expect(v.y).toBeCloseTo(0, 10);
+      expect(v.z).toBeCloseTo(5, 10);
+    });
+
+    it('preserves magnitude', () => {
+      const v = Vector.fromSpherical(1.2, 0.7, 10);
+      expect(v.getMagnitude()).toBeCloseTo(10, 5);
+    });
+
+    it('round-trips azimuth and elevation', () => {
+      const azimuth = 1.2;
+      const elevation = 0.4;
+      const mag = 7;
+      const v = Vector.fromSpherical(azimuth, elevation, mag);
+      expect(v.getAngle()).toBeCloseTo(azimuth, 5);
+      expect(v.getElevation()).toBeCloseTo(elevation, 5);
+      expect(v.getMagnitude()).toBeCloseTo(mag, 5);
+    });
+  });
+
+  describe('getElevation', () => {
+    it('returns 0 for 2D vector', () => {
+      expect(new Vector(3, 4).getElevation()).toBeCloseTo(0, 10);
+    });
+
+    it('returns PI/2 for pure +z vector', () => {
+      expect(new Vector(0, 0, 5).getElevation()).toBeCloseTo(Math.PI / 2, 10);
+    });
+
+    it('returns -PI/2 for pure -z vector', () => {
+      expect(new Vector(0, 0, -5).getElevation()).toBeCloseTo(-Math.PI / 2, 10);
     });
   });
 });

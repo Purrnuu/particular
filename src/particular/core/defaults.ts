@@ -41,6 +41,9 @@ export const defaultParticle: Required<Omit<ParticleConfig, 'detonate'>> = {
   scaleStep: 1,
   spawnWidth: 0,
   spawnHeight: 0,
+  spawnDepth: 0,
+  spread3d: 0,
+  emitDirection: { x: 0, y: -1, z: 0 },
   colors: [],
   acceleration: 0,
   accelerationSize: 0.01,
@@ -65,7 +68,7 @@ export const defaultParticle: Required<Omit<ParticleConfig, 'detonate'>> = {
   shadowAlpha: 0.15,
 };
 
-export const defaultAttractor: Required<Omit<AttractorConfig, 'x' | 'y' | 'icon'>> = {
+export const defaultAttractor: Required<Omit<AttractorConfig, 'x' | 'y' | 'z' | 'icon'>> = {
   strength: 1,
   radius: 150,
   visible: false,
@@ -111,6 +114,7 @@ export const defaultExplosionChild: Required<ChildExplosionConfig> = {
   trailLength: 3,
   trailFade: 0.6,
   trailShrink: 0.65,
+  spread3d: 0,
 };
 
 export const defaultHomeConfig: Required<HomePositionConfig> = {

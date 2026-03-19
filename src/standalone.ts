@@ -9,6 +9,11 @@ export {
   default as WebGLRenderer,
   type WebGLRendererOptions,
 } from './particular/renderers/webglRenderer';
+export {
+  default as WebGL3DRenderer,
+  type WebGL3DRendererOptions,
+} from './particular/renderers/webgl3dRenderer';
+export { Camera, type CameraConfig, defaultCamera } from './particular/renderers/camera';
 export { presets } from './particular/presets';
 export {
   particlesBackgroundLayerStyle,

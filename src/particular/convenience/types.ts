@@ -2,6 +2,7 @@ import type Particular from '../core/particular';
 import type Emitter from '../components/emitter';
 import type Attractor from '../components/attractor';
 import type MouseForce from '../components/mouseForce';
+import type { Camera, CameraConfig } from '../renderers/camera';
 import type {
   FullParticularConfig,
   RendererType,
@@ -28,8 +29,8 @@ export interface CreateParticlesOptions {
   /** Canvas element. If omitted, one is auto-created and appended to `container` or `document.body`. */
   canvas?: HTMLCanvasElement;
   preset?: PresetName;
-  config?: Partial<FullParticularConfig>;
-  /** Rendering backend. Default `'webgl'`. */
+  config?: Partial<FullParticularConfig> & { camera?: CameraConfig };
+  /** Rendering backend. Default `'webgl'`. Use `'webgl3d'` for perspective projection with 3D particles. */
   renderer?: RendererType;
   autoResize?: boolean;
   autoClick?: boolean;
@@ -75,6 +76,8 @@ export interface ParticlesController {
   engine: Particular;
   /** The canvas element used by this controller (may have been auto-created). */
   canvas: HTMLCanvasElement;
+  /** Camera instance (only available when renderer is 'webgl3d'). */
+  camera: Camera | null;
 
   // ── Emission ──
   burst: (options: BurstOptions) => Emitter;
@@ -136,6 +139,17 @@ export interface ParticlesController {
   /** Toggle idle animations (breathing, wiggle, wave, pulse) on all particles with home positions.
    *  Spring return still works when idle is disabled — particles return home but stay still once there. */
   setIdleEffect: (enabled: boolean) => void;
+
+  // ── Camera (3D only) ──
+  /** Set the camera position (only works when renderer is 'webgl3d'). */
+  setCameraPosition: (x: number, y: number, z: number) => void;
+  /** Set camera position from spherical coordinates around the target (only works when renderer is 'webgl3d'). */
+  orbitCamera: (azimuth: number, elevation: number, distance: number) => void;
+  /** Enable mouse-drag orbit + scroll-zoom controls (only works when renderer is 'webgl3d'). Returns cleanup function. */
+  enableOrbitControls: () => (() => void) | null;
+  /** Start automatic camera orbit around the target (only works when renderer is 'webgl3d').
+   *  Speed is radians per second (default 0.3). Returns cleanup function. */
+  enableAutoOrbit: (speed?: number) => (() => void) | null;
 
   // ── Lifecycle ──
   destroy: () => void;

@@ -76,14 +76,15 @@ Main entry point. Creates engine, canvas, and returns controller.
 
 Options (all optional):
 - canvas: HTMLCanvasElement          — if omitted, auto-created and appended to container or document.body
-- preset: PresetName                 — default "magic". One of: "magic", "confetti", "fireworks", "fireworksDetonation", "snow", "meteors", "fireworksShow", "river", "imageText", "imageShape", "images"
+- preset: PresetName                 — default "magic". One of: "magic", "confetti", "fireworks", "fireworksDetonation", "snow", "meteors", "fireworksShow", "river", "imageText", "imageShape", "images", "galaxySpin", "depthField", "supernova", "fireworks3d"
 - config: Partial<FullParticularConfig> — override any particle/engine config field
-- renderer: "webgl" | "canvas"      — default "webgl"
+- renderer: "webgl" | "canvas" | "webgl3d" — default "webgl". Use "webgl3d" for 3D perspective rendering
 - autoResize: boolean                — default true
 - autoClick: boolean                 — default false. Auto-attach click burst
 - clickTarget: EventTarget           — click target for autoClick
 - container: HTMLElement             — container-aware mode. Canvas sizes to element, coords become relative
 - mouseForce: boolean | MouseForceConfig — true = add tracking mouse force with defaults. Object = custom config
+- config.camera: CameraConfig       — camera settings for webgl3d renderer. See CameraConfig below
 
 ### ParticlesController
 
@@ -118,6 +119,13 @@ Returned by createParticles(). Methods:
 - shatterText(text, config?) → Promise<Emitter>    — render text to canvas and shatter into polygon chunks. config = ImageShatterConfig (minus image) + textConfig
 - setIdleEffect(enabled) → void                    — toggle idle animations (breathing, wiggle, wave, pulse) on all home-position particles. Spring return still works when disabled
 
+#### Camera (webgl3d renderer only)
+- camera: Camera | null                              — Camera instance (null if not using webgl3d)
+- setCameraPosition(position, target?) → void       — update camera position and optional target
+- orbitCamera(azimuth, elevation, distance?) → void — orbit camera around target point
+- enableOrbitControls() → cleanup function          — enable mouse-drag orbit + scroll zoom on canvas
+- enableAutoOrbit(speed?) → cleanup function | null — continuous camera orbit around target. speed = radians/sec (default 0.3). Composes with orbit controls (user drag overrides, auto-orbit resumes). Returns null if not webgl3d
+
 #### Properties
 - engine: Particular                                 — the underlying engine instance
 - canvas: HTMLCanvasElement                          — the canvas element (may have been auto-created)
@@ -133,7 +141,7 @@ Options (all optional):
 - canvas: HTMLCanvasElement          — if omitted, auto-created
 - preset: PresetName                 — default "snow"
 - config: Partial<FullParticularConfig>
-- renderer: "webgl" | "canvas"      — default "webgl"
+- renderer: "webgl" | "canvas" | "webgl3d" — default "webgl"
 - autoResize: boolean                — default true
 - mouseWind: MouseForceConfig | false — gentle mouse wind. false = disable
 - container: HTMLElement
@@ -145,7 +153,7 @@ Returns: { engine, controller, destroy() }
 Options (all optional):
 - preset: PresetName                 — default "magic"
 - config: Partial<FullParticularConfig>
-- renderer: "webgl" | "canvas"      — default "webgl"
+- renderer: "webgl" | "canvas" | "webgl3d" — default "webgl"
 - autoResize: boolean                — default true
 - autoClick: boolean                 — default false
 - clickTarget: EventTarget
@@ -175,7 +183,7 @@ Returns:
 Options (all optional):
 - preset: PresetName                 — default "snow"
 - config: Partial<FullParticularConfig>
-- renderer: "webgl" | "canvas"      — default "webgl"
+- renderer: "webgl" | "canvas" | "webgl3d" — default "webgl"
 - autoResize: boolean                — default true
 - backgroundLayer: boolean           — default true
 - mouseWind: MouseForceConfig | false
@@ -246,6 +254,7 @@ Extends ImageParticlesConfig (minus `image`). Position and size auto-derived fro
 ### AttractorConfig
 - x: number                        — REQUIRED. Engine coordinates
 - y: number                        — REQUIRED. Engine coordinates
+- z?: number                       — z-axis position for 3D scenes. Default 0
 - strength?: number                 — default 1. Negative = repulsion
 - radius?: number                   — default 150
 - visible?: boolean                 — render the attractor. Default false
@@ -336,6 +345,14 @@ MouseTrailHandle: { stop(), start(), destroy() }
 - idlePulseIntervalMin?: number     — min ticks between pulses. Default 300
 - idlePulseIntervalMax?: number     — max ticks between pulses. Default 1800
 
+### CameraConfig (for webgl3d renderer)
+- fov?: number                      — field of view in degrees. Default 60
+- position?: { x, y, z }           — camera position. Default { x: 0, y: 0, z: 500 }
+- target?: { x, y, z }             — look-at target. Default { x: 0, y: 0, z: 0 }
+- up?: { x, y, z }                 — up vector. Default { x: 0, y: 1, z: 0 }
+- near?: number                     — near clipping plane. Default 1
+- far?: number                      — far clipping plane. Default 5000
+
 ### Engine Config Fields (ParticularConfig)
 - maxCount: number                   — max alive particles. Default 500
 - pixelRatio: number                 — canvas pixel ratio. Default 2
@@ -367,7 +384,10 @@ Pool auto-shrinks if new limit is smaller than current pool size. Default 2000.
 - glow: boolean                     — enable glow effect
 - glowSize: number                  — glow radius
 - shadow: boolean                   — enable drop shadow
-- detonate: { at: number, childCount?: number, velocity?: number, ... } — auto-explode at lifetime fraction
+- detonate: { at: number, childCount?: number, velocity?: number, spread3d?: number, ... } — auto-explode at lifetime fraction. spread3d on children: when > 0, detonation is spherical (PI = full sphere). Default 0 (2D ring)
+- spawnDepth: number                — randomize particle z within [-spawnDepth/2, +spawnDepth/2]. Default 0
+- spread3d: number                  — spherical emission cone (radians). 0 = 2D only. PI = full hemisphere. Default 0
+- emitDirection: { x, y, z }       — base direction for spherical emission. Default { x: 0, y: -1, z: 0 }
 
 ## Presets
 
@@ -384,6 +404,10 @@ Pool auto-shrinks if new limit is smaller than current pool size. Default 2000.
 | "imageText"           | Image   | Tiny square particles for text rendering             |
 | "imageShape"          | Image   | Circle particles with glow for image/icon rendering  |
 | "images"              | Image   | Icon/image burst particles                           |
+| "galaxySpin"          | Burst3D | Full spherical emission (spread3d=2PI), continuous orbit, long trails, additive |
+| "depthField"          | Burst3D | Z-spread parallax field, gentle continuous emission  |
+| "supernova"           | Burst3D | Full spherical burst with dramatic detonation        |
+| "fireworks3d"         | Burst3D | Rockets launch upward, detonate into spherical sparkle sub-bursts |
 
 ## Color Palettes
 
@@ -501,6 +525,69 @@ heading.addEventListener("mouseenter", () => glow.start());
 heading.addEventListener("mouseleave", () => glow.stop());
 ```
 
+### 3D burst with perspective
+```js
+const p = createParticles({
+  renderer: 'webgl3d',
+  preset: 'magic',
+  config: {
+    spawnDepth: 200,
+    camera: { fov: 60, position: { x: 0, y: 0, z: 500 } },
+  },
+});
+p.attachClickBurst(document);
+```
+
+### 3D with orbit controls
+```js
+const p = createParticles({
+  renderer: 'webgl3d',
+  preset: 'galaxySpin',
+  config: {
+    camera: { position: { x: 200, y: 200, z: 500 } },
+  },
+});
+p.enableOrbitControls(); // drag to orbit, scroll to zoom
+```
+
+### Spherical supernova burst
+```js
+const p = createParticles({ renderer: 'webgl3d', preset: 'supernova' });
+p.enableOrbitControls();
+p.attachClickBurst(document);
+```
+
+### 3D with auto-orbit
+```js
+const p = createParticles({
+  renderer: 'webgl3d',
+  preset: 'galaxySpin',
+  config: { camera: { position: { x: 200, y: 200, z: 500 } } },
+});
+p.enableAutoOrbit(0.15);  // slow continuous orbit
+p.enableOrbitControls();   // user can also drag to orbit
+```
+
+### 3D fireworks (launch from bottom)
+```js
+const p = createParticles({
+  container: myElement,
+  renderer: 'webgl3d',
+  preset: 'fireworks3d',
+  config: { autoStart: false, camera: { position: { x: 0, y: -200, z: 600 }, target: { x: 0, y: 100, z: 0 } } },
+});
+const rect = myElement.getBoundingClientRect();
+p.burst({ x: rect.left + rect.width / 2, y: rect.top + rect.height }); // launch from bottom center
+p.enableAutoOrbit(0.08);
+```
+
+### 3D attractors
+```js
+const p = createParticles({ renderer: 'webgl3d', preset: 'galaxySpin' });
+p.addAttractor({ x: 100, y: 0, z: 100, strength: 0.8, radius: 300 });
+p.enableOrbitControls();
+```
+
 ### Custom colors
 ```js
 const p = createParticles({ config: { colors: ["#ff6b6b", "#feca57", "#48dbfb"] } });
@@ -516,3 +603,6 @@ const p = createParticles({ config: { colors: ["#ff6b6b", "#feca57", "#48dbfb"] 
 - Container elements must have `position: relative` (or absolute/fixed). A warning is logged if position is static.
 - createParticles() requires a browser environment. In SSR/Node.js, wrap the call in useEffect or guard with `typeof document !== 'undefined'`.
 - TypeScript types are included. All config interfaces are exported.
+- 3D rendering requires `renderer: 'webgl3d'`. Particles are billboarded quads — all 2D shapes (circle, star, sparkle, etc.) work in 3D automatically.
+- Canvas 2D renderer stays purely 2D. Existing 2D convenience helpers (imageToParticles, shatter, containerGlow, mouseTrail) render on the z=0 plane in 3D scenes.
+- `Camera`, `CameraConfig`, `defaultCamera`, `WebGL3DRenderer` are exported from the main entry point.

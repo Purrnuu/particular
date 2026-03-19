@@ -25,6 +25,7 @@ export function startScreensaver({
     ...basePreset,
     continuous: true,
     ...config,
+    autoStart: false, // screensaver creates its own emitter — don't double-spawn
   };
 
   const controller = createParticles({

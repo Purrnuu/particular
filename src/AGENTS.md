@@ -70,6 +70,71 @@ Implementation notes:
 - Shadow drawn as separate pass before main pass.
 - Particle alpha clamped to `[0, 1]` in `Particle.update()`.
 
+## WebGL 3D Renderer
+
+File: `src/particular/renderers/webgl3dRenderer.ts`
+
+Design: WebGL2 only, instanced drawing, perspective projection via Camera, billboarded quads, back-to-front depth sorting for non-additive blending.
+
+### Camera & Coordinate System
+
+File: `src/particular/renderers/camera.ts`, `src/particular/utils/mat4.ts`
+
+- `Camera` class holds `CameraConfig` (fov, position, target, up, near, far) and computes a `viewProjection` matrix via `update(aspect)`.
+- Default camera: fov 60, position `(0, 0, 500)`, target `(0, 0, 0)`, near 1, far 5000.
+- `mat4.ts` provides column-major Float32Array operations: `identity()`, `perspective(fov, aspect, near, far)`, `lookAt(eye, center, up)`, `multiply(a, b)`. Zero dependencies.
+- `Camera.orbit(azimuth, elevation, distance)` recomputes camera position on a sphere around the target, then calls `update()`.
+- `Camera.enableOrbitControls(canvas)` wires mouse-drag orbit + scroll zoom. Returns a cleanup function. Pointer events: mousedown/mousemove/mouseup for rotation, wheel for zoom (clamped to `[near+10, far-100]`).
+
+### Billboarding
+
+Particles are rendered as screen-aligned quads regardless of camera orientation:
+1. Project particle center (`x, y, z`) through `u_viewProjection` to get clip-space position.
+2. Offset quad vertices in clip space using rotated 2D offsets scaled by `size / u_resolution`, with aspect ratio correction on the x-axis.
+3. This ensures all existing 2D shapes (circle, star, sparkle, triangle via SDF) work in 3D with zero per-shape changes.
+
+### Instance Data
+
+Instance stride = 10 floats: `(x, y, z, size, rotation, r, g, b, a, shapeId)`. Compared to 2D renderer's 9 floats (no z). Vertex shader reads z and uses it for projection.
+
+### Depth Sorting
+
+- **Additive blending**: Order-independent — no sorting needed.
+- **Non-additive blending**: Back-to-front CPU sort via `sortBackToFront()`. Computes view-space depth for each particle using the viewProjection matrix, sorts descending. Runs per batch, ~1ms for 10K particles.
+- `gl.DEPTH_TEST` is enabled. Depth writes (`gl.depthMask`) are disabled for all main render passes to prevent semi-transparent fragments (glow/SDF edges) from blocking particles behind them. Back-to-front sorting handles correct visual order.
+
+### Shared Code
+
+`webglShared.ts` provides shared utilities used by both 2D and 3D renderers: `compileShader()`, `linkProgram()`, `hexToRgba()`, `shapeToId()`, `setBlendMode()`, `SDF_SHAPE_FUNCTIONS` (fragment shader SDF shapes), `DrawBatch` type.
+
+### 3D Emission
+
+- `spawnDepth` (default 0): Randomizes particle spawn z within `[-spawnDepth/2, +spawnDepth/2]` centered on emitter point.
+- `spread3d` (default 0): When > 0, emission uses `Vector.fromSpherical(azimuth, elevation, magnitude)` for spherical cone emission instead of 2D angle+spread. The elevation is randomized within `[-spread3d/2, +spread3d/2]`.
+- `emitDirection` (default `{x:0, y:-1, z:0}`): Base direction for spherical emission. Azimuth is derived from the 2D angle of this vector.
+- `spread3d` on `ChildExplosionConfig` / `DetonateConfig`: When > 0, detonation children emit in a spherical burst (via `Vector.fromSpherical`) instead of a 2D ring. Full sphere = PI. Default 0. Parent z-position is passed to child particles.
+
+### 3D Auto-Start
+
+`createParticles()` auto-creates a center emitter when `mergedConfig.autoStart` is true. `startScreensaver()` sets `autoStart: false` to avoid double-emission (it creates its own emitter). Stories that use ambient presets (river, fireworksShow) with manual emitters should also pass `autoStart: false`.
+
+### 3D Mouse Force
+
+When using `mouseForce` with the `webgl3d` renderer, `createParticles()` wires a `projectToScreen` function on the `MouseForce` instance. This projects particle 3D positions through the camera's `viewProjection` matrix to screen space, so the mouse force affects particles based on visual proximity (screen distance) rather than engine-coordinate distance. Without this, particles at different z-depths would be pushed inconsistently.
+
+### Auto-Orbit
+
+`enableAutoOrbit(speed?)` hooks into the engine's `UPDATE` event. Each frame it reads the camera's current azimuth/elevation (from `camera.position`) and advances the azimuth by `speed * dt`. This composes with orbit controls — user drag updates `camera.position`, and auto-orbit reads that position next frame instead of fighting it.
+
+### 3D Presets
+
+- `galaxySpin` — full spherical emission (spread3d = 2PI), continuous orbit, gravity 0, long-lived particles with trails, additive blending
+- `depthField` — z-spread parallax field, continuous gentle emission, no gravity
+- `supernova` — full spherical burst (spread3d = PI), high velocity, additive glow, dramatic detonation
+- `fireworks3d` — rockets launch upward with slight 3D spread, detonate at 65% lifetime into spherical sparkle sub-bursts (spread3d = PI on children), additive glow, continuous emission
+
+Registered in `presetRegistry` as `'galaxySpin'`, `'depthField'`, `'supernova'`, `'fireworks3d'`.
+
 ## Particle/Emitter Details
 
 - `Particle.shadowLightOrigin` stores spawn/burst origin for directional shadowing.
@@ -572,4 +637,4 @@ Per-frame allocations eliminated via index-based pools and array reuse:
 
 ## Stable Public API
 
-From `src/index.ts`: `Particular`, `Emitter`, `Particle`, `Attractor`, `MouseForce`, `CanvasRenderer`, `WebGLRenderer`, `ParticularWrapper`, `useParticles`, `useScreensaver`, `createParticles`, `startScreensaver`, `presets`, `applyCanvasStyles`, and all public types (including `ImageShatterConfig`). Avoid breaking these exports.
+From `src/index.ts`: `Particular`, `Emitter`, `Particle`, `Attractor`, `MouseForce`, `CanvasRenderer`, `WebGLRenderer`, `WebGL3DRenderer`, `Camera`, `ParticularWrapper`, `useParticles`, `useScreensaver`, `createParticles`, `startScreensaver`, `presets`, `applyCanvasStyles`, and all public types (including `ImageShatterConfig`, `CameraConfig`, `WebGL3DRendererOptions`, `defaultCamera`). Avoid breaking these exports.

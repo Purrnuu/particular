@@ -34,6 +34,9 @@ function minConfig(overrides: Partial<EmitterConfiguration> = {}): EmitterConfig
     fadeTime: 30,
     spawnWidth: 0,
     spawnHeight: 0,
+    spawnDepth: 0,
+    spread3d: 0,
+    emitDirection: { x: 0, y: -1, z: 0 },
     colors: ['#ff0000', '#00ff00'],
     acceleration: 0,
     accelerationSize: 0.01,
@@ -178,6 +181,34 @@ describe('Emitter', () => {
       e.update(500, 500, undefined, 1);
       // Should survive — home particles are never killed by bounds
       expect(e.particles.length).toBe(1);
+    });
+  });
+
+  describe('spherical emission', () => {
+    it('produces particles with non-zero z when spread3d > 0', () => {
+      const e = new Emitter(minConfig({
+        rate: 20,
+        spread3d: Math.PI,
+        emitDirection: { x: 0, y: -1, z: 0 },
+      }));
+      e.particular = mockParticular();
+      e.isEmitting = true;
+      e.emit(1);
+      // With full spherical spread, at least some particles should have non-zero z velocity
+      const hasZ = e.particles.some(p => p.velocity.z !== 0);
+      expect(hasZ).toBe(true);
+    });
+
+    it('spawnDepth produces particles with non-zero z position', () => {
+      const e = new Emitter(minConfig({
+        rate: 20,
+        spawnDepth: 100,
+      }));
+      e.particular = mockParticular();
+      e.isEmitting = true;
+      e.emit(1);
+      const hasZ = e.particles.some(p => p.position.z !== 0);
+      expect(hasZ).toBe(true);
     });
   });
 

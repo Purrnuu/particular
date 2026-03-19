@@ -110,6 +110,8 @@ export interface ChildExplosionConfig {
   trailLength?: number;
   trailFade?: number;
   trailShrink?: number;
+  /** When > 0, children emit in a spherical burst instead of 2D ring. Full sphere = PI. Default 0. */
+  spread3d?: number;
 }
 
 /** Options for manual controller.explode(). */
@@ -158,6 +160,14 @@ export interface ParticleConfig extends ShapeConfig {
   spawnWidth?: number;
   /** Height of the rectangular spawn area centered on the emitter point. Default 0 (point spawn). */
   spawnHeight?: number;
+  /** Depth of the spawn volume along the z-axis. Particles spawn at random z within ±spawnDepth/2. Default 0 (flat). */
+  spawnDepth?: number;
+  /** 3D emission spread (radians). When > 0, particles emit in a spherical cone using
+   *  `Vector.fromSpherical()` instead of 2D angle+spread. Full sphere = PI. Default 0 (2D emission). */
+  spread3d?: number;
+  /** 3D emission direction. When spread3d > 0, this is the central axis of the emission cone.
+   *  Default { x: 0, y: -1, z: 0 } (upward). */
+  emitDirection?: { x: number; y: number; z: number };
   /** Color palette for particles. When provided, particles pick a random color from this array.
    *  Empty array = emitter generates a harmonious HSL palette automatically. */
   colors?: string[];
@@ -189,6 +199,9 @@ export interface EmitterConfiguration extends ParticleConfig {
   fadeTime: number;
   spawnWidth: number;
   spawnHeight: number;
+  spawnDepth: number;
+  spread3d: number;
+  emitDirection: { x: number; y: number; z: number };
   colors: string[];
   acceleration: number;
   accelerationSize: number;
@@ -347,6 +360,8 @@ export interface FullParticularConfig extends ParticularConfig, ParticleConfig {
 export interface AttractorConfig {
   x: number;
   y: number;
+  /** Z-position for 3D scenes. Default 0. */
+  z?: number;
   strength?: number;
   radius?: number;
   // Visual rendering
@@ -537,5 +552,6 @@ export interface WobbleConfig {
 }
 
 /** Rendering backend. 'webgl' (default) uses WebGL2 instanced drawing for best performance.
- *  'canvas' uses Canvas 2D — broader compatibility but slower with many particles. */
-export type RendererType = 'canvas' | 'webgl';
+ *  'canvas' uses Canvas 2D — broader compatibility but slower with many particles.
+ *  'webgl3d' uses WebGL2 with perspective projection for 3D particle scenes. */
+export type RendererType = 'canvas' | 'webgl' | 'webgl3d';

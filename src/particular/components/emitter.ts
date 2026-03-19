@@ -94,6 +94,7 @@ export default class Emitter {
             {
               x: particle.position.x,
               y: particle.position.y,
+              z: particle.position.z,
               color: particle.color,
               shape: particle.shape,
               blendMode: particle.blendMode,
@@ -147,6 +148,9 @@ export default class Emitter {
       fadeTime,
       spawnWidth,
       spawnHeight,
+      spawnDepth,
+      spread3d,
+      emitDirection,
       shape,
       blendMode,
       glow,
@@ -170,12 +174,24 @@ export default class Emitter {
       friction: frictionBase,
       frictionSize,
     } = this.configuration;
-    const angle = velocity.getAngle() + spread - Math.random() * spread * 2;
     const magnitude = velocity.getMagnitude();
     const offsetX = spawnWidth > 0 ? (Math.random() - 0.5) * spawnWidth : 0;
     const offsetY = spawnHeight > 0 ? (Math.random() - 0.5) * spawnHeight : 0;
-    const newPoint = new Vector(point.x + offsetX, point.y + offsetY);
-    const newVelocity = Vector.fromAngle(angle, magnitude);
+    const offsetZ = spawnDepth > 0 ? (Math.random() - 0.5) * spawnDepth : 0;
+    const newPoint = new Vector(point.x + offsetX, point.y + offsetY, point.z + offsetZ);
+
+    let newVelocity: Vector;
+    if (spread3d > 0) {
+      // Spherical 3D emission: random direction within a cone of half-angle spread3d
+      const baseAzimuth = Math.atan2(emitDirection.y, emitDirection.x);
+      const baseElevation = Math.atan2(emitDirection.z, Math.sqrt(emitDirection.x * emitDirection.x + emitDirection.y * emitDirection.y));
+      const azimuth = baseAzimuth + (Math.random() - 0.5) * 2 * Math.PI;
+      const elevation = baseElevation + (Math.random() - 0.5) * 2 * spread3d;
+      newVelocity = Vector.fromSpherical(azimuth, elevation, magnitude);
+    } else {
+      const angle = velocity.getAngle() + spread - Math.random() * spread * 2;
+      newVelocity = Vector.fromAngle(angle, magnitude);
+    }
 
     const size = getRandomInt(sizeMin, sizeMax);
     newVelocity.add({ x: 0, y: -((sizeMax - size) / 15) * velocityMultiplier });

@@ -466,7 +466,7 @@ const RiverDemo: React.FC = () => {
     const ctrl = createParticles({
       container: el,
       preset: 'river',
-      config: { maxCount: 200, continuous: true, zIndex: 1 },
+      config: { maxCount: 200, continuous: true, autoStart: false, zIndex: 1 },
       renderer: 'webgl',
       autoResize: true,
     });
@@ -707,7 +707,7 @@ const WelcomeDemo: React.FC = () => {
       canvas,
       container,
       preset: 'fireworksShow',
-      config: { maxCount: 2000, continuous: false },
+      config: { maxCount: 2000, continuous: false, autoStart: false },
       renderer: 'webgl',
       autoResize: true,
     });

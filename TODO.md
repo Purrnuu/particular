@@ -2,7 +2,7 @@
 
 - [x] Add support for Image to Particles mapping
 - [x] Make burst presets pretty
-- [ ] Support 3d objects
+- [x] Support 3d objects — z-axis on particles, perspective projection via WebGL3DRenderer, billboarded quads, Camera class with orbit controls, spherical emission (spread3d), 3D attractors, 3D presets (galaxySpin, depthField, supernova)
 - [x] Toggleable idle effect for image particles — enable/disable breathing, wiggle, wave, and pulse animations at runtime via controller method or config flag
 - [x] Better looking explosion effects — improve child particle visuals (color variation, velocity spread, shapes, glow) for more cinematic explode() results
 - [x] Intro effect for image-to-particles — progressive resolution reveal with triangles cross-dissolving into final shape at increasing resolutions
