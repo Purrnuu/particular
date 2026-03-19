@@ -102,8 +102,9 @@ export function createParticles({
 
   engine.initialize(mergedConfig);
   let camera3d: Camera | null = null;
+  let renderer3d: WebGL3DRenderer | null = null;
   if (renderer === 'webgl3d') {
-    const renderer3d = new WebGL3DRenderer(canvas, {
+    renderer3d = new WebGL3DRenderer(canvas, {
       maxInstances: mergedConfig.webglMaxInstances,
       camera: config?.camera as CameraConfig | undefined,
     });
@@ -125,14 +126,22 @@ export function createParticles({
   // ── Auto-resize ──
 
   if (autoResize) {
+    const handleResize = () => {
+      engine.onResize();
+      // Reposition autoStart emitter to new center (2D only — 3D uses reference mapping)
+      if (autoStartEmitter && renderer !== 'webgl3d') {
+        const newSize = getViewportSize(container);
+        autoStartEmitter.configuration.point.x = newSize.w / 2 / mergedConfig.pixelRatio;
+        autoStartEmitter.configuration.point.y = newSize.h / 2 / mergedConfig.pixelRatio;
+      }
+    };
     if (container) {
-      const ro = new ResizeObserver(() => engine.onResize());
+      const ro = new ResizeObserver(handleResize);
       ro.observe(container);
       cleanups.push(() => ro.disconnect());
     } else {
-      const onResize = () => engine.onResize();
-      window.addEventListener('resize', onResize);
-      cleanups.push(() => window.removeEventListener('resize', onResize));
+      window.addEventListener('resize', handleResize);
+      cleanups.push(() => window.removeEventListener('resize', handleResize));
     }
   }
 
@@ -196,19 +205,20 @@ export function createParticles({
 
   // ── Auto-start: create an initial emitter at center when preset requests it ──
 
+  let autoStartEmitter: Emitter | null = null;
   if (mergedConfig.autoStart) {
     const size = getViewportSize(container);
     const centerX = size.w / 2 / mergedConfig.pixelRatio;
     const centerY = size.h / 2 / mergedConfig.pixelRatio;
     const particleConfig = configureParticle({}, mergedConfig);
-    const emitter = new Emitter({
+    autoStartEmitter = new Emitter({
       point: new Vector(centerX, centerY),
       ...particleConfig,
       icons: [],
     });
-    engine.addEmitter(emitter);
-    emitter.isEmitting = true;
-    emitter.emit();
+    engine.addEmitter(autoStartEmitter);
+    autoStartEmitter.isEmitting = true;
+    autoStartEmitter.emit();
   }
 
   // ── Compose helpers ──
@@ -229,9 +239,10 @@ export function createParticles({
 
     // In 3D mode, project particle positions to screen space so the mouse affects
     // particles based on visual proximity, not engine-coord distance.
-    if (camera3d) {
+    if (camera3d && renderer3d) {
       mf.projectToScreen = (px: number, py: number, pz: number) => {
         const cam = camera3d!;
+        const r3d = renderer3d!;
         const w = engine.width;
         const h = engine.height;
         const pr = engine.pixelRatio;
@@ -239,15 +250,15 @@ export function createParticles({
         const logicalH = h / pr;
         if (logicalW <= 0 || logicalH <= 0) return null;
 
-        // Compute worldScale (same as renderer)
-        const fovRad = (cam.fov * Math.PI) / 180;
-        const camDist = cam.getDistance();
-        const visibleHalfH = camDist * Math.tan(fovRad / 2);
-        const ws = visibleHalfH / (logicalH / 2);
+        // Read reference values from the 3D renderer (same transform as vertex shader)
+        const refCX = r3d.referenceCenterX;
+        const refCY = r3d.referenceCenterY;
+        const ws = r3d.referenceWorldScale;
+        if (ws === 0) return null; // not yet initialized
 
-        // Engine coords → world coords (same transform as vertex shader)
-        const wx = (px - logicalW * 0.5) * ws;
-        const wy = -(py - logicalH * 0.5) * ws;
+        // Engine coords → world coords (uses reference center, matches shader)
+        const wx = (px - refCX) * ws;
+        const wy = -(py - refCY) * ws;
         const wz = pz * ws;
 
         // Project through viewProjection matrix
@@ -258,7 +269,7 @@ export function createParticles({
         const clipX = vp[0]! * wx + vp[4]! * wy + vp[8]! * wz + vp[12]!;
         const clipY = vp[1]! * wx + vp[5]! * wy + vp[9]! * wz + vp[13]!;
 
-        // NDC → engine coords
+        // NDC → engine coords (uses CURRENT viewport, not reference — mouse coords are in current screen space)
         return {
           x: (clipX / clipW + 1) * 0.5 * logicalW,
           y: (1 - clipY / clipW) * 0.5 * logicalH,

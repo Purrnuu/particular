@@ -33,6 +33,7 @@ in float a_particle_shape;
 
 uniform mat4 u_viewProjection;
 uniform vec2 u_resolution;
+uniform vec2 u_referenceCenter;
 uniform float u_worldScale;
 uniform float u_glowExpand;
 
@@ -44,10 +45,10 @@ out float v_particle_shape;
 void main() {
   float expand = 1.0 + u_glowExpand;
   // Convert engine coords (origin top-left, y-down) to world coords (origin center, y-up)
-  // worldScale maps engine viewport to camera frustum at the target plane
+  // Uses fixed reference center captured on first frame so particles don't jump on resize
   vec3 worldPos = vec3(
-    (a_particle_pos.x - u_resolution.x * 0.5) * u_worldScale,
-    -(a_particle_pos.y - u_resolution.y * 0.5) * u_worldScale,
+    (a_particle_pos.x - u_referenceCenter.x) * u_worldScale,
+    -(a_particle_pos.y - u_referenceCenter.y) * u_worldScale,
     a_particle_pos.z * u_worldScale
   );
 
@@ -149,6 +150,7 @@ in vec4 a_particle_color;
 
 uniform mat4 u_viewProjection;
 uniform vec2 u_resolution;
+uniform vec2 u_referenceCenter;
 uniform float u_worldScale;
 
 out vec4 v_color;
@@ -157,9 +159,10 @@ out float v_particle_size;
 
 void main() {
   // Convert engine coords (origin top-left, y-down) to world coords (origin center, y-up)
+  // Uses fixed reference center captured on first frame so particles don't jump on resize
   vec3 worldPos = vec3(
-    (a_particle_pos.x - u_resolution.x * 0.5) * u_worldScale,
-    -(a_particle_pos.y - u_resolution.y * 0.5) * u_worldScale,
+    (a_particle_pos.x - u_referenceCenter.x) * u_worldScale,
+    -(a_particle_pos.y - u_referenceCenter.y) * u_worldScale,
     a_particle_pos.z * u_worldScale
   );
 
@@ -250,6 +253,7 @@ export default class WebGL3DRenderer {
   // Circle program uniforms
   private vpUniform: WebGLUniformLocation | null = null;
   private resUniform: WebGLUniformLocation | null = null;
+  private refCenterUniform: WebGLUniformLocation | null = null;
   private worldScaleUniform: WebGLUniformLocation | null = null;
   private softnessUniform: WebGLUniformLocation | null = null;
   private glowUniform: WebGLUniformLocation | null = null;
@@ -270,6 +274,7 @@ export default class WebGL3DRenderer {
   // Image program uniforms
   private imgVpUniform: WebGLUniformLocation | null = null;
   private imgResUniform: WebGLUniformLocation | null = null;
+  private imgRefCenterUniform: WebGLUniformLocation | null = null;
   private imgWorldScaleUniform: WebGLUniformLocation | null = null;
   private imgTintUniform: WebGLUniformLocation | null = null;
   private imgIsShadowUniform: WebGLUniformLocation | null = null;
@@ -293,6 +298,13 @@ export default class WebGL3DRenderer {
   private _batchResult: DrawBatch[] = [];
   // Sort scratch
   private sortArr: Particle[] = [];
+
+  // Reference-based coordinate mapping: captured on first valid frame to prevent
+  // particle position jumps when the viewport resizes.
+  private _refCenterX = 0;
+  private _refCenterY = 0;
+  private _refWorldScale = 0;
+  private _refInitialized = false;
 
   constructor(target: HTMLCanvasElement, options?: WebGL3DRendererOptions) {
     this.target = target;
@@ -321,6 +333,7 @@ export default class WebGL3DRenderer {
     this.program = linkProgram(gl, vs, fs);
     this.vpUniform = gl.getUniformLocation(this.program, 'u_viewProjection');
     this.resUniform = gl.getUniformLocation(this.program, 'u_resolution');
+    this.refCenterUniform = gl.getUniformLocation(this.program, 'u_referenceCenter');
     this.worldScaleUniform = gl.getUniformLocation(this.program, 'u_worldScale');
     this.softnessUniform = gl.getUniformLocation(this.program, 'u_softness');
     this.glowUniform = gl.getUniformLocation(this.program, 'u_glow');
@@ -343,6 +356,7 @@ export default class WebGL3DRenderer {
     this.imageProgram = linkProgram(gl, ivs, ifs);
     this.imgVpUniform = gl.getUniformLocation(this.imageProgram, 'u_viewProjection');
     this.imgResUniform = gl.getUniformLocation(this.imageProgram, 'u_resolution');
+    this.imgRefCenterUniform = gl.getUniformLocation(this.imageProgram, 'u_referenceCenter');
     this.imgWorldScaleUniform = gl.getUniformLocation(this.imageProgram, 'u_worldScale');
     this.imgTintUniform = gl.getUniformLocation(this.imageProgram, 'u_tint');
     this.imgIsShadowUniform = gl.getUniformLocation(this.imageProgram, 'u_isShadow');
@@ -407,15 +421,23 @@ export default class WebGL3DRenderer {
     const logicalH = h / pixelRatio;
     if (logicalW <= 0 || logicalH <= 0) return;
 
-    // Update camera
+    // Update camera (uses current aspect ratio so frustum widens/narrows on resize)
     this.camera.update(logicalW / logicalH);
 
     // Compute worldScale: maps engine viewport to camera frustum at the target plane.
-    // Ensures screen-space clicks map to correct world positions under perspective.
     const fovRad = (this.camera.fov * Math.PI) / 180;
     const camDist = this.camera.getDistance();
     const visibleHalfH = camDist * Math.tan(fovRad / 2);
     const worldScale = visibleHalfH / (logicalH / 2);
+
+    // Capture reference center and worldScale on first valid frame.
+    // These stay fixed forever so particles don't jump when the viewport resizes.
+    if (!this._refInitialized && logicalW > 0 && logicalH > 0) {
+      this._refCenterX = logicalW * 0.5;
+      this._refCenterY = logicalH * 0.5;
+      this._refWorldScale = worldScale;
+      this._refInitialized = true;
+    }
 
     // Build batches
     const batches = this.buildBatches(particles);
@@ -424,8 +446,11 @@ export default class WebGL3DRenderer {
     const gl = this.gl;
     gl.useProgram(this.program);
     gl.uniformMatrix4fv(this.vpUniform, false, this.camera.viewProjection);
+    // u_resolution stays CURRENT viewport (used for sizeNDC and aspect correction)
     gl.uniform2f(this.resUniform!, logicalW, logicalH);
-    gl.uniform1f(this.worldScaleUniform!, worldScale);
+    // u_referenceCenter and u_worldScale use captured reference values
+    gl.uniform2f(this.refCenterUniform!, this._refCenterX, this._refCenterY);
+    gl.uniform1f(this.worldScaleUniform!, this._refWorldScale);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.circleQuadBuffer);
     gl.enableVertexAttribArray(this.cAttrPos);
@@ -435,26 +460,24 @@ export default class WebGL3DRenderer {
     gl.enable(gl.DEPTH_TEST);
     gl.depthFunc(gl.LEQUAL);
 
-    const halfW = logicalW * 0.5;
-    const halfH = logicalH * 0.5;
-
     for (let bi = 0; bi < batches.length; bi++) {
       const batch = batches[bi]!;
 
       // Sort back-to-front for non-additive batches (additive is order-independent)
       if (batch.blendMode !== 'additive') {
-        this.sortBackToFront(batch.particles, halfW, halfH, worldScale);
+        this.sortBackToFront(batch.particles);
       }
 
       if (batch.type === 'circle') {
         this.drawCircleBatch(batch);
       } else {
-        this.drawImageBatch(batch, logicalW, logicalH, worldScale);
+        this.drawImageBatch(batch, logicalW, logicalH);
         // Restore circle program state
         gl.useProgram(this.program);
         gl.uniformMatrix4fv(this.vpUniform, false, this.camera.viewProjection);
         gl.uniform2f(this.resUniform!, logicalW, logicalH);
-        gl.uniform1f(this.worldScaleUniform!, worldScale);
+        gl.uniform2f(this.refCenterUniform!, this._refCenterX, this._refCenterY);
+        gl.uniform1f(this.worldScaleUniform!, this._refWorldScale);
         gl.bindBuffer(gl.ARRAY_BUFFER, this.circleQuadBuffer);
         gl.enableVertexAttribArray(this.cAttrPos);
         gl.vertexAttribPointer(this.cAttrPos, 2, gl.FLOAT, false, 0, 0);
@@ -466,8 +489,11 @@ export default class WebGL3DRenderer {
 
   // ── Depth sorting ──────────────────────────────────────────────────────
 
-  private sortBackToFront(particles: Particle[], halfW: number, halfH: number, ws: number): void {
+  private sortBackToFront(particles: Particle[]): void {
     const vp = this.camera.viewProjection;
+    const halfW = this._refCenterX;
+    const halfH = this._refCenterY;
+    const ws = this._refWorldScale;
     // Camera-space z = dot(viewProjection row 2, position) + vp[14]
     // We use the full transform's z for proper sorting
     const m2 = vp[2]!, m6 = vp[6]!, m10 = vp[10]!, m14 = vp[14]!;
@@ -479,7 +505,7 @@ export default class WebGL3DRenderer {
     for (let i = 0; i < particles.length; i++) arr[i] = particles[i]!;
 
     arr.sort((a, b) => {
-      // Transform engine coords to world coords (same as vertex shader, with worldScale)
+      // Transform engine coords to world coords (same as vertex shader, with reference worldScale)
       const awx = (a.position.x - halfW) * ws;
       const awy = -(a.position.y - halfH) * ws;
       const awz = a.position.z * ws;
@@ -763,14 +789,17 @@ export default class WebGL3DRenderer {
     gl.vertexAttribDivisor(this.iAttrColor, 0);
   }
 
-  private drawImageBatch(batch: DrawBatch, w: number, h: number, worldScale: number): void {
+  private drawImageBatch(batch: DrawBatch, w: number, h: number): void {
     const gl = this.gl!;
     if (!this.imageProgram || !batch.texture) return;
 
     gl.useProgram(this.imageProgram);
     gl.uniformMatrix4fv(this.imgVpUniform, false, this.camera.viewProjection);
+    // u_resolution stays CURRENT viewport (used for sizeNDC and aspect correction)
     gl.uniform2f(this.imgResUniform!, w, h);
-    gl.uniform1f(this.imgWorldScaleUniform!, worldScale);
+    // u_referenceCenter and u_worldScale use captured reference values
+    gl.uniform2f(this.imgRefCenterUniform!, this._refCenterX, this._refCenterY);
+    gl.uniform1f(this.imgWorldScaleUniform!, this._refWorldScale);
     gl.uniform1f(this.imgTintUniform!, batch.imageTint ? 1 : 0);
 
     gl.activeTexture(gl.TEXTURE0);
@@ -819,6 +848,13 @@ export default class WebGL3DRenderer {
     this.textureCache.set(image, tex);
     return tex;
   }
+
+  /** Reference center X (logical coords), captured on first frame. 0 before first render. */
+  get referenceCenterX(): number { return this._refCenterX; }
+  /** Reference center Y (logical coords), captured on first frame. 0 before first render. */
+  get referenceCenterY(): number { return this._refCenterY; }
+  /** Reference worldScale, captured on first frame. 0 before first render. */
+  get referenceWorldScale(): number { return this._refWorldScale; }
 
   destroy(): void {
     this.remove();

@@ -86,6 +86,18 @@ File: `src/particular/renderers/camera.ts`, `src/particular/utils/mat4.ts`
 - `Camera.orbit(azimuth, elevation, distance)` recomputes camera position on a sphere around the target, then calls `update()`.
 - `Camera.enableOrbitControls(canvas)` wires mouse-drag orbit + scroll zoom. Returns a cleanup function. Pointer events: mousedown/mousemove/mouseup for rotation, wheel for zoom (clamped to `[near+10, far-100]`).
 
+### Reference-Based Coordinate Mapping (Resize Stability)
+
+The 3D vertex shader maps engine coords to world coords using a center point and worldScale. If these were recomputed from the current viewport every frame, resizing the browser would shift the center and rescale all particle positions, causing visible teleportation.
+
+**Solution**: On the first valid render frame, the renderer captures `_refCenterX`, `_refCenterY`, and `_refWorldScale`. These reference values are used for the engine-to-world coordinate transform (`u_referenceCenter`, `u_worldScale` uniforms) for the lifetime of the renderer. Camera projection still uses the current aspect ratio (via `u_resolution`), so the frustum widens/narrows naturally on resize.
+
+- `u_referenceCenter` (vec2): Fixed viewport center in logical coords, captured once. Used in vertex shaders for position mapping.
+- `u_worldScale` (float): Fixed world scale, captured once. Used in vertex shaders and `sortBackToFront()`.
+- `u_resolution` (vec2): **Current** viewport size. Still used for `sizeNDC` (particle screen-pixel size) and aspect ratio correction.
+- `projectToScreen` in `convenience/index.ts` reads `referenceCenterX`, `referenceCenterY`, `referenceWorldScale` getters from the renderer to stay in sync.
+- AutoStart emitter repositioning on resize is only done for 2D mode. In 3D, the reference mapping keeps the initial center at world origin, so no repositioning is needed.
+
 ### Billboarding
 
 Particles are rendered as screen-aligned quads regardless of camera orientation:

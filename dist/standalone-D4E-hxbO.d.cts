@@ -210,6 +210,9 @@ interface ParticleConfig extends ShapeConfig {
     friction?: number;
     /** Size-coupled friction coefficient — multiplied by particle size. Default 0.0005. */
     frictionSize?: number;
+    /** When true, particle rotation tracks velocity direction instead of spinning freely.
+     *  Useful for triangle/arrow shapes that should point where they're moving (e.g. boids). Default false. */
+    rotateToVelocity?: boolean;
     /** Timed detonation config — particles auto-explode into sub-bursts at a lifetime fraction. */
     detonate?: DetonateConfig;
 }
@@ -318,6 +321,8 @@ interface ParticleConstructorParams extends ShapeConfig {
     homeCenter?: Vector;
     /** Home position spring + idle animation config. */
     homeConfig?: HomePositionConfig;
+    /** When true, particle rotation tracks velocity direction instead of spinning. */
+    rotateToVelocity?: boolean;
 }
 type IntroMode = 'scatter' | 'scaleIn' | 'ripple' | 'paint';
 /** Configuration for intro animation when creating image/text particles. */
@@ -629,6 +634,7 @@ declare class Particle {
     particular: Particular | null;
     image: string | HTMLImageElement | null;
     isDetonationChild: boolean;
+    rotateToVelocity: boolean;
     shape: ParticleShape;
     blendMode: BlendMode;
     glow: boolean;
@@ -776,6 +782,9 @@ declare class FlockingForce implements ForceSource {
     maxSteeringForce: number;
     maxSpeed: number;
     separationDistance: number;
+    /** Engine bounds — set automatically by the engine before preCompute. Used for edge avoidance. */
+    boundsWidth: number;
+    boundsHeight: number;
     private grid;
     private forceMap;
     constructor(config?: FlockingForceConfig);
@@ -903,6 +912,7 @@ declare class WebGLRenderer {
     private resolutionUniform;
     private softnessUniform;
     private glowUniform;
+    private glowExpandUniform;
     private glowSizeUniform;
     private glowColorUniform;
     private isShadowUniform;
@@ -1051,9 +1061,11 @@ declare class WebGL3DRenderer {
     private instanceStride;
     private vpUniform;
     private resUniform;
+    private refCenterUniform;
     private worldScaleUniform;
     private softnessUniform;
     private glowUniform;
+    private glowExpandUniform;
     private glowSizeUniform;
     private glowColorUniform;
     private isShadowUniform;
@@ -1067,6 +1079,7 @@ declare class WebGL3DRenderer {
     private cAttrShape;
     private imgVpUniform;
     private imgResUniform;
+    private imgRefCenterUniform;
     private imgWorldScaleUniform;
     private imgTintUniform;
     private imgIsShadowUniform;
@@ -1086,6 +1099,10 @@ declare class WebGL3DRenderer {
     private batchPoolIdx;
     private _batchResult;
     private sortArr;
+    private _refCenterX;
+    private _refCenterY;
+    private _refWorldScale;
+    private _refInitialized;
     constructor(target: HTMLCanvasElement, options?: WebGL3DRendererOptions);
     init(particular: Particular, pixelRatio: number): void;
     resize: (args?: {
@@ -1105,6 +1122,12 @@ declare class WebGL3DRenderer {
     private drawImageInstances;
     private drawImageBatch;
     private getOrCreateTexture;
+    /** Reference center X (logical coords), captured on first frame. 0 before first render. */
+    get referenceCenterX(): number;
+    /** Reference center Y (logical coords), captured on first frame. 0 before first render. */
+    get referenceCenterY(): number;
+    /** Reference worldScale, captured on first frame. 0 before first render. */
+    get referenceWorldScale(): number;
     destroy(): void;
     remove(): void;
 }
@@ -1331,6 +1354,7 @@ declare const presetRegistry: {
         particleLife: number;
         velocity: Vector;
         spread: number;
+        colors: string[];
         sizeMin: number;
         sizeMax: number;
         velocityMultiplier: number;
@@ -1340,11 +1364,11 @@ declare const presetRegistry: {
         accelerationSize: number;
         friction: number;
         frictionSize: number;
+        rotateToVelocity: true;
         scaleStep: number;
         maxCount: number;
         continuous: true;
         autoStart: true;
-        colors: string[];
     };
     readonly river: {
         shape: "circle";
@@ -1980,7 +2004,7 @@ declare const presets: {
                 trailShrink: number;
             };
         };
-        /** Boids flock: self-organizing swarm of triangles. Use with addFlockingForce() for full effect. */
+        /** Boids flock: self-organizing swarm of bird-like triangles. Use with addFlockingForce() for full effect. */
         readonly flock: {
             shape: "triangle";
             blendMode: "additive";
@@ -1997,6 +2021,7 @@ declare const presets: {
             particleLife: number;
             velocity: Vector;
             spread: number;
+            colors: string[];
             sizeMin: number;
             sizeMax: number;
             velocityMultiplier: number;
@@ -2006,11 +2031,11 @@ declare const presets: {
             accelerationSize: number;
             friction: number;
             frictionSize: number;
+            rotateToVelocity: true;
             scaleStep: number;
             maxCount: number;
             continuous: true;
             autoStart: true;
-            colors: string[];
         };
         /** River flow: horizontal stream of water particles, designed for use with attractors */
         readonly river: {
@@ -2133,6 +2158,14 @@ declare const presets: {
         };
         /** Bright green to pastel mint */
         readonly emerald: {
+            readonly colors: string[];
+        };
+        /** Natural bird flock: charcoals, browns, warm grays */
+        readonly birds: {
+            readonly colors: string[];
+        };
+        /** Sunset murmuration: deep oranges, magentas, dusky purples */
+        readonly sunset: {
             readonly colors: string[];
         };
         /** Multicolor vivid fireworks */
@@ -2361,6 +2394,7 @@ declare const presets: {
         particleLife: number;
         velocity: Vector;
         spread: number;
+        colors: string[];
         sizeMin: number;
         sizeMax: number;
         velocityMultiplier: number;
@@ -2370,11 +2404,11 @@ declare const presets: {
         accelerationSize: number;
         friction: number;
         frictionSize: number;
+        rotateToVelocity: true;
         scaleStep: number;
         maxCount: number;
         continuous: true;
         autoStart: true;
-        colors: string[];
     };
     readonly river: {
         shape: "circle";

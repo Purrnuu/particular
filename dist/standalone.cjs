@@ -156,6 +156,8 @@ var rosePalette = ["#ff4757", "#ff6b81", "#ff8fa3", "#ffa8b8", "#ffc9d3", "#ffe0
 var goldPalette = ["#ffd699", "#ffcc66", "#ffad33", "#ff9500", "#f57c00", "#e86100"];
 var violetPalette = ["#d0bfff", "#b197fc", "#9775fa", "#845ef7", "#7048e8", "#5f3dc4"];
 var emeraldPalette = ["#006b3f", "#00a85e", "#1edd80", "#4deda0", "#96f2c8", "#c3fae8"];
+var birdsPalette = ["#2c2c2c", "#4a4a4a", "#6b5b4f", "#8b7355", "#a0926b", "#c4b8a0", "#d4cfc4", "#f5f0e8"];
+var sunsetPalette = ["#ff6b35", "#e84545", "#c9184a", "#a4133c", "#ff8c42", "#d4a05a", "#845ec2", "#2c003e"];
 var Burst = {
   /** Celebratory confetti burst: colorful rectangles fluttering outward and drifting down */
   confetti: {
@@ -406,37 +408,38 @@ var Ambient = {
       trailShrink: 0.6
     }
   },
-  /** Boids flock: self-organizing swarm of triangles. Use with addFlockingForce() for full effect. */
+  /** Boids flock: self-organizing swarm of bird-like triangles. Use with addFlockingForce() for full effect. */
   flock: {
     shape: "triangle",
     blendMode: "additive",
     glow: true,
-    glowSize: 8,
-    glowColor: "#74c0fc",
-    glowAlpha: 0.3,
+    glowSize: 12,
+    glowColor: "#ffe0d0",
+    glowAlpha: 0.5,
     trail: true,
-    trailLength: 6,
-    trailFade: 0.35,
-    trailShrink: 0.5,
-    rate: 2,
+    trailLength: 10,
+    trailFade: 0.5,
+    trailShrink: 0.8,
+    rate: 1,
     life: 999999,
     particleLife: 600,
     velocity: Vector.fromAngle(0, 2),
     spread: Math.PI * 2,
+    colors: sunsetPalette,
     sizeMin: 3,
-    sizeMax: 7,
+    sizeMax: 6,
     velocityMultiplier: 3,
     fadeTime: 80,
     gravity: 0,
     acceleration: 0,
     accelerationSize: 0,
-    friction: 5e-3,
+    friction: 0.01,
     frictionSize: 0,
+    rotateToVelocity: true,
     scaleStep: 1,
-    maxCount: 300,
+    maxCount: 150,
     continuous: true,
-    autoStart: true,
-    colors: coolBluePalette
+    autoStart: true
   },
   /** River flow: horizontal stream of water particles, designed for use with attractors */
   river: {
@@ -681,6 +684,10 @@ var Colors = {
   violet: { colors: violetPalette },
   /** Bright green to pastel mint */
   emerald: { colors: emeraldPalette },
+  /** Natural bird flock: charcoals, browns, warm grays */
+  birds: { colors: birdsPalette },
+  /** Sunset murmuration: deep oranges, magentas, dusky purples */
+  sunset: { colors: sunsetPalette },
   /** Multicolor vivid fireworks */
   fireworks: { colors: fireworksPalette }
 };
@@ -754,6 +761,8 @@ var colorPalettes = {
   gold: goldPalette,
   violet: violetPalette,
   emerald: emeraldPalette,
+  birds: birdsPalette,
+  sunset: sunsetPalette,
   fireworks: fireworksPalette
 };
 
@@ -790,6 +799,7 @@ var defaultParticle = {
   accelerationSize: 0.01,
   friction: 0,
   frictionSize: 5e-4,
+  rotateToVelocity: false,
   shape: "circle",
   blendMode: "normal",
   glow: false,
@@ -832,8 +842,8 @@ var defaultMouseForce = {
 var defaultFlockingForce = {
   neighborRadius: 100,
   separationWeight: 1.5,
-  alignmentWeight: 1,
-  cohesionWeight: 1,
+  alignmentWeight: 1.5,
+  cohesionWeight: 0.3,
   maxSteeringForce: 0.5,
   maxSpeed: 4,
   separationDistance: 25
@@ -1004,6 +1014,7 @@ var Particle = class _Particle {
     this.particular = null;
     this.image = null;
     this.isDetonationChild = false;
+    this.rotateToVelocity = false;
     this.trailSegments = [];
     // Home position — spring return + idle animation
     this.homePosition = null;
@@ -1108,6 +1119,7 @@ var Particle = class _Particle {
     shadowOffsetY = 3,
     shadowColor = "#000000",
     shadowAlpha = 0.3,
+    rotateToVelocity = false,
     colors,
     homePosition,
     homeCenter,
@@ -1143,9 +1155,15 @@ var Particle = class _Particle {
       this.acceleration.z = 0;
     }
     this.friction = friction ?? 0;
-    this.rotation = Math.random() * 360;
+    this.rotateToVelocity = rotateToVelocity;
+    if (rotateToVelocity && velocity) {
+      this.rotation = Math.atan2(velocity.y, velocity.x) * (180 / Math.PI) - 90;
+      this.rotationVelocity = 0;
+    } else {
+      this.rotation = Math.random() * 360;
+      this.rotationVelocity = (Math.random() > 0.5 ? 1 : -1) * getRandomInt(1, 3);
+    }
     this.rotationDirection = Math.random() > 0.5 ? 1 : -1;
-    this.rotationVelocity = this.rotationDirection * getRandomInt(1, 3);
     this.factoredSize = 1;
     this.lifeTime = particleLife === Infinity ? Infinity : getRandomInt(Math.round(particleLife * 0.75), particleLife);
     this.lifeTick = 0;
@@ -1358,7 +1376,11 @@ var Particle = class _Particle {
     this.position.x += this.velocity.x * dt;
     this.position.y += this.velocity.y * dt;
     if (this.velocity.z !== 0) this.position.z += this.velocity.z * dt;
-    this.rotation = this.rotation + this.rotationVelocity * dt;
+    if (this.rotateToVelocity) {
+      this.rotation = Math.atan2(this.velocity.y, this.velocity.x) * (180 / Math.PI) - 90;
+    } else {
+      this.rotation = this.rotation + this.rotationVelocity * dt;
+    }
     const baseSize = Math.min(this.factoredSize + this.scaleStep * dt, this.size);
     if (this.idleEnabled && this.homePosition && this.homeConfig && this.homeConfig.breathingAmplitude > 0) {
       this.breathingPhase += this.homeConfig.breathingSpeed * dt;
@@ -1584,6 +1606,8 @@ var _Particular = class _Particular {
     if (this.flockingForces.length > 0) {
       const allParticles = this.getAllParticles();
       for (const ff of this.flockingForces) {
+        ff.boundsWidth = this.width / this.pixelRatio;
+        ff.boundsHeight = this.height / this.pixelRatio;
         ff.preCompute(allParticles, dt);
       }
     }
@@ -1860,6 +1884,7 @@ var Emitter = class {
       shadowOffsetY,
       shadowColor,
       shadowAlpha,
+      rotateToVelocity,
       colors,
       acceleration: accelBase,
       accelerationSize,
@@ -1916,6 +1941,7 @@ var Emitter = class {
       shadowOffsetY,
       shadowColor,
       shadowAlpha,
+      rotateToVelocity,
       colors
     });
   }
@@ -2214,6 +2240,9 @@ var SpatialHashGrid = class {
 };
 var FlockingForce = class {
   constructor(config) {
+    /** Engine bounds — set automatically by the engine before preCompute. Used for edge avoidance. */
+    this.boundsWidth = 0;
+    this.boundsHeight = 0;
     this.forceMap = /* @__PURE__ */ new WeakMap();
     const merged = { ...defaultFlockingForce, ...config };
     this.neighborRadius = merged.neighborRadius;
@@ -2292,6 +2321,17 @@ var FlockingForce = class {
         fy += (avgPY - p.position.y) * 0.01 * cohW;
         fz += (avgPZ - p.position.z) * 0.01 * cohW;
       }
+      const bw = this.boundsWidth;
+      const bh = this.boundsHeight;
+      if (bw > 0 && bh > 0) {
+        const edgeMargin = this.neighborRadius;
+        const px = p.position.x;
+        const py = p.position.y;
+        if (px < edgeMargin) fx += (edgeMargin - px) / edgeMargin * maxSteer;
+        else if (px > bw - edgeMargin) fx -= (px - (bw - edgeMargin)) / edgeMargin * maxSteer;
+        if (py < edgeMargin) fy += (edgeMargin - py) / edgeMargin * maxSteer;
+        else if (py > bh - edgeMargin) fy -= (py - (bh - edgeMargin)) / edgeMargin * maxSteer;
+      }
       const magSq = fx * fx + fy * fy + fz * fz;
       if (magSq > maxSteer * maxSteer) {
         const invMag = maxSteer / Math.sqrt(magSq);
@@ -2299,11 +2339,12 @@ var FlockingForce = class {
         fy *= invMag;
         fz *= invMag;
       }
+      const smooth = 0.02;
       let entry = this.forceMap.get(p);
       if (entry) {
-        entry.x = fx;
-        entry.y = fy;
-        entry.z = fz;
+        entry.x += (fx - entry.x) * smooth;
+        entry.y += (fy - entry.y) * smooth;
+        entry.z += (fz - entry.z) * smooth;
       } else {
         entry = { x: fx, y: fy, z: fz };
         this.forceMap.set(p, entry);
@@ -2884,6 +2925,7 @@ in vec4 a_particle_color;
 in float a_particle_shape;
 
 uniform vec2 u_resolution;
+uniform float u_glowExpand;
 
 out vec4 v_color;
 out vec2 v_uv;
@@ -2891,14 +2933,15 @@ out float v_particle_size;
 out float v_particle_shape;
 
 void main() {
+  float expand = 1.0 + u_glowExpand;
   float c = cos(a_particle_rotation);
   float s = sin(a_particle_rotation);
   vec2 rotated = vec2(a_position.x * c - a_position.y * s, a_position.x * s + a_position.y * c);
-  vec2 pos = (a_particle_pos + rotated * a_particle_size) / u_resolution * 2.0 - 1.0;
+  vec2 pos = (a_particle_pos + rotated * a_particle_size * expand) / u_resolution * 2.0 - 1.0;
   pos.y = -pos.y;
   gl_Position = vec4(pos, 0.0, 1.0);
   v_color = a_particle_color;
-  v_uv = a_position;
+  v_uv = a_position * expand;
   v_particle_size = a_particle_size;
   v_particle_shape = a_particle_shape;
 }
@@ -2942,8 +2985,7 @@ void main() {
   if (u_glow > 0.0) {
     float glowScale = mix(0.75, 1.75, clamp((v_particle_size - 4.0) / 20.0, 0.0, 1.0));
     float glowRange = u_glowSize * glowScale;
-    float halo = 1.0 - smoothstep(0.0, glowRange, sd);
-    halo = halo * halo;
+    float halo = 1.0 - smoothstep(-0.2, glowRange, sd);
     float glowAlpha = halo * u_glowColor.a;
     alpha = max(alpha, glowAlpha);
     float glowMix = clamp((1.0 - coreAlpha) * glowAlpha, 0.0, 1.0);
@@ -3034,6 +3076,7 @@ var WebGLRenderer = class {
     this.resolutionUniform = null;
     this.softnessUniform = null;
     this.glowUniform = null;
+    this.glowExpandUniform = null;
     this.glowSizeUniform = null;
     this.glowColorUniform = null;
     this.isShadowUniform = null;
@@ -3145,6 +3188,7 @@ var WebGLRenderer = class {
     this.resolutionUniform = gl.getUniformLocation(program, "u_resolution");
     this.softnessUniform = gl.getUniformLocation(program, "u_softness");
     this.glowUniform = gl.getUniformLocation(program, "u_glow");
+    this.glowExpandUniform = gl.getUniformLocation(program, "u_glowExpand");
     this.glowSizeUniform = gl.getUniformLocation(program, "u_glowSize");
     this.glowColorUniform = gl.getUniformLocation(program, "u_glowColor");
     this.isShadowUniform = gl.getUniformLocation(program, "u_isShadow");
@@ -3447,6 +3491,7 @@ var WebGLRenderer = class {
       gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
       gl.blendEquation(gl.FUNC_ADD);
       gl.uniform1f(this.isShadowUniform, 1);
+      gl.uniform1f(this.glowExpandUniform, 0);
       gl.uniform4f(this.shadowColorUniform, sr, sg, sb, sa);
       gl.uniform1f(this.shadowBlurUniform, Math.min(1, (batch.shadowBlur ?? 8) / 20));
       this.drawCircleInstances(list, batch.shadowOffsetX ?? 4, batch.shadowOffsetY ?? 4, true, true);
@@ -3455,7 +3500,9 @@ var WebGLRenderer = class {
     setBlendMode(gl, batch.blendMode);
     gl.uniform1f(this.softnessUniform, 0.1);
     gl.uniform1f(this.glowUniform, batch.glow ? 1 : 0);
-    gl.uniform1f(this.glowSizeUniform, Math.min(0.5, (batch.glowSize ?? 10) / 30));
+    const glowUV = Math.min(1, (batch.glowSize ?? 10) / 30) * 1.75;
+    gl.uniform1f(this.glowExpandUniform, batch.glow ? glowUV : 0);
+    gl.uniform1f(this.glowSizeUniform, Math.min(1, (batch.glowSize ?? 10) / 30));
     const [gr, gg, gb] = hexToRgba(batch.glowColor ?? "#ffffff");
     gl.uniform4f(this.glowColorUniform, gr, gg, gb, Math.max(0, Math.min(1, batch.glowAlpha ?? 0.35)));
     this.drawCircleInstances(list, 0, 0);
@@ -3715,7 +3762,9 @@ in float a_particle_shape;
 
 uniform mat4 u_viewProjection;
 uniform vec2 u_resolution;
+uniform vec2 u_referenceCenter;
 uniform float u_worldScale;
+uniform float u_glowExpand;
 
 out vec4 v_color;
 out vec2 v_uv;
@@ -3723,11 +3772,12 @@ out float v_particle_size;
 out float v_particle_shape;
 
 void main() {
+  float expand = 1.0 + u_glowExpand;
   // Convert engine coords (origin top-left, y-down) to world coords (origin center, y-up)
-  // worldScale maps engine viewport to camera frustum at the target plane
+  // Uses fixed reference center captured on first frame so particles don't jump on resize
   vec3 worldPos = vec3(
-    (a_particle_pos.x - u_resolution.x * 0.5) * u_worldScale,
-    -(a_particle_pos.y - u_resolution.y * 0.5) * u_worldScale,
+    (a_particle_pos.x - u_referenceCenter.x) * u_worldScale,
+    -(a_particle_pos.y - u_referenceCenter.y) * u_worldScale,
     a_particle_pos.z * u_worldScale
   );
 
@@ -3749,8 +3799,8 @@ void main() {
   float s = sin(a_particle_rotation);
   vec2 rotated = vec2(a_position.x * c - a_position.y * s, a_position.x * s + a_position.y * c);
 
-  // Scale size by perspective: size in pixels / screen height * 2 * w
-  float sizeNDC = a_particle_size / u_resolution.y * 2.0;
+  // Scale size by perspective: size in pixels / screen height * 2 * w (expand accounts for glow)
+  float sizeNDC = a_particle_size * expand / u_resolution.y * 2.0;
   vec2 offset = rotated * sizeNDC * center.w;
 
   // Correct for aspect ratio (NDC x range is -1..1 regardless of width)
@@ -3759,7 +3809,7 @@ void main() {
   gl_Position = vec4(center.xy + offset, center.z, center.w);
 
   v_color = a_particle_color;
-  v_uv = a_position;
+  v_uv = a_position * expand;
   v_particle_size = a_particle_size;
   v_particle_shape = a_particle_shape;
 }
@@ -3803,8 +3853,7 @@ void main() {
   if (u_glow > 0.0) {
     float glowScale = mix(0.75, 1.75, clamp((v_particle_size - 4.0) / 20.0, 0.0, 1.0));
     float glowRange = u_glowSize * glowScale;
-    float halo = 1.0 - smoothstep(0.0, glowRange, sd);
-    halo = halo * halo;
+    float halo = 1.0 - smoothstep(-0.2, glowRange, sd);
     float glowAlpha = halo * u_glowColor.a;
     alpha = max(alpha, glowAlpha);
     float glowMix = clamp((1.0 - coreAlpha) * glowAlpha, 0.0, 1.0);
@@ -3824,6 +3873,7 @@ in vec4 a_particle_color;
 
 uniform mat4 u_viewProjection;
 uniform vec2 u_resolution;
+uniform vec2 u_referenceCenter;
 uniform float u_worldScale;
 
 out vec4 v_color;
@@ -3832,9 +3882,10 @@ out float v_particle_size;
 
 void main() {
   // Convert engine coords (origin top-left, y-down) to world coords (origin center, y-up)
+  // Uses fixed reference center captured on first frame so particles don't jump on resize
   vec3 worldPos = vec3(
-    (a_particle_pos.x - u_resolution.x * 0.5) * u_worldScale,
-    -(a_particle_pos.y - u_resolution.y * 0.5) * u_worldScale,
+    (a_particle_pos.x - u_referenceCenter.x) * u_worldScale,
+    -(a_particle_pos.y - u_referenceCenter.y) * u_worldScale,
     a_particle_pos.z * u_worldScale
   );
 
@@ -3912,9 +3963,11 @@ var WebGL3DRenderer = class {
     // Circle program uniforms
     this.vpUniform = null;
     this.resUniform = null;
+    this.refCenterUniform = null;
     this.worldScaleUniform = null;
     this.softnessUniform = null;
     this.glowUniform = null;
+    this.glowExpandUniform = null;
     this.glowSizeUniform = null;
     this.glowColorUniform = null;
     this.isShadowUniform = null;
@@ -3930,6 +3983,7 @@ var WebGL3DRenderer = class {
     // Image program uniforms
     this.imgVpUniform = null;
     this.imgResUniform = null;
+    this.imgRefCenterUniform = null;
     this.imgWorldScaleUniform = null;
     this.imgTintUniform = null;
     this.imgIsShadowUniform = null;
@@ -3952,6 +4006,12 @@ var WebGL3DRenderer = class {
     this._batchResult = [];
     // Sort scratch
     this.sortArr = [];
+    // Reference-based coordinate mapping: captured on first valid frame to prevent
+    // particle position jumps when the viewport resizes.
+    this._refCenterX = 0;
+    this._refCenterY = 0;
+    this._refWorldScale = 0;
+    this._refInitialized = false;
     this.resize = (args) => {
       if (!args || !this.gl) return;
       const { width, height } = args;
@@ -3983,32 +4043,38 @@ var WebGL3DRenderer = class {
       const camDist = this.camera.getDistance();
       const visibleHalfH = camDist * Math.tan(fovRad / 2);
       const worldScale = visibleHalfH / (logicalH / 2);
+      if (!this._refInitialized && logicalW > 0 && logicalH > 0) {
+        this._refCenterX = logicalW * 0.5;
+        this._refCenterY = logicalH * 0.5;
+        this._refWorldScale = worldScale;
+        this._refInitialized = true;
+      }
       const batches = this.buildBatches(particles);
       const gl = this.gl;
       gl.useProgram(this.program);
       gl.uniformMatrix4fv(this.vpUniform, false, this.camera.viewProjection);
       gl.uniform2f(this.resUniform, logicalW, logicalH);
-      gl.uniform1f(this.worldScaleUniform, worldScale);
+      gl.uniform2f(this.refCenterUniform, this._refCenterX, this._refCenterY);
+      gl.uniform1f(this.worldScaleUniform, this._refWorldScale);
       gl.bindBuffer(gl.ARRAY_BUFFER, this.circleQuadBuffer);
       gl.enableVertexAttribArray(this.cAttrPos);
       gl.vertexAttribPointer(this.cAttrPos, 2, gl.FLOAT, false, 0, 0);
       gl.enable(gl.DEPTH_TEST);
       gl.depthFunc(gl.LEQUAL);
-      const halfW = logicalW * 0.5;
-      const halfH = logicalH * 0.5;
       for (let bi = 0; bi < batches.length; bi++) {
         const batch = batches[bi];
         if (batch.blendMode !== "additive") {
-          this.sortBackToFront(batch.particles, halfW, halfH, worldScale);
+          this.sortBackToFront(batch.particles);
         }
         if (batch.type === "circle") {
           this.drawCircleBatch(batch);
         } else {
-          this.drawImageBatch(batch, logicalW, logicalH, worldScale);
+          this.drawImageBatch(batch, logicalW, logicalH);
           gl.useProgram(this.program);
           gl.uniformMatrix4fv(this.vpUniform, false, this.camera.viewProjection);
           gl.uniform2f(this.resUniform, logicalW, logicalH);
-          gl.uniform1f(this.worldScaleUniform, worldScale);
+          gl.uniform2f(this.refCenterUniform, this._refCenterX, this._refCenterY);
+          gl.uniform1f(this.worldScaleUniform, this._refWorldScale);
           gl.bindBuffer(gl.ARRAY_BUFFER, this.circleQuadBuffer);
           gl.enableVertexAttribArray(this.cAttrPos);
           gl.vertexAttribPointer(this.cAttrPos, 2, gl.FLOAT, false, 0, 0);
@@ -4036,9 +4102,11 @@ var WebGL3DRenderer = class {
     this.program = linkProgram(gl, vs, fs);
     this.vpUniform = gl.getUniformLocation(this.program, "u_viewProjection");
     this.resUniform = gl.getUniformLocation(this.program, "u_resolution");
+    this.refCenterUniform = gl.getUniformLocation(this.program, "u_referenceCenter");
     this.worldScaleUniform = gl.getUniformLocation(this.program, "u_worldScale");
     this.softnessUniform = gl.getUniformLocation(this.program, "u_softness");
     this.glowUniform = gl.getUniformLocation(this.program, "u_glow");
+    this.glowExpandUniform = gl.getUniformLocation(this.program, "u_glowExpand");
     this.glowSizeUniform = gl.getUniformLocation(this.program, "u_glowSize");
     this.glowColorUniform = gl.getUniformLocation(this.program, "u_glowColor");
     this.isShadowUniform = gl.getUniformLocation(this.program, "u_isShadow");
@@ -4055,6 +4123,7 @@ var WebGL3DRenderer = class {
     this.imageProgram = linkProgram(gl, ivs, ifs);
     this.imgVpUniform = gl.getUniformLocation(this.imageProgram, "u_viewProjection");
     this.imgResUniform = gl.getUniformLocation(this.imageProgram, "u_resolution");
+    this.imgRefCenterUniform = gl.getUniformLocation(this.imageProgram, "u_referenceCenter");
     this.imgWorldScaleUniform = gl.getUniformLocation(this.imageProgram, "u_worldScale");
     this.imgTintUniform = gl.getUniformLocation(this.imageProgram, "u_tint");
     this.imgIsShadowUniform = gl.getUniformLocation(this.imageProgram, "u_isShadow");
@@ -4082,8 +4151,11 @@ var WebGL3DRenderer = class {
     particular.addEventListener("RESIZE", this.resize);
   }
   // ── Depth sorting ──────────────────────────────────────────────────────
-  sortBackToFront(particles, halfW, halfH, ws) {
+  sortBackToFront(particles) {
     const vp = this.camera.viewProjection;
+    const halfW = this._refCenterX;
+    const halfH = this._refCenterY;
+    const ws = this._refWorldScale;
     const m2 = vp[2], m6 = vp[6], m10 = vp[10], m14 = vp[14];
     const m3 = vp[3], m7 = vp[7], m11 = vp[11], m15 = vp[15];
     const arr = this.sortArr;
@@ -4277,6 +4349,7 @@ var WebGL3DRenderer = class {
       gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
       gl.blendEquation(gl.FUNC_ADD);
       gl.uniform1f(this.isShadowUniform, 1);
+      gl.uniform1f(this.glowExpandUniform, 0);
       gl.uniform4f(this.shadowColorUniform, sr, sg, sb, sa);
       gl.uniform1f(this.shadowBlurUniform, Math.min(1, (batch.shadowBlur ?? 8) / 20));
       gl.depthMask(false);
@@ -4288,7 +4361,9 @@ var WebGL3DRenderer = class {
     gl.depthMask(false);
     gl.uniform1f(this.softnessUniform, 0.1);
     gl.uniform1f(this.glowUniform, batch.glow ? 1 : 0);
-    gl.uniform1f(this.glowSizeUniform, Math.min(0.5, (batch.glowSize ?? 10) / 30));
+    const glowUV = Math.min(1, (batch.glowSize ?? 10) / 30) * 1.75;
+    gl.uniform1f(this.glowExpandUniform, batch.glow ? glowUV : 0);
+    gl.uniform1f(this.glowSizeUniform, Math.min(1, (batch.glowSize ?? 10) / 30));
     const [gr, gg, gb] = hexToRgba(batch.glowColor ?? "#ffffff");
     gl.uniform4f(this.glowColorUniform, gr, gg, gb, Math.max(0, Math.min(1, batch.glowAlpha ?? 0.35)));
     this.drawCircleInstances(batch.particles);
@@ -4322,13 +4397,14 @@ var WebGL3DRenderer = class {
     gl.vertexAttribDivisor(this.iAttrRot, 0);
     gl.vertexAttribDivisor(this.iAttrColor, 0);
   }
-  drawImageBatch(batch, w, h, worldScale) {
+  drawImageBatch(batch, w, h) {
     const gl = this.gl;
     if (!this.imageProgram || !batch.texture) return;
     gl.useProgram(this.imageProgram);
     gl.uniformMatrix4fv(this.imgVpUniform, false, this.camera.viewProjection);
     gl.uniform2f(this.imgResUniform, w, h);
-    gl.uniform1f(this.imgWorldScaleUniform, worldScale);
+    gl.uniform2f(this.imgRefCenterUniform, this._refCenterX, this._refCenterY);
+    gl.uniform1f(this.imgWorldScaleUniform, this._refWorldScale);
     gl.uniform1f(this.imgTintUniform, batch.imageTint ? 1 : 0);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, batch.texture);
@@ -4369,6 +4445,18 @@ var WebGL3DRenderer = class {
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
     this.textureCache.set(image, tex);
     return tex;
+  }
+  /** Reference center X (logical coords), captured on first frame. 0 before first render. */
+  get referenceCenterX() {
+    return this._refCenterX;
+  }
+  /** Reference center Y (logical coords), captured on first frame. 0 before first render. */
+  get referenceCenterY() {
+    return this._refCenterY;
+  }
+  /** Reference worldScale, captured on first frame. 0 before first render. */
+  get referenceWorldScale() {
+    return this._refWorldScale;
   }
   destroy() {
     this.remove();
@@ -6357,8 +6445,9 @@ function createParticles({
   const mergedConfig = configureParticular({ ...basePreset, ...config, container });
   engine.initialize(mergedConfig);
   let camera3d = null;
+  let renderer3d = null;
   if (renderer === "webgl3d") {
-    const renderer3d = new WebGL3DRenderer(canvas, {
+    renderer3d = new WebGL3DRenderer(canvas, {
       maxInstances: mergedConfig.webglMaxInstances,
       camera: config?.camera
     });
@@ -6376,14 +6465,21 @@ function createParticles({
   engine.onResize();
   const cleanups = [];
   if (autoResize) {
+    const handleResize = () => {
+      engine.onResize();
+      if (autoStartEmitter && renderer !== "webgl3d") {
+        const newSize = getViewportSize(container);
+        autoStartEmitter.configuration.point.x = newSize.w / 2 / mergedConfig.pixelRatio;
+        autoStartEmitter.configuration.point.y = newSize.h / 2 / mergedConfig.pixelRatio;
+      }
+    };
     if (container) {
-      const ro = new ResizeObserver(() => engine.onResize());
+      const ro = new ResizeObserver(handleResize);
       ro.observe(container);
       cleanups.push(() => ro.disconnect());
     } else {
-      const onResize = () => engine.onResize();
-      window.addEventListener("resize", onResize);
-      cleanups.push(() => window.removeEventListener("resize", onResize));
+      window.addEventListener("resize", handleResize);
+      cleanups.push(() => window.removeEventListener("resize", handleResize));
     }
   }
   const toEngineCoords = (clientX, clientY) => {
@@ -6430,19 +6526,20 @@ function createParticles({
     const cleanupClick = attachClickBurst(clickTarget ?? document);
     cleanups.push(cleanupClick);
   }
+  let autoStartEmitter = null;
   if (mergedConfig.autoStart) {
     const size = getViewportSize(container);
     const centerX = size.w / 2 / mergedConfig.pixelRatio;
     const centerY = size.h / 2 / mergedConfig.pixelRatio;
     const particleConfig = configureParticle({}, mergedConfig);
-    const emitter = new Emitter({
+    autoStartEmitter = new Emitter({
       point: new Vector(centerX, centerY),
       ...particleConfig,
       icons: []
     });
-    engine.addEmitter(emitter);
-    emitter.isEmitting = true;
-    emitter.emit();
+    engine.addEmitter(autoStartEmitter);
+    autoStartEmitter.isEmitting = true;
+    autoStartEmitter.emit();
   }
   const forces = createForces(engine, container, cleanups);
   const boundary = createBoundaryHelper(engine, container, cleanups);
@@ -6454,21 +6551,22 @@ function createParticles({
   if (mouseForce) {
     const mouseConfig = mouseForce === true ? { track: true } : { track: true, ...mouseForce };
     const mf = forces.addMouseForce(mouseConfig);
-    if (camera3d) {
+    if (camera3d && renderer3d) {
       mf.projectToScreen = (px, py, pz) => {
         const cam = camera3d;
+        const r3d = renderer3d;
         const w = engine.width;
         const h = engine.height;
         const pr = engine.pixelRatio;
         const logicalW = w / pr;
         const logicalH = h / pr;
         if (logicalW <= 0 || logicalH <= 0) return null;
-        const fovRad = cam.fov * Math.PI / 180;
-        const camDist = cam.getDistance();
-        const visibleHalfH = camDist * Math.tan(fovRad / 2);
-        const ws = visibleHalfH / (logicalH / 2);
-        const wx = (px - logicalW * 0.5) * ws;
-        const wy = -(py - logicalH * 0.5) * ws;
+        const refCX = r3d.referenceCenterX;
+        const refCY = r3d.referenceCenterY;
+        const ws = r3d.referenceWorldScale;
+        if (ws === 0) return null;
+        const wx = (px - refCX) * ws;
+        const wy = -(py - refCY) * ws;
         const wz = pz * ws;
         const vp = cam.viewProjection;
         const clipW = vp[3] * wx + vp[7] * wy + vp[11] * wz + vp[15];
