@@ -32,9 +32,11 @@ export function createExplosionChild(
 
   let velocity: Vector;
   if (merged.spread3d && merged.spread3d > 0) {
-    // Spherical 3D burst
+    // Spherical 3D burst — asin-based sampling for uniform area distribution
     const azimuth = Math.random() * Math.PI * 2;
-    const elevation = (Math.random() - 0.5) * 2 * merged.spread3d;
+    const halfAngle = Math.min(merged.spread3d * 0.5, Math.PI / 2);
+    const maxSin = Math.sin(halfAngle);
+    const elevation = Math.asin(maxSin * (2 * Math.random() - 1));
     velocity = Vector.fromSpherical(azimuth, elevation, speed);
   } else {
     const angle = Math.random() * Math.PI * 2;

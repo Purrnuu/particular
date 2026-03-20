@@ -183,11 +183,15 @@ export default class Emitter {
 
     let newVelocity: Vector;
     if (spread3d > 0) {
-      // Spherical 3D emission: random direction within a cone of half-angle spread3d
+      // Spherical 3D emission: uniform distribution within a cone of half-angle spread3d/2.
+      // Uses asin-based sampling to avoid polar bunching (uniform area on the sphere).
+      // spread3d = PI → half-angle PI/2 → full sphere. Values >= PI all give full sphere.
       const baseAzimuth = Math.atan2(emitDirection.y, emitDirection.x);
       const baseElevation = Math.atan2(emitDirection.z, Math.sqrt(emitDirection.x * emitDirection.x + emitDirection.y * emitDirection.y));
       const azimuth = baseAzimuth + (Math.random() - 0.5) * 2 * Math.PI;
-      const elevation = baseElevation + (Math.random() - 0.5) * 2 * spread3d;
+      const halfAngle = Math.min(spread3d * 0.5, Math.PI / 2);
+      const maxSin = Math.sin(halfAngle);
+      const elevation = baseElevation + Math.asin(maxSin * (2 * Math.random() - 1));
       newVelocity = Vector.fromSpherical(azimuth, elevation, magnitude);
     } else {
       const angle = velocity.getAngle() + spread - Math.random() * spread * 2;

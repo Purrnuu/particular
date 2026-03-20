@@ -414,14 +414,12 @@ function RiverDemo() {
     const ctrl = createParticles({
       container: el,
       preset: "river",
-      config: { maxCount: 200, continuous: true, zIndex: 1 },
+      config: { maxCount: 200, continuous: true, autoStart: false, zIndex: 1 },
       renderer: "webgl",
       autoResize: true,
     });
 
     const pr = ctrl.engine.pixelRatio;
-    const w = el.clientWidth / pr;
-    const h = el.clientHeight / pr;
 
     const riverConfig = configureParticle({
       ...presets.Ambient.river,
@@ -440,6 +438,10 @@ function RiverDemo() {
       trailShrink: 0.45,
       colors: mutedRiverColors,
     });
+
+    const w = el.clientWidth / pr;
+    const h = el.clientHeight / pr;
+
     const emitter = new Emitter({
       point: new Vector(0, h / 2),
       ...riverConfig,
@@ -451,26 +453,41 @@ function RiverDemo() {
     emitter.isEmitting = true;
     emitter.emit();
 
-    const curve = [
-      { x: 0.20, y: h * 0.35 },
-      { x: 0.45, y: h * 0.65 },
-      { x: 0.70, y: h * 0.35 },
-      { x: 0.90, y: h * 0.55 },
+    const curveFracs = [
+      { x: 0.20, y: 0.35 },
+      { x: 0.45, y: 0.65 },
+      { x: 0.70, y: 0.35 },
+      { x: 0.90, y: 0.55 },
     ];
-    for (const pt of curve) {
-      ctrl.addAttractor({ x: w * pt.x, y: pt.y, strength: 0.15, radius: w * 0.3 });
-    }
+    const attractors = curveFracs.map((pt) =>
+      ctrl.addAttractor({ x: w * pt.x, y: h * pt.y, strength: 0.15, radius: w * 0.3 }),
+    );
+
+    // Reposition emitter + attractors on container resize
+    const ro = new ResizeObserver(() => {
+      const nw = el.clientWidth / pr;
+      const nh = el.clientHeight / pr;
+      emitter.configuration.point.y = nh / 2;
+      emitter.configuration.spawnHeight = nh * 0.6;
+      for (let i = 0; i < attractors.length; i++) {
+        const frac = curveFracs[i];
+        attractors[i].position.x = nw * frac.x;
+        attractors[i].position.y = nh * frac.y;
+        attractors[i].radius = nw * 0.3;
+      }
+    });
+    ro.observe(el);
 
     const boundary = ctrl.addBoundary({ element: inner, strength: -2, radius: 15 });
     ctrl.addMouseForce({ track: true, strength: 1.5, radius: 60 });
 
-    return () => { boundary.destroy(); ctrl.destroy(); };
+    return () => { ro.disconnect(); boundary.destroy(); ctrl.destroy(); };
   }, []);
 
   return (
     <div ref={ref} style={{
       position: "relative",
-      height: 200,
+      height: 240,
       background: "rgba(255, 255, 255, 0.02)",
       border: "1px solid rgba(255, 255, 255, 0.06)",
       borderRadius: 16,
@@ -492,6 +509,64 @@ function RiverDemo() {
         whiteSpace: "nowrap",
       }}>
         Particles flow around elements
+      </div>
+    </div>
+  );
+}
+
+/* ─── Demo: Boids Flock (full-width, mouse scatters the swarm) ─── */
+
+function BoidsDemo() {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const ctrl = createParticles({
+      container: el,
+      preset: "flock",
+      config: {
+        maxCount: 80,
+        zIndex: 1,
+        sizeMin: 1.5,
+        sizeMax: 3,
+        velocity: Vector.fromAngle(0, 1),
+        velocityMultiplier: 1.5,
+        glowSize: 6,
+        trailLength: 6,
+      },
+      renderer: "webgl",
+      autoResize: true,
+      mouseForce: { strength: -2, radius: 80 },
+    });
+
+    ctrl.addFlockingForce({ maxSpeed: 2, neighborRadius: 60, separationDistance: 15 });
+
+    return () => ctrl.destroy();
+  }, []);
+
+  return (
+    <div ref={ref} style={{
+      position: "relative",
+      height: 240,
+      background: "rgba(255, 255, 255, 0.02)",
+      border: "1px solid rgba(255, 255, 255, 0.06)",
+      borderRadius: 16,
+    }}>
+      <div style={{
+        position: "absolute",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        color: "rgba(255,255,255,0.3)",
+        fontSize: "0.85rem",
+        fontWeight: 600,
+        pointerEvents: "none",
+        zIndex: 1,
+        whiteSpace: "nowrap",
+      }}>
+        Boids flocking — move mouse to scatter
       </div>
     </div>
   );
@@ -531,8 +606,8 @@ export default function App() {
       container,
       preset: "snow",
       config: {
-        rate: 0.6,
-        maxCount: 800,
+        rate: 0.4,
+        maxCount: 500,
         particleLife: 1200,
         colors: subtleSnowColors,
         glow: false,
@@ -611,6 +686,7 @@ export default function App() {
       x: w / 2,
       y: heroH * 0.38,
       width: Math.min(w * 0.75, 800),
+      resolution: 400,
       intro: { mode: "scatter", duration: 1200 },
     });
 
@@ -852,12 +928,12 @@ export default function App() {
         />
         <div style={{ paddingTop: "58vh" }}>
           <p style={{ ...sectionSubStyle, fontSize: "1.1rem", margin: "0 auto 20px" }}>
-            Turn text, images, and DOM elements into interactive particles.
-            <br />
             Beautiful by default. Lightning fast. Zero config.
           </p>
           <p style={{ color: "rgba(255,255,255,0.2)", fontSize: "0.8rem" }}>
-            Click the title or move mouse to push particles
+            Turn text, images, and DOM elements into interactive particles.
+            <br />
+            Advanced mode: 3D support, Boids Flocking and more.
           </p>
         </div>
         <div style={{ position: "absolute", bottom: 40, left: 0, right: 0, color: "rgba(255,255,255,0.25)", fontSize: "0.85rem" }}>
@@ -909,6 +985,9 @@ export default function App() {
         </div>
         <div style={{ marginTop: 20 }}>
           <RiverDemo />
+        </div>
+        <div style={{ marginTop: 20 }}>
+          <BoidsDemo />
         </div>
       </section>
 

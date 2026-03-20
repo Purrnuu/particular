@@ -1716,7 +1716,9 @@ function createExplosionChild(parent, config, engine, fallbackColors) {
   let velocity;
   if (merged.spread3d && merged.spread3d > 0) {
     const azimuth = Math.random() * Math.PI * 2;
-    const elevation = (Math.random() - 0.5) * 2 * merged.spread3d;
+    const halfAngle = Math.min(merged.spread3d * 0.5, Math.PI / 2);
+    const maxSin = Math.sin(halfAngle);
+    const elevation = Math.asin(maxSin * (2 * Math.random() - 1));
     velocity = Vector.fromSpherical(azimuth, elevation, speed);
   } else {
     const angle = Math.random() * Math.PI * 2;
@@ -1903,7 +1905,9 @@ var Emitter = class {
       const baseAzimuth = Math.atan2(emitDirection.y, emitDirection.x);
       const baseElevation = Math.atan2(emitDirection.z, Math.sqrt(emitDirection.x * emitDirection.x + emitDirection.y * emitDirection.y));
       const azimuth = baseAzimuth + (Math.random() - 0.5) * 2 * Math.PI;
-      const elevation = baseElevation + (Math.random() - 0.5) * 2 * spread3d;
+      const halfAngle = Math.min(spread3d * 0.5, Math.PI / 2);
+      const maxSin = Math.sin(halfAngle);
+      const elevation = baseElevation + Math.asin(maxSin * (2 * Math.random() - 1));
       newVelocity = Vector.fromSpherical(azimuth, elevation, magnitude);
     } else {
       const angle = velocity.getAngle() + spread - Math.random() * spread * 2;

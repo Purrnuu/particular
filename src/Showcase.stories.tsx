@@ -478,8 +478,6 @@ const RiverDemo: React.FC = () => {
     engineRef.current = ctrl.engine;
 
     const pr = ctrl.engine.pixelRatio;
-    const w = el.clientWidth / pr;
-    const h = el.clientHeight / pr;
 
     const riverConfig = configureParticle({
       ...presets.Ambient.river,
@@ -498,6 +496,10 @@ const RiverDemo: React.FC = () => {
       trailShrink: 0.45,
       colors: mutedRiverColors,
     });
+
+    const w = el.clientWidth / pr;
+    const h = el.clientHeight / pr;
+
     const emitter = new Emitter({
       point: new Vector(0, h / 2),
       ...riverConfig,
@@ -510,15 +512,30 @@ const RiverDemo: React.FC = () => {
     emitter.emit();
 
     // Attractors guide the flow in an S-curve across the box
-    const curve = [
-      { x: 0.20, y: h * 0.35 },
-      { x: 0.45, y: h * 0.65 },
-      { x: 0.70, y: h * 0.35 },
-      { x: 0.90, y: h * 0.55 },
+    const curveFracs = [
+      { x: 0.20, y: 0.35 },
+      { x: 0.45, y: 0.65 },
+      { x: 0.70, y: 0.35 },
+      { x: 0.90, y: 0.55 },
     ];
-    for (const pt of curve) {
-      ctrl.addAttractor({ x: w * pt.x, y: pt.y, strength: 0.15, radius: w * 0.3 });
-    }
+    const attractors = curveFracs.map(pt =>
+      ctrl.addAttractor({ x: w * pt.x, y: h * pt.y, strength: 0.15, radius: w * 0.3 }),
+    );
+
+    // Reposition emitter + attractors on container resize
+    const ro = new ResizeObserver(() => {
+      const nw = el.clientWidth / pr;
+      const nh = el.clientHeight / pr;
+      emitter.configuration.point.y = nh / 2;
+      emitter.configuration.spawnHeight = nh * 0.6;
+      for (let i = 0; i < attractors.length; i++) {
+        const frac = curveFracs[i]!;
+        attractors[i]!.position.x = nw * frac.x;
+        attractors[i]!.position.y = nh * frac.y;
+        attractors[i]!.radius = nw * 0.3;
+      }
+    });
+    ro.observe(el);
 
     // Boundary around the inner card so particles flow around it
     const boundary = ctrl.addBoundary({ element: inner, strength: -2, radius: 15 });
@@ -526,13 +543,13 @@ const RiverDemo: React.FC = () => {
     // Mouse push
     ctrl.addMouseForce({ track: true, strength: 1.5, radius: 60 });
 
-    return () => { boundary.destroy(); ctrl.destroy(); engineRef.current = null; };
+    return () => { ro.disconnect(); boundary.destroy(); ctrl.destroy(); engineRef.current = null; };
   }, []);
 
   return (
     <div ref={ref} style={{
       position: 'relative',
-      height: 200,
+      height: 240,
       background: 'rgba(255, 255, 255, 0.02)',
       border: '1px solid rgba(255, 255, 255, 0.06)',
       borderRadius: 16,
@@ -554,6 +571,68 @@ const RiverDemo: React.FC = () => {
         whiteSpace: 'nowrap',
       }}>
         Particles flow around elements
+      </div>
+    </div>
+  );
+};
+
+/* ─── Demo: Boids Flock (full-width, mouse scatters the swarm) ─── */
+
+const BoidsDemo: React.FC = () => {
+  const ref = useRef<HTMLDivElement>(null);
+  const engineRef = useRef<Particular | null>(null);
+
+  usePauseOffscreen(ref, engineRef);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const ctrl = createParticles({
+      container: el,
+      preset: 'flock',
+      config: {
+        maxCount: 80,
+        zIndex: 1,
+        sizeMin: 1.5,
+        sizeMax: 3,
+        velocity: Vector.fromAngle(0, 1),
+        velocityMultiplier: 1.5,
+        glowSize: 6,
+        trailLength: 6,
+      },
+      renderer: 'webgl',
+      autoResize: true,
+      mouseForce: { strength: -2, radius: 80 },
+    });
+    engineRef.current = ctrl.engine;
+
+    ctrl.addFlockingForce({ maxSpeed: 2, neighborRadius: 60, separationDistance: 15 });
+
+    return () => { ctrl.destroy(); engineRef.current = null; };
+  }, []);
+
+  return (
+    <div ref={ref} style={{
+      position: 'relative',
+      height: 240,
+      background: 'rgba(255, 255, 255, 0.02)',
+      border: '1px solid rgba(255, 255, 255, 0.06)',
+      borderRadius: 16,
+    }}>
+      <div style={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        color: 'rgba(255,255,255,0.3)',
+        fontSize: '0.85rem',
+        fontWeight: 600,
+        pointerEvents: 'none',
+        zIndex: 1,
+        whiteSpace: 'nowrap',
+      }}>
+        Boids flocking — move mouse to scatter
       </div>
     </div>
   );
@@ -962,16 +1041,13 @@ const WelcomeDemo: React.FC = () => {
               margin: '0 auto 20px',
             }}
           >
-            Turn text, images, and DOM elements into interactive particles.
-            <br />
             Beautiful by default. Lightning fast. Zero config.
           </p>
           <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.8rem' }}>
-            Click the title or move mouse to push particles
-          </p>
-        </div>
-        <div style={{ position: 'absolute', bottom: 40, left: 0, right: 0, color: 'rgba(255,255,255,0.25)', fontSize: '0.85rem' }}>
-          Scroll down
+            Turn text, images, and DOM elements into interactive particles.
+            <br />
+            Advanced mode: 3D support, Boids Flocking and more.
+            </p>
         </div>
       </section>
 
@@ -1019,6 +1095,9 @@ const WelcomeDemo: React.FC = () => {
         </div>
         <div style={{ marginTop: 20 }}>
           <RiverDemo />
+        </div>
+        <div style={{ marginTop: 20 }}>
+          <BoidsDemo />
         </div>
       </section>
 

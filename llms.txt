@@ -395,9 +395,9 @@ Pool auto-shrinks if new limit is smaller than current pool size. Default 2000.
 - glow: boolean                     — enable glow effect
 - glowSize: number                  — glow radius
 - shadow: boolean                   — enable drop shadow
-- detonate: { at: number, childCount?: number, velocity?: number, spread3d?: number, ... } — auto-explode at lifetime fraction. spread3d on children: when > 0, detonation is spherical (PI = full sphere). Default 0 (2D ring)
+- detonate: { at: number, childCount?: number, velocity?: number, spread3d?: number, ... } — auto-explode at lifetime fraction. spread3d on children: when > 0, detonation is spherical (PI = full sphere, uniform distribution). Default 0 (2D ring)
 - spawnDepth: number                — randomize particle z within [-spawnDepth/2, +spawnDepth/2]. Default 0
-- spread3d: number                  — spherical emission cone (radians). 0 = 2D only. PI = full hemisphere. Default 0
+- spread3d: number                  — spherical emission full cone angle (radians). 0 = 2D only. PI = full sphere (half-angle PI/2). Values >= PI all produce full sphere. Uses uniform spherical sampling (no polar bunching). Default 0
 - emitDirection: { x, y, z }       — base direction for spherical emission. Default { x: 0, y: -1, z: 0 }
 - rotateToVelocity: boolean        — when true, particle rotation tracks velocity direction instead of spinning. Useful for flocking/directional effects. Default false
 
@@ -611,17 +611,15 @@ p.enableOrbitControls();
 
 ### Boids flock (self-organizing swarm)
 ```js
-const p = createParticles({ preset: "flock" });
+const p = createParticles({ preset: "flock" }); // autoStart: true by default — emitter at center
 p.addFlockingForce(); // particles self-organize via separation, alignment, cohesion
-p.burst({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
 // Custom weights: p.addFlockingForce({ separationWeight: 2, maxSpeed: 6 })
 ```
 
 ### Flock with predator mouse
 ```js
-const p = createParticles({ preset: "flock", mouseForce: { strength: -2, radius: 150, track: true } });
+const p = createParticles({ preset: "flock", mouseForce: { strength: -2, radius: 150 } });
 p.addFlockingForce();
-p.burst({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
 ```
 
 ### Custom colors

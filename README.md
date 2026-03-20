@@ -255,7 +255,7 @@ p.enableOrbitControls(); // drag to orbit, scroll to zoom
 |-------|-------------|
 | `camera` | Camera settings: `{ fov, position, target, up, near, far }` |
 | `spawnDepth` | Randomize particle z within `[-spawnDepth/2, +spawnDepth/2]` |
-| `spread3d` | Spherical emission cone in radians. `Math.PI * 2` = full sphere |
+| `spread3d` | Spherical emission full cone angle in radians. `Math.PI` = full sphere. Uniform distribution |
 | `emitDirection` | Base direction for spherical emission: `{ x, y, z }` |
 
 ## Container Mode

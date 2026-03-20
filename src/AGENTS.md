@@ -122,7 +122,7 @@ Instance stride = 10 floats: `(x, y, z, size, rotation, r, g, b, a, shapeId)`. C
 ### 3D Emission
 
 - `spawnDepth` (default 0): Randomizes particle spawn z within `[-spawnDepth/2, +spawnDepth/2]` centered on emitter point.
-- `spread3d` (default 0): When > 0, emission uses `Vector.fromSpherical(azimuth, elevation, magnitude)` for spherical cone emission instead of 2D angle+spread. The elevation is randomized within `[-spread3d/2, +spread3d/2]`.
+- `spread3d` (default 0): When > 0, emission uses `Vector.fromSpherical(azimuth, elevation, magnitude)` for spherical cone emission instead of 2D angle+spread. The value is the **full cone angle**: `spread3d = PI` → half-angle PI/2 → full sphere. Values >= PI all clamp to full sphere. Uses `asin`-based sampling for uniform area distribution on the sphere surface (no polar bunching). For narrow cones (e.g. `PI/8`), the elevation range is proportionally smaller.
 - `emitDirection` (default `{x:0, y:-1, z:0}`): Base direction for spherical emission. Azimuth is derived from the 2D angle of this vector.
 - `spread3d` on `ChildExplosionConfig` / `DetonateConfig`: When > 0, detonation children emit in a spherical burst (via `Vector.fromSpherical`) instead of a 2D ring. Full sphere = PI. Default 0. Parent z-position is passed to child particles.
 

@@ -49,13 +49,24 @@
 
       /* River box */
       .river-box {
-        position: relative; height: 200px; margin-top: 20px;
+        position: relative; height: 240px; margin-top: 20px;
         background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px;
       }
       .river-inner {
         position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
         padding: 14px 24px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
         border-radius: 12px; color: rgba(255,255,255,0.5); font-size: 0.85rem; font-weight: 600;
+        pointer-events: none; z-index: 1; white-space: nowrap;
+      }
+
+      /* Boids box */
+      .boids-box {
+        position: relative; height: 240px; margin-top: 20px;
+        background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px;
+      }
+      .boids-inner {
+        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        color: rgba(255,255,255,0.3); font-size: 0.85rem; font-weight: 600;
         pointer-events: none; z-index: 1; white-space: nowrap;
       }
 
@@ -122,8 +133,8 @@
       <section class="showcase-hero">
         <div id="title-click-area" style="position:absolute;top:28vh;left:10%;right:10%;height:20vh;pointer-events:auto;cursor:pointer;z-index:2"></div>
         <div class="showcase-sub">
-          <p>Turn text, images, and DOM elements into interactive particles.<br/>Beautiful by default. Lightning fast. Zero config.</p>
-          <p class="hint-text">Click the title or move mouse to push particles</p>
+          <p>Beautiful by default. Lightning fast. Zero config.</p>
+          <p class="hint-text">Turn text, images, and DOM elements into interactive particles.<br/>Advanced mode: 3D support, Boids Flocking and more.</p>
         </div>
         <div class="showcase-scroll-hint">Scroll down</div>
       </section>
@@ -167,6 +178,10 @@
         <!-- River -->
         <div class="river-box" id="demo-river">
           <div class="river-inner" id="river-inner">Particles flow around elements</div>
+        </div>
+        <!-- Boids -->
+        <div class="boids-box" id="demo-boids">
+          <div class="boids-inner">Boids flocking — move mouse to scatter</div>
         </div>
       </section>
 
@@ -257,8 +272,8 @@
         container,
         preset: 'snow',
         config: {
-          rate: 0.6,
-          maxCount: 800,
+          rate: 0.4,
+          maxCount: 500,
           particleLife: 1200,
           colors: subtleSnowColors,
           glow: false,
@@ -309,6 +324,7 @@
         x: container.clientWidth / 2,
         y: window.innerHeight * 0.38,
         width: Math.min(container.clientWidth * 0.75, 800),
+        resolution: 400,
         intro: { mode: 'scatter', duration: 1200 },
       });
 
@@ -479,14 +495,12 @@
         const ctrl = createParticles({
           container: el,
           preset: 'river',
-          config: { maxCount: 200, continuous: true, zIndex: 1 },
+          config: { maxCount: 200, continuous: true, autoStart: false, zIndex: 1 },
           renderer: 'webgl',
           autoResize: true,
         });
 
         const pr = ctrl.engine.pixelRatio;
-        const w = el.clientWidth / pr;
-        const h = el.clientHeight / pr;
 
         const riverConfig = configureParticle({
           ...presets.Ambient.river,
@@ -505,6 +519,10 @@
           trailShrink: 0.45,
           colors: mutedRiverColors,
         });
+
+        const w = el.clientWidth / pr;
+        const h = el.clientHeight / pr;
+
         const emitter = new Emitter({
           point: new Vector(0, h / 2),
           ...riverConfig,
@@ -517,18 +535,57 @@
         emitter.emit();
 
         // S-curve attractors
-        const curve = [
-          { x: 0.20, y: h * 0.35 },
-          { x: 0.45, y: h * 0.65 },
-          { x: 0.70, y: h * 0.35 },
-          { x: 0.90, y: h * 0.55 },
+        const curveFracs = [
+          { x: 0.20, y: 0.35 },
+          { x: 0.45, y: 0.65 },
+          { x: 0.70, y: 0.35 },
+          { x: 0.90, y: 0.55 },
         ];
-        for (const pt of curve) {
-          ctrl.addAttractor({ x: w * pt.x, y: pt.y, strength: 0.15, radius: w * 0.3 });
-        }
+        const attractors = curveFracs.map(function(pt) {
+          return ctrl.addAttractor({ x: w * pt.x, y: h * pt.y, strength: 0.15, radius: w * 0.3 });
+        });
+
+        // Reposition emitter + attractors on container resize
+        new ResizeObserver(function() {
+          const nw = el.clientWidth / pr;
+          const nh = el.clientHeight / pr;
+          emitter.configuration.point.y = nh / 2;
+          emitter.configuration.spawnHeight = nh * 0.6;
+          for (let i = 0; i < attractors.length; i++) {
+            const frac = curveFracs[i];
+            attractors[i].position.x = nw * frac.x;
+            attractors[i].position.y = nh * frac.y;
+            attractors[i].radius = nw * 0.3;
+          }
+        }).observe(el);
 
         ctrl.addBoundary({ element: inner, strength: -2, radius: 15 });
         ctrl.addMouseForce({ track: true, strength: 1.5, radius: 60 });
+      })();
+
+      // ── Demo: Boids ────────────────────────────────────────────────────────
+      (function initBoidsDemo() {
+        const el = document.getElementById('demo-boids');
+
+        const ctrl = createParticles({
+          container: el,
+          preset: 'flock',
+          config: {
+            maxCount: 80,
+            zIndex: 1,
+            sizeMin: 1.5,
+            sizeMax: 3,
+            velocity: Vector.fromAngle(0, 1),
+            velocityMultiplier: 1.5,
+            glowSize: 6,
+            trailLength: 6,
+          },
+          renderer: 'webgl',
+          autoResize: true,
+          mouseForce: { strength: -2, radius: 80 },
+        });
+
+        ctrl.addFlockingForce({ maxSpeed: 2, neighborRadius: 60, separationDistance: 15 });
       })();
 
       // ── CTA glow ──────────────────────────────────────────────────────────
