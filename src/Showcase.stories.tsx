@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 
-import { createParticles, startScreensaver, presets } from './index';
+import { createParticles, startScreensaver, presets, colorPalettes } from './index';
 import type { ParticlesController, ScreensaverController, BoundaryHandle } from './index';
 import type Particular from './particular/core/particular';
 import Emitter from './particular/components/emitter';
@@ -9,6 +9,8 @@ import { configureParticle } from './particular/core/defaults';
 import Vector from './particular/utils/vector';
 import { particlesContainerLayerStyle } from './particular/canvasStyles';
 import vikingPng from './icons/viking.png';
+import viking2Png from './icons/viking_2.png';
+import woltLogoSvg from './icons/woltLogo.svg';
 
 /* ─── Shared Styles ─── */
 
@@ -48,13 +50,10 @@ const sectionSubStyle: React.CSSProperties = {
   maxWidth: 520,
 };
 
-/* ─── Subtle snow palette ─── */
+/* ─── Named palettes from presets ─── */
 
-const subtleSnowColors = ['#555566', '#606070', '#6a6a7a', '#757585', '#808090'];
-
-/* ─── Muted river palette — dimmed cyans that read as subtle accents ─── */
-
-const mutedRiverColors = ['#3a4a4f', '#455558', '#4f6065', '#5a6b70', '#647578'];
+const subtleSnowColors = colorPalettes.ash!;
+const mutedRiverColors = colorPalettes.slate!;
 
 /* ─── Responsive CSS (injected once) — inline styles can't do media queries ─── */
 
@@ -162,12 +161,12 @@ const DemoLabel: React.FC<{ title: string; desc: string }> = ({ title, desc }) =
 /* ─── Demo: Click Burst (rotating palettes) ─── */
 
 const burstPalettes = [
-  { colors: ['#b33600', '#cc4a00', '#e86100', '#f57c00', '#ff9500', '#ffad33'], glow: '#ff9500' },
-  { colors: ['#a5d8ff', '#74c0fc', '#4dabf7', '#d0bfff', '#b197fc', '#9775fa'], glow: '#74c0fc' },
-  { colors: ['#006b3f', '#00a85e', '#1edd80', '#4deda0', '#96f2c8', '#c3fae8'], glow: '#1edd80' },
-  { colors: ['#ff4757', '#ff6b81', '#ff8fa3', '#ffa8b8', '#ffc9d3', '#ffe0e6'], glow: '#ff6b81' },
-  { colors: ['#ffd699', '#ffcc66', '#ffad33', '#ff9500', '#f57c00', '#e86100'], glow: '#ffcc66' },
-  { colors: ['#d0bfff', '#b197fc', '#9775fa', '#845ef7', '#7048e8', '#5f3dc4'], glow: '#9775fa' },
+  { colors: colorPalettes.orange!, glow: '#ff9500' },
+  { colors: colorPalettes.magic!, glow: '#74c0fc' },
+  { colors: colorPalettes.emerald!, glow: '#1edd80' },
+  { colors: colorPalettes.rose!, glow: '#ff6b81' },
+  { colors: colorPalettes.gold!, glow: '#ffcc66' },
+  { colors: colorPalettes.violet!, glow: '#9775fa' },
 ];
 
 const BurstDemo: React.FC = () => {
@@ -189,8 +188,14 @@ const BurstDemo: React.FC = () => {
         zIndex: 1,
         sizeMin: 2,
         sizeMax: 7,
+        spawnDepth: 100,
+        camera: {
+          fov: 50,
+          position: { x: 0, y: 0, z: 300 },
+          target: { x: 0, y: 0, z: 0 },
+        },
       },
-      renderer: 'webgl',
+      renderer: 'webgl3d',
       autoResize: true,
     });
     ctrlRef.current = ctrl;
@@ -288,7 +293,7 @@ const ShatterDemo: React.FC = () => {
       if (h > maxH) { h = maxH; w = h * aspect; }
 
       ctrl.shatterImage({
-        image: vikingPng,
+        image: viking2Png,
         width: w,
         height: h,
         chunkCount: 20,
@@ -300,7 +305,7 @@ const ShatterDemo: React.FC = () => {
         },
       }).then(() => { readyRef.current = true; });
     };
-    img.src = vikingPng;
+    img.src = viking2Png;
 
     return () => { ctrl.destroy(); ctrlRef.current = null; engineRef.current = null; readyRef.current = false; };
   }, []);
@@ -321,9 +326,9 @@ const ShatterDemo: React.FC = () => {
   );
 };
 
-/* ─── Demo: Text Particles ─── */
+/* ─── Demo: Wolt Logo Particles ─── */
 
-const TextDemo: React.FC = () => {
+const LogoDemo: React.FC = () => {
   const ref = useRef<HTMLDivElement>(null);
   const engineRef = useRef<Particular | null>(null);
 
@@ -335,15 +340,15 @@ const TextDemo: React.FC = () => {
     const ctrl = createParticles({
       container: el,
       preset: 'imageText',
-      config: { maxCount: 2000, continuous: true, zIndex: 1 },
+      config: { maxCount: 5000, continuous: true, zIndex: 1 },
       renderer: 'webgl',
       autoResize: true,
     });
     engineRef.current = ctrl.engine;
 
-    ctrl.textToParticles('Hello', {
-      height: el.clientHeight * 0.45,
-      resolution: 100,
+    ctrl.imageToParticles({
+      image: woltLogoSvg,
+      resolution: 200,
       shape: 'circle',
     });
     ctrl.addMouseForce({ track: true, strength: 2, radius: 50 });
@@ -353,7 +358,7 @@ const TextDemo: React.FC = () => {
 
   return (
     <div ref={ref} style={demoCellStyle}>
-      <DemoLabel title="Text Particles" desc="Interactive mouse force" />
+      <DemoLabel title="Logo Particles" desc="Interactive mouse force" />
     </div>
   );
 };
@@ -466,15 +471,13 @@ const RiverDemo: React.FC = () => {
     const ctrl = createParticles({
       container: el,
       preset: 'river',
-      config: { maxCount: 200, continuous: true, zIndex: 1 },
+      config: { maxCount: 200, continuous: true, autoStart: false, zIndex: 1 },
       renderer: 'webgl',
       autoResize: true,
     });
     engineRef.current = ctrl.engine;
 
     const pr = ctrl.engine.pixelRatio;
-    const w = el.clientWidth / pr;
-    const h = el.clientHeight / pr;
 
     const riverConfig = configureParticle({
       ...presets.Ambient.river,
@@ -493,6 +496,10 @@ const RiverDemo: React.FC = () => {
       trailShrink: 0.45,
       colors: mutedRiverColors,
     });
+
+    const w = el.clientWidth / pr;
+    const h = el.clientHeight / pr;
+
     const emitter = new Emitter({
       point: new Vector(0, h / 2),
       ...riverConfig,
@@ -505,15 +512,30 @@ const RiverDemo: React.FC = () => {
     emitter.emit();
 
     // Attractors guide the flow in an S-curve across the box
-    const curve = [
-      { x: 0.20, y: h * 0.35 },
-      { x: 0.45, y: h * 0.65 },
-      { x: 0.70, y: h * 0.35 },
-      { x: 0.90, y: h * 0.55 },
+    const curveFracs = [
+      { x: 0.20, y: 0.35 },
+      { x: 0.45, y: 0.65 },
+      { x: 0.70, y: 0.35 },
+      { x: 0.90, y: 0.55 },
     ];
-    for (const pt of curve) {
-      ctrl.addAttractor({ x: w * pt.x, y: pt.y, strength: 0.15, radius: w * 0.3 });
-    }
+    const attractors = curveFracs.map(pt =>
+      ctrl.addAttractor({ x: w * pt.x, y: h * pt.y, strength: 0.15, radius: w * 0.3 }),
+    );
+
+    // Reposition emitter + attractors on container resize
+    const ro = new ResizeObserver(() => {
+      const nw = el.clientWidth / pr;
+      const nh = el.clientHeight / pr;
+      emitter.configuration.point.y = nh / 2;
+      emitter.configuration.spawnHeight = nh * 0.6;
+      for (let i = 0; i < attractors.length; i++) {
+        const frac = curveFracs[i]!;
+        attractors[i]!.position.x = nw * frac.x;
+        attractors[i]!.position.y = nh * frac.y;
+        attractors[i]!.radius = nw * 0.3;
+      }
+    });
+    ro.observe(el);
 
     // Boundary around the inner card so particles flow around it
     const boundary = ctrl.addBoundary({ element: inner, strength: -2, radius: 15 });
@@ -521,13 +543,13 @@ const RiverDemo: React.FC = () => {
     // Mouse push
     ctrl.addMouseForce({ track: true, strength: 1.5, radius: 60 });
 
-    return () => { boundary.destroy(); ctrl.destroy(); engineRef.current = null; };
+    return () => { ro.disconnect(); boundary.destroy(); ctrl.destroy(); engineRef.current = null; };
   }, []);
 
   return (
     <div ref={ref} style={{
       position: 'relative',
-      height: 200,
+      height: 240,
       background: 'rgba(255, 255, 255, 0.02)',
       border: '1px solid rgba(255, 255, 255, 0.06)',
       borderRadius: 16,
@@ -549,6 +571,68 @@ const RiverDemo: React.FC = () => {
         whiteSpace: 'nowrap',
       }}>
         Particles flow around elements
+      </div>
+    </div>
+  );
+};
+
+/* ─── Demo: Boids Flock (full-width, mouse scatters the swarm) ─── */
+
+const BoidsDemo: React.FC = () => {
+  const ref = useRef<HTMLDivElement>(null);
+  const engineRef = useRef<Particular | null>(null);
+
+  usePauseOffscreen(ref, engineRef);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const ctrl = createParticles({
+      container: el,
+      preset: 'flock',
+      config: {
+        maxCount: 80,
+        zIndex: 1,
+        sizeMin: 1.5,
+        sizeMax: 3,
+        velocity: Vector.fromAngle(0, 1),
+        velocityMultiplier: 1.5,
+        glowSize: 6,
+        trailLength: 6,
+      },
+      renderer: 'webgl',
+      autoResize: true,
+      mouseForce: { strength: -2, radius: 80 },
+    });
+    engineRef.current = ctrl.engine;
+
+    ctrl.addFlockingForce({ maxSpeed: 2, neighborRadius: 60, separationDistance: 15 });
+
+    return () => { ctrl.destroy(); engineRef.current = null; };
+  }, []);
+
+  return (
+    <div ref={ref} style={{
+      position: 'relative',
+      height: 240,
+      background: 'rgba(255, 255, 255, 0.02)',
+      border: '1px solid rgba(255, 255, 255, 0.06)',
+      borderRadius: 16,
+    }}>
+      <div style={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        color: 'rgba(255,255,255,0.3)',
+        fontSize: '0.85rem',
+        fontWeight: 600,
+        pointerEvents: 'none',
+        zIndex: 1,
+        whiteSpace: 'nowrap',
+      }}>
+        Boids flocking — move mouse to scatter
       </div>
     </div>
   );
@@ -615,7 +699,7 @@ const WelcomeDemo: React.FC = () => {
       fadeTime: 20,
       velocity: 0.8,
       spread: 0.5,
-      colors: ['#a5d8ff', '#74c0fc', '#d0bfff', '#b197fc', '#99e9f2', '#c3fae8'],
+      colors: colorPalettes.fairy!,
       glow: true,
       glowSize: 6,
       glowAlpha: 0.25,
@@ -698,19 +782,40 @@ const WelcomeDemo: React.FC = () => {
   }, []);
 
   // Fireworks — separate non-continuous controller, triggered by scroll
+  // Uses a viewport-fixed canvas (not container-aware) because the 3D camera
+  // has a fixed frustum that can't account for scroll offset like the 2D renderer.
   useEffect(() => {
     const canvas = fireworksCanvasRef.current;
-    const container = containerRef.current;
-    if (!canvas || !container) return;
+    if (!canvas) return;
 
     const controller = createParticles({
       canvas,
-      container,
-      preset: 'fireworksShow',
-      config: { maxCount: 2000, continuous: false },
-      renderer: 'webgl',
+      preset: 'fireworks3d',
+      config: {
+        maxCount: 2000,
+        continuous: false,
+        autoStart: false,
+        camera: {
+          fov: 60,
+          position: { x: 0, y: -200, z: 600 },
+          target: { x: 0, y: 100, z: 0 },
+        },
+      },
+      // Note: no container — 3D camera can't handle scroll offset.
+      // applyCanvasStyles will set position:fixed, so we restore our
+      // desired absolute positioning after createParticles returns.
+      renderer: 'webgl3d',
       autoResize: true,
     });
+
+    // Restore absolute positioning — createParticles sets position:fixed for non-container canvases
+    canvas.style.position = 'absolute';
+    canvas.style.inset = 'auto';
+    canvas.style.bottom = '0';
+    canvas.style.left = '0';
+    canvas.style.width = '100%';
+    canvas.style.height = '100vh';
+    canvas.style.zIndex = '0';
 
     fireworksControllerRef.current = controller;
 
@@ -724,31 +829,32 @@ const WelcomeDemo: React.FC = () => {
         firedFireworksRef.current = true;
 
         const pr = controller.engine.pixelRatio;
-        const w = container.clientWidth / pr;
-        const h = container.clientHeight / pr;
+        const w = window.innerWidth / pr;
+        const h = window.innerHeight / pr;
 
-        // Fireworks barrage — two waves of rockets across the width
+        // Fireworks barrage — three waves of rockets from center-bottom
         const fwConfig = configureParticle({
-          ...presets.Ambient.fireworksShow,
+          ...presets.Burst3D.fireworks3d,
           rate: 1,
-          life: 3,
+          life: 5,
         });
-        const wave1 = [0.15, 0.35, 0.55, 0.75, 0.9];
-        const wave2 = [0.25, 0.45, 0.65, 0.85];
+        const wave1 = [0.3, 0.42, 0.5, 0.58, 0.7];
+        const wave2 = [0.35, 0.45, 0.55, 0.65];
+        const wave3 = [0.38, 0.5, 0.62];
 
         wave1.forEach((xFrac, i) => {
           setTimeout(() => {
             const emitter = new Emitter({
               point: new Vector(w * xFrac, h),
               ...fwConfig,
-              spawnWidth: w * 0.06,
+              spawnWidth: w * 0.08,
               spawnHeight: 0,
               icons: [],
             });
             controller.engine.addEmitter(emitter);
             emitter.isEmitting = true;
             emitter.emit();
-          }, i * 400);
+          }, i * 300);
         });
 
         wave2.forEach((xFrac, i) => {
@@ -756,14 +862,29 @@ const WelcomeDemo: React.FC = () => {
             const emitter = new Emitter({
               point: new Vector(w * xFrac, h),
               ...fwConfig,
-              spawnWidth: w * 0.06,
+              spawnWidth: w * 0.08,
               spawnHeight: 0,
               icons: [],
             });
             controller.engine.addEmitter(emitter);
             emitter.isEmitting = true;
             emitter.emit();
-          }, 2200 + i * 500);
+          }, 1800 + i * 350);
+        });
+
+        wave3.forEach((xFrac, i) => {
+          setTimeout(() => {
+            const emitter = new Emitter({
+              point: new Vector(w * xFrac, h),
+              ...fwConfig,
+              spawnWidth: w * 0.08,
+              spawnHeight: 0,
+              icons: [],
+            });
+            controller.engine.addEmitter(emitter);
+            emitter.isEmitting = true;
+            emitter.emit();
+          }, 3400 + i * 400);
         });
 
         // Allow re-triggering after cooldown
@@ -795,7 +916,7 @@ const WelcomeDemo: React.FC = () => {
     });
     ctrl.addContainerGlow({
       element: badge,
-      colors: ['#ffad33', '#ff9500', '#f57c00', '#e86100', '#ffcc66', '#ffd699'],
+      colors: colorPalettes.amber!,
       rate: 0.6,
       sizeMin: 0.5,
       sizeMax: 2,
@@ -886,8 +1007,6 @@ const WelcomeDemo: React.FC = () => {
       {/* Text particles canvas — container-aware, scrolls with page */}
       <canvas ref={textCanvasRef} style={particlesContainerLayerStyle} />
 
-      {/* Fireworks canvas — triggered on scroll to bottom */}
-      <canvas ref={fireworksCanvasRef} style={particlesContainerLayerStyle} />
 
       {/* Hero — text particles render at ~38% viewport height, subtitle sits below */}
       <section
@@ -922,16 +1041,13 @@ const WelcomeDemo: React.FC = () => {
               margin: '0 auto 20px',
             }}
           >
-            Turn text, images, and DOM elements into interactive particles.
-            <br />
             Beautiful by default. Lightning fast. Zero config.
           </p>
           <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.8rem' }}>
-            Click the title or move mouse to push particles
-          </p>
-        </div>
-        <div style={{ position: 'absolute', bottom: 40, left: 0, right: 0, color: 'rgba(255,255,255,0.25)', fontSize: '0.85rem' }}>
-          Scroll down
+            Turn text, images, and DOM elements into interactive particles.
+            <br />
+            Advanced mode: 3D support, Boids Flocking and more.
+            </p>
         </div>
       </section>
 
@@ -973,12 +1089,15 @@ const WelcomeDemo: React.FC = () => {
           <BurstDemo />
           <MeteorDemo />
           <ShatterDemo />
-          <TextDemo />
+          <LogoDemo />
           <GlowDemo />
           <ScatterDemo />
         </div>
         <div style={{ marginTop: 20 }}>
           <RiverDemo />
+        </div>
+        <div style={{ marginTop: 20 }}>
+          <BoidsDemo />
         </div>
       </section>
 
@@ -1054,6 +1173,17 @@ const WelcomeDemo: React.FC = () => {
           Particles flow around every element on this page.
         </p>
       </section>
+
+      {/* Fireworks canvas — pinned to bottom of page, behind content, viewport-height for 3D camera */}
+      <canvas ref={fireworksCanvasRef} style={{
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        width: '100%',
+        height: '100vh',
+        pointerEvents: 'none',
+        zIndex: 0,
+      }} />
     </div>
   );
 };

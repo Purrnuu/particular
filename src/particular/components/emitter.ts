@@ -47,7 +47,7 @@ export default class Emitter {
     this.particular = particular;
   }
 
-  update(boundsX: number, boundsY: number, forces?: ForceSource[], dt = 1): void {
+  update(boundsX: number, boundsY: number, marginX: number, marginY: number, forces?: ForceSource[], dt = 1): void {
     let writeIdx = 0;
     const detonate = this.configuration.detonate;
     const newChildren = this._newChildren;
@@ -56,7 +56,7 @@ export default class Emitter {
     for (let i = 0; i < this.particles.length; i++) {
       const particle = this.particles[i]!;
       const pos = particle.position;
-      if (pos.x < 0 || pos.x > boundsX || pos.y < -boundsY || pos.y > boundsY) {
+      if (pos.x < -marginX || pos.x > boundsX || pos.y < -marginY || pos.y > boundsY) {
         // Particles with a home position are never killed by bounds — they'll spring back
         if (particle.homePosition) {
           particle.update(forces, dt);
@@ -94,6 +94,7 @@ export default class Emitter {
             {
               x: particle.position.x,
               y: particle.position.y,
+              z: particle.position.z,
               color: particle.color,
               shape: particle.shape,
               blendMode: particle.blendMode,
@@ -147,6 +148,9 @@ export default class Emitter {
       fadeTime,
       spawnWidth,
       spawnHeight,
+      spawnDepth,
+      spread3d,
+      emitDirection,
       shape,
       blendMode,
       glow,
@@ -164,18 +168,35 @@ export default class Emitter {
       shadowOffsetY,
       shadowColor,
       shadowAlpha,
+      rotateToVelocity,
       colors,
       acceleration: accelBase,
       accelerationSize,
       friction: frictionBase,
       frictionSize,
     } = this.configuration;
-    const angle = velocity.getAngle() + spread - Math.random() * spread * 2;
     const magnitude = velocity.getMagnitude();
     const offsetX = spawnWidth > 0 ? (Math.random() - 0.5) * spawnWidth : 0;
     const offsetY = spawnHeight > 0 ? (Math.random() - 0.5) * spawnHeight : 0;
-    const newPoint = new Vector(point.x + offsetX, point.y + offsetY);
-    const newVelocity = Vector.fromAngle(angle, magnitude);
+    const offsetZ = spawnDepth > 0 ? (Math.random() - 0.5) * spawnDepth : 0;
+    const newPoint = new Vector(point.x + offsetX, point.y + offsetY, point.z + offsetZ);
+
+    let newVelocity: Vector;
+    if (spread3d > 0) {
+      // Spherical 3D emission: uniform distribution within a cone of half-angle spread3d/2.
+      // Uses asin-based sampling to avoid polar bunching (uniform area on the sphere).
+      // spread3d = PI → half-angle PI/2 → full sphere. Values >= PI all give full sphere.
+      const baseAzimuth = Math.atan2(emitDirection.y, emitDirection.x);
+      const baseElevation = Math.atan2(emitDirection.z, Math.sqrt(emitDirection.x * emitDirection.x + emitDirection.y * emitDirection.y));
+      const azimuth = baseAzimuth + (Math.random() - 0.5) * 2 * Math.PI;
+      const halfAngle = Math.min(spread3d * 0.5, Math.PI / 2);
+      const maxSin = Math.sin(halfAngle);
+      const elevation = baseElevation + Math.asin(maxSin * (2 * Math.random() - 1));
+      newVelocity = Vector.fromSpherical(azimuth, elevation, magnitude);
+    } else {
+      const angle = velocity.getAngle() + spread - Math.random() * spread * 2;
+      newVelocity = Vector.fromAngle(angle, magnitude);
+    }
 
     const size = getRandomInt(sizeMin, sizeMax);
     newVelocity.add({ x: 0, y: -((sizeMax - size) / 15) * velocityMultiplier });
@@ -215,6 +236,7 @@ export default class Emitter {
       shadowOffsetY,
       shadowColor,
       shadowAlpha,
+      rotateToVelocity,
       colors,
     });
   }

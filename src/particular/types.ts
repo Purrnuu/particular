@@ -1,4 +1,5 @@
 import Vector from './utils/vector';
+import type Particle from './components/particle';
 
 /** Particle rendering shape. Each shape is supported in both Canvas 2D and WebGL renderers. */
 export type ParticleShape =
@@ -110,6 +111,8 @@ export interface ChildExplosionConfig {
   trailLength?: number;
   trailFade?: number;
   trailShrink?: number;
+  /** When > 0, children emit in a spherical burst instead of 2D ring. Full sphere = PI. Default 0. */
+  spread3d?: number;
 }
 
 /** Options for manual controller.explode(). */
@@ -158,6 +161,14 @@ export interface ParticleConfig extends ShapeConfig {
   spawnWidth?: number;
   /** Height of the rectangular spawn area centered on the emitter point. Default 0 (point spawn). */
   spawnHeight?: number;
+  /** Depth of the spawn volume along the z-axis. Particles spawn at random z within ±spawnDepth/2. Default 0 (flat). */
+  spawnDepth?: number;
+  /** 3D emission spread (radians). When > 0, particles emit in a spherical cone using
+   *  `Vector.fromSpherical()` instead of 2D angle+spread. Full sphere = PI. Default 0 (2D emission). */
+  spread3d?: number;
+  /** 3D emission direction. When spread3d > 0, this is the central axis of the emission cone.
+   *  Default { x: 0, y: -1, z: 0 } (upward). */
+  emitDirection?: { x: number; y: number; z: number };
   /** Color palette for particles. When provided, particles pick a random color from this array.
    *  Empty array = emitter generates a harmonious HSL palette automatically. */
   colors?: string[];
@@ -169,6 +180,9 @@ export interface ParticleConfig extends ShapeConfig {
   friction?: number;
   /** Size-coupled friction coefficient — multiplied by particle size. Default 0.0005. */
   frictionSize?: number;
+  /** When true, particle rotation tracks velocity direction instead of spinning freely.
+   *  Useful for triangle/arrow shapes that should point where they're moving (e.g. boids). Default false. */
+  rotateToVelocity?: boolean;
   /** Timed detonation config — particles auto-explode into sub-bursts at a lifetime fraction. */
   detonate?: DetonateConfig;
 }
@@ -189,6 +203,9 @@ export interface EmitterConfiguration extends ParticleConfig {
   fadeTime: number;
   spawnWidth: number;
   spawnHeight: number;
+  spawnDepth: number;
+  spread3d: number;
+  emitDirection: { x: number; y: number; z: number };
   colors: string[];
   acceleration: number;
   accelerationSize: number;
@@ -271,6 +288,8 @@ export interface ParticleConstructorParams extends ShapeConfig {
   homeCenter?: Vector;
   /** Home position spring + idle animation config. */
   homeConfig?: HomePositionConfig;
+  /** When true, particle rotation tracks velocity direction instead of spinning. */
+  rotateToVelocity?: boolean;
 }
 
 export type IntroMode = 'scatter' | 'scaleIn' | 'ripple' | 'paint';
@@ -347,6 +366,8 @@ export interface FullParticularConfig extends ParticularConfig, ParticleConfig {
 export interface AttractorConfig {
   x: number;
   y: number;
+  /** Z-position for 3D scenes. Default 0. */
+  z?: number;
   strength?: number;
   radius?: number;
   // Visual rendering
@@ -362,7 +383,8 @@ export interface AttractorConfig {
 }
 
 export interface ForceSource {
-  getForce(particlePosition: Vector): Vector;
+  getForce(particlePosition: Vector, particle?: Particle): Vector;
+  preCompute?(particles: Particle[], dt: number): void;
 }
 
 export interface MouseForceConfig {
@@ -379,6 +401,26 @@ export interface MouseForceConfig {
   falloff?: number;
   /** EventTarget to track mouse on. `true` = window. Omitted/`false` = manual. */
   track?: EventTarget | boolean;
+}
+
+/** Configuration for boids flocking behavior. Particles self-organize into swarm patterns
+ *  via three steering rules: separation (avoid crowding), alignment (match neighbor heading),
+ *  cohesion (steer toward neighbor center). Composes with existing forces. */
+export interface FlockingForceConfig {
+  /** Radius within which other particles are considered neighbors. Default 100. */
+  neighborRadius?: number;
+  /** Weight for separation rule (avoid crowding). Default 1.5. */
+  separationWeight?: number;
+  /** Weight for alignment rule (match neighbor heading). Default 1.0. */
+  alignmentWeight?: number;
+  /** Weight for cohesion rule (steer toward neighbor center). Default 1.0. */
+  cohesionWeight?: number;
+  /** Maximum steering force magnitude per frame. Default 0.5. */
+  maxSteeringForce?: number;
+  /** Maximum particle speed (velocity clamped to this). Default 4. */
+  maxSpeed?: number;
+  /** Minimum distance before separation kicks in. Default 25. */
+  separationDistance?: number;
 }
 
 /** Configuration for an element-based repulsion boundary. */
@@ -537,5 +579,6 @@ export interface WobbleConfig {
 }
 
 /** Rendering backend. 'webgl' (default) uses WebGL2 instanced drawing for best performance.
- *  'canvas' uses Canvas 2D — broader compatibility but slower with many particles. */
-export type RendererType = 'canvas' | 'webgl';
+ *  'canvas' uses Canvas 2D — broader compatibility but slower with many particles.
+ *  'webgl3d' uses WebGL2 with perspective projection for 3D particle scenes. */
+export type RendererType = 'canvas' | 'webgl' | 'webgl3d';

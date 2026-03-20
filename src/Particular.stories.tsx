@@ -8,7 +8,7 @@ import sad3 from './icons/smiley_sad_2.png';
 import { ParticularWrapper, presets } from './index';
 import { defaultParticular, defaultParticle } from './particular/core/defaults';
 import { colorPalettes } from './particular/presets';
-import type { BurstSettings, FullParticularConfig } from './particular/types';
+import type { BurstSettings, FullParticularConfig, RendererType } from './particular/types';
 import Vector from './particular/utils/vector';
 import { particleArgTypes, resolveColorPalette } from './storyArgs';
 import type { ParticleStoryArgs } from './storyArgs';
@@ -53,7 +53,7 @@ const PlaygroundContinuous: React.FC<PlaygroundProps> = () => (
 );
 
 export type StoryArgs = ParticleStoryArgs & {
-  renderer: 'canvas' | 'webgl';
+  renderer: RendererType;
   rate: number;
   life: number;
   velocityMultiplier: number;
@@ -101,6 +101,7 @@ function toStoryArgs(config: Partial<FullParticularConfig>): StoryArgs {
     accelerationSize: merged.accelerationSize,
     friction: merged.friction,
     frictionSize: merged.frictionSize,
+    rotateToVelocity: merged.rotateToVelocity,
     particleLife: merged.particleLife,
     fadeTime: merged.fadeTime,
     maxCount: merged.maxCount,

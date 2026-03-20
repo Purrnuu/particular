@@ -8,6 +8,7 @@ import type Particular from '../core/particular';
 export interface TrailSegment {
   x: number;
   y: number;
+  z: number;
   size: number;
   rotation: number;
   alpha: number;
@@ -57,6 +58,7 @@ export default class Particle {
   particular: Particular | null = null;
   image: string | HTMLImageElement | null = null;
   isDetonationChild = false;
+  rotateToVelocity = false;
 
   // Shape configuration
   shape: ParticleShape;
@@ -197,6 +199,7 @@ export default class Particle {
     shadowOffsetY = 3,
     shadowColor = '#000000',
     shadowAlpha = 0.3,
+    rotateToVelocity = false,
     colors,
     homePosition,
     homeCenter,
@@ -206,31 +209,44 @@ export default class Particle {
     if (point) {
       this.position.x = point.x;
       this.position.y = point.y;
+      this.position.z = point.z;
     } else {
       this.position.x = 0;
       this.position.y = 0;
+      this.position.z = 0;
     }
     this.shadowLightOrigin.x = this.position.x;
     this.shadowLightOrigin.y = this.position.y;
     if (velocity) {
       this.velocity.x = velocity.x;
       this.velocity.y = velocity.y;
+      this.velocity.z = velocity.z;
     } else {
       this.velocity.x = 0;
       this.velocity.y = 0;
+      this.velocity.z = 0;
     }
     if (acceleration) {
       this.acceleration.x = acceleration.x;
       this.acceleration.y = acceleration.y;
+      this.acceleration.z = acceleration.z;
     } else {
       this.acceleration.x = 0;
       this.acceleration.y = 0;
+      this.acceleration.z = 0;
     }
 
     this.friction = friction ?? 0;
-    this.rotation = Math.random() * 360;
+    this.rotateToVelocity = rotateToVelocity;
+    if (rotateToVelocity && velocity) {
+      // Point in velocity direction from the start (atan2 returns radians, convert to degrees; -90° because triangle tip is at negative y)
+      this.rotation = Math.atan2(velocity.y, velocity.x) * (180 / Math.PI) - 90;
+      this.rotationVelocity = 0;
+    } else {
+      this.rotation = Math.random() * 360;
+      this.rotationVelocity = (Math.random() > 0.5 ? 1 : -1) * getRandomInt(1, 3);
+    }
     this.rotationDirection = Math.random() > 0.5 ? 1 : -1;
-    this.rotationVelocity = this.rotationDirection * getRandomInt(1, 3);
     this.factoredSize = 1;
     this.lifeTime = particleLife === Infinity ? Infinity : getRandomInt(Math.round(particleLife * 0.75), particleLife);
     this.lifeTick = 0;
@@ -298,8 +314,9 @@ export default class Particle {
       if (this.homePosition) {
         this.homePosition.x = homePosition.x;
         this.homePosition.y = homePosition.y;
+        this.homePosition.z = homePosition.z;
       } else {
-        this.homePosition = new Vector(homePosition.x, homePosition.y);
+        this.homePosition = new Vector(homePosition.x, homePosition.y, homePosition.z);
       }
       this.homeConfig = { ...defaultHomeConfig, ...homeConfig };
       this.homeThresholdSq = this.homeConfig.homeThreshold * this.homeConfig.homeThreshold;
@@ -337,13 +354,13 @@ export default class Particle {
     // Particles at rest at home skip velocity integration, friction, gravity, spring math.
     // Only forces and idle pulses can wake them. Saves ~25 ops/particle/frame for 10K+ text particles.
     if (this.homePosition && this.homeConfig && !this.preventSettle
-      && this.velocity.x === 0 && this.velocity.y === 0
-      && this.position.x === this.homePosition.x && this.position.y === this.homePosition.y) {
+      && this.velocity.x === 0 && this.velocity.y === 0 && this.velocity.z === 0
+      && this.position.x === this.homePosition.x && this.position.y === this.homePosition.y && this.position.z === this.homePosition.z) {
 
       // Only evaluate external forces — everything else would be a no-op
       if (forces && forces.length > 0) {
         for (let i = 0; i < forces.length; i++) {
-          const f = forces[i]!.getForce(this.position);
+          const f = forces[i]!.getForce(this.position, this);
           this.velocity.x += f.x * dt;
           this.velocity.y += f.y * dt;
         }
@@ -370,6 +387,9 @@ export default class Particle {
       // Size + breathing still need to run (particle may not have reached target size yet)
       if (this.factoredSize < this.size) {
         this.factoredSize = Math.min(this.factoredSize + this.scaleStep * dt, this.size);
+      } else if (this.factoredSize > this.size) {
+        // Clamp down — factoredSize can start above target (e.g. default 1 with size < 1)
+        this.factoredSize = this.size;
       } else if (this.idleEnabled && this.homeConfig.breathingAmplitude > 0) {
         this.breathingPhase += this.homeConfig.breathingSpeed * dt;
         this.factoredSize = this.size * (1 + Math.sin(this.breathingPhase) * this.homeConfig.breathingAmplitude);
@@ -400,19 +420,21 @@ export default class Particle {
     // Inlined velocity integration
     this.velocity.x += this.acceleration.x * dt;
     this.velocity.y += this.acceleration.y * dt;
+    this.velocity.z += this.acceleration.z * dt;
     if (this.friction > 0) {
       const frictionFactor = Math.pow(1 - this.friction, dt);
       this.velocity.x *= frictionFactor;
       this.velocity.y *= frictionFactor;
+      if (this.velocity.z !== 0) this.velocity.z *= frictionFactor;
     }
     if (this.gravity !== 0) {
       this.velocity.y += this.gravity * dt;
     }
 
-    // External forces (attractors, mouse)
+    // External forces (attractors, mouse, flocking)
     if (forces && forces.length > 0) {
       for (let i = 0; i < forces.length; i++) {
-        const f = forces[i]!.getForce(this.position);
+        const f = forces[i]!.getForce(this.position, this);
         this.velocity.x += f.x * dt;
         this.velocity.y += f.y * dt;
       }
@@ -422,8 +444,9 @@ export default class Particle {
     if (this.homePosition && this.homeConfig) {
       const dx = this.homePosition.x - this.position.x;
       const dy = this.homePosition.y - this.position.y;
-      const distSq = dx * dx + dy * dy;
-      const speedSq = this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y;
+      const dz = this.homePosition.z - this.position.z;
+      const distSq = dx * dx + dy * dy + dz * dz;
+      const speedSq = this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y + this.velocity.z * this.velocity.z;
       const isSettled = !this.preventSettle && distSq < this.homeThresholdSq && speedSq < this.velocityThresholdSq;
 
       // Idle pulse timer ticks when idle is enabled (monotonic, never resets).
@@ -435,8 +458,10 @@ export default class Particle {
         // Idle: snap to home, zero velocity and rotation
         this.velocity.x = 0;
         this.velocity.y = 0;
+        this.velocity.z = 0;
         this.position.x = this.homePosition.x;
         this.position.y = this.homePosition.y;
+        this.position.z = this.homePosition.z;
         this.rotationVelocity = 0;
         this.rotation = 0;
         // Coordinated idle ripple
@@ -458,9 +483,11 @@ export default class Particle {
         const k = this.homeConfig.springStrength * this.springMultiplier;
         this.velocity.x += dx * k * dt;
         this.velocity.y += dy * k * dt;
+        if (dz !== 0) this.velocity.z += dz * k * dt;
         const dampFactor = Math.pow(this.homeConfig.springDamping, dt);
         this.velocity.x *= dampFactor;
         this.velocity.y *= dampFactor;
+        if (this.velocity.z !== 0) this.velocity.z *= dampFactor;
         if (this.homeConfig.returnNoise > 0) {
           const noise = this.homeConfig.returnNoise * dt;
           this.velocity.x += (Math.random() - 0.5) * noise;
@@ -478,7 +505,13 @@ export default class Particle {
     // Inlined position integration
     this.position.x += this.velocity.x * dt;
     this.position.y += this.velocity.y * dt;
-    this.rotation = this.rotation + this.rotationVelocity * dt;
+    if (this.velocity.z !== 0) this.position.z += this.velocity.z * dt;
+    if (this.rotateToVelocity) {
+      // Point in velocity direction (-90° because triangle tip is at negative y)
+      this.rotation = Math.atan2(this.velocity.y, this.velocity.x) * (180 / Math.PI) - 90;
+    } else {
+      this.rotation = this.rotation + this.rotationVelocity * dt;
+    }
 
     // Size: grow toward target, apply breathing if configured and idle is enabled
     const baseSize = Math.min(this.factoredSize + this.scaleStep * dt, this.size);
@@ -542,6 +575,7 @@ export default class Particle {
     if (seg) {
       seg.x = this.position.x;
       seg.y = this.position.y;
+      seg.z = this.position.z;
       seg.size = this.factoredSize;
       seg.rotation = this.rotation;
       seg.alpha = this.alpha;
@@ -551,6 +585,7 @@ export default class Particle {
       this.trailSegments.push({
         x: this.position.x,
         y: this.position.y,
+        z: this.position.z,
         size: this.factoredSize,
         rotation: this.rotation,
         alpha: this.alpha,

@@ -49,13 +49,24 @@
 
       /* River box */
       .river-box {
-        position: relative; height: 200px; margin-top: 20px;
+        position: relative; height: 240px; margin-top: 20px;
         background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px;
       }
       .river-inner {
         position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
         padding: 14px 24px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
         border-radius: 12px; color: rgba(255,255,255,0.5); font-size: 0.85rem; font-weight: 600;
+        pointer-events: none; z-index: 1; white-space: nowrap;
+      }
+
+      /* Boids box */
+      .boids-box {
+        position: relative; height: 240px; margin-top: 20px;
+        background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px;
+      }
+      .boids-inner {
+        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        color: rgba(255,255,255,0.3); font-size: 0.85rem; font-weight: 600;
         pointer-events: none; z-index: 1; white-space: nowrap;
       }
 
@@ -122,8 +133,8 @@
       <section class="showcase-hero">
         <div id="title-click-area" style="position:absolute;top:28vh;left:10%;right:10%;height:20vh;pointer-events:auto;cursor:pointer;z-index:2"></div>
         <div class="showcase-sub">
-          <p>Turn text, images, and DOM elements into interactive particles.<br/>Beautiful by default. Lightning fast. Zero config.</p>
-          <p class="hint-text">Click the title or move mouse to push particles</p>
+          <p>Beautiful by default. Lightning fast. Zero config.</p>
+          <p class="hint-text">Turn text, images, and DOM elements into interactive particles.<br/>Advanced mode: 3D support, Boids Flocking and more.</p>
         </div>
         <div class="showcase-scroll-hint">Scroll down</div>
       </section>
@@ -153,8 +164,8 @@
           <div class="demo-cell" id="demo-shatter">
             <div class="demo-label"><div class="title">Image Shatter</div><div class="desc">Hover to shatter</div></div>
           </div>
-          <div class="demo-cell" id="demo-text">
-            <div class="demo-label"><div class="title">Text Particles</div><div class="desc">Interactive mouse force</div></div>
+          <div class="demo-cell" id="demo-logo">
+            <div class="demo-label"><div class="title">Logo Particles</div><div class="desc">Interactive mouse force</div></div>
           </div>
           <div class="demo-cell" id="demo-glow">
             <div class="glow-inner" id="glow-inner">Glowing</div>
@@ -167,6 +178,10 @@
         <!-- River -->
         <div class="river-box" id="demo-river">
           <div class="river-inner" id="river-inner">Particles flow around elements</div>
+        </div>
+        <!-- Boids -->
+        <div class="boids-box" id="demo-boids">
+          <div class="boids-inner">Boids flocking — move mouse to scatter</div>
         </div>
       </section>
 
@@ -190,19 +205,19 @@
 
     <script src="../../dist/particular.global.js"></script>
     <script>
-      const { createParticles, startScreensaver, createHeartImage, canvasToDataURL, configureParticle, Emitter, Vector, presets } = window.Particular;
+      const { createParticles, startScreensaver, createHeartImage, canvasToDataURL, configureParticle, Emitter, Vector, presets, colorPalettes } = window.Particular;
 
       // ── Palettes ──────────────────────────────────────────────────────────
-      const subtleSnowColors = ['#555566', '#606070', '#6a6a7a', '#757585', '#808090'];
-      const mutedRiverColors = ['#3a4a4f', '#455558', '#4f6065', '#5a6b70', '#647578'];
+      const subtleSnowColors = colorPalettes.ash;
+      const mutedRiverColors = colorPalettes.slate;
 
       const burstPalettes = [
-        { colors: ['#b33600', '#cc4a00', '#e86100', '#f57c00', '#ff9500', '#ffad33'], glow: '#ff9500' },
-        { colors: ['#a5d8ff', '#74c0fc', '#4dabf7', '#d0bfff', '#b197fc', '#9775fa'], glow: '#74c0fc' },
-        { colors: ['#006b3f', '#00a85e', '#1edd80', '#4deda0', '#96f2c8', '#c3fae8'], glow: '#1edd80' },
-        { colors: ['#ff4757', '#ff6b81', '#ff8fa3', '#ffa8b8', '#ffc9d3', '#ffe0e6'], glow: '#ff6b81' },
-        { colors: ['#ffd699', '#ffcc66', '#ffad33', '#ff9500', '#f57c00', '#e86100'], glow: '#ffcc66' },
-        { colors: ['#d0bfff', '#b197fc', '#9775fa', '#845ef7', '#7048e8', '#5f3dc4'], glow: '#9775fa' },
+        { colors: colorPalettes.orange, glow: '#ff9500' },
+        { colors: colorPalettes.magic, glow: '#74c0fc' },
+        { colors: colorPalettes.emerald, glow: '#1edd80' },
+        { colors: colorPalettes.rose, glow: '#ff6b81' },
+        { colors: colorPalettes.gold, glow: '#ffcc66' },
+        { colors: colorPalettes.violet, glow: '#9775fa' },
       ];
 
       // ── Populate features grid ────────────────────────────────────────────
@@ -257,8 +272,8 @@
         container,
         preset: 'snow',
         config: {
-          rate: 0.6,
-          maxCount: 800,
+          rate: 0.4,
+          maxCount: 500,
           particleLife: 1200,
           colors: subtleSnowColors,
           glow: false,
@@ -279,7 +294,7 @@
         fadeTime: 20,
         velocity: 0.8,
         spread: 0.5,
-        colors: ['#a5d8ff', '#74c0fc', '#d0bfff', '#b197fc', '#99e9f2', '#c3fae8'],
+        colors: colorPalettes.fairy,
         glow: true,
         glowSize: 6,
         glowAlpha: 0.25,
@@ -309,6 +324,7 @@
         x: container.clientWidth / 2,
         y: window.innerHeight * 0.38,
         width: Math.min(container.clientWidth * 0.75, 800),
+        resolution: 400,
         intro: { mode: 'scatter', duration: 1200 },
       });
 
@@ -322,8 +338,19 @@
         const ctrl = createParticles({
           container: el,
           preset: 'magic',
-          config: { maxCount: 200, zIndex: 1, sizeMin: 2, sizeMax: 7 },
-          renderer: 'webgl',
+          config: {
+            maxCount: 200,
+            zIndex: 1,
+            sizeMin: 2,
+            sizeMax: 7,
+            spawnDepth: 100,
+            camera: {
+              fov: 50,
+              position: { x: 0, y: 0, z: 300 },
+              target: { x: 0, y: 0, z: 0 },
+            },
+          },
+          renderer: 'webgl3d',
           autoResize: true,
         });
 
@@ -402,19 +429,20 @@
         el.addEventListener('mouseleave', () => ctrl.stopWobble());
       })();
 
-      // ── Demo: Text Particles ──────────────────────────────────────────────
-      (function initTextDemo() {
-        const el = document.getElementById('demo-text');
+      // ── Demo: Logo Particles ─────────────────────────────────────────────
+      (function initLogoDemo() {
+        const el = document.getElementById('demo-logo');
+        const woltSvgDataUrl = 'data:image/svg+xml,' + encodeURIComponent('<svg viewBox="0 0 62 23" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M35.477 13.771c-1.09-.807-1.56-2.266-1.174-4.558.013-.073.044-.201.085-.358a2.07 2.07 0 00-.773-.13c-2.571 0-4.003 4.347-4.003 8.386 0 2.106.82 3.167 2.046 3.167 1.7 0 3.262-2.96 3.82-6.507zm21.197-4.074s-1.229 5.928-1.229 8.12c0 1.524.708 2.046 1.582 2.046 1.105 0 2.12-.7 3.065-2.437.217-.399 1.011-.15 1.427.331.182.21-.027.632-.313 1.116-1.433 2.423-3.456 3.762-5.559 3.762-2.29 0-3.699-1.071-4.051-3.78-1.314 2.073-3.417 3.78-5.827 3.78-2.93 0-4.176-1.627-4.176-4.545 0-1.925.646-5.203.646-5.203-.858.775-1.853 1.336-2.998 1.57-1.126 5.292-4.14 8.178-8.188 8.178-3.43 0-5.785-1.808-5.785-6.144 0-5.352 3.397-10.12 8.727-10.12 3.035 0 5.238 1.633 5.432 5.435 1.248-.211 2.401-1.068 3.405-2.29a166.805 166.805 0 011.492-7.994c.082-.384.222-1.105.904-1.318.764-.24 1.855-.282 3.002-.053.636.127.798.723.798 1.256 0 1.416-.67 4.541-1.833 7.352-.824 3.132-1.39 6.258-1.39 8.73 0 1.786.59 2.374 1.577 2.374 1.612 0 3.485-2.246 4.386-5.29.14-1.463.51-3.818.695-4.695-.998.048-1.637.077-1.637.077-.52.019-1.023-.2-.998-.666a9.295 9.295 0 01.221-1.619c.103-.415.34-.673.842-.682.538-.01 1.313-.003 2.11.016.27-1.544.495-2.75.712-3.751.087-.401.461-.632.846-.675.46-.052 1.833-.042 2.43.103.603.147.855.62.75 1.1-.213.977-.648 3.373-.648 3.373 2.15.096 4.018.194 4.018.194.644.03.975.393.872.962-.173.955-.882 1.262-1.883 1.285-1.142.026-2.343.063-3.424.102zm-30.9-7.643c0 6.672-3.566 20.538-9.093 20.538-4.17 0-5.007-4.678-5.222-10.638-2.09 4.574-3.196 6.949-4.577 9.327-.652 1.122-1.436 1.354-2.292 1.354-.754 0-2.699-.253-3.152-.535-.453-.282-.702-.536-.924-1.614-1.027-4.984-.363-11.43.658-16.57.178-.898.408-1.332 1.026-1.738.66-.434 2.121-.464 3.073-.481.506-.009.8.356.672.974-.92 4.487-1.998 10.635-1.158 16.973 0 0 3.181-6.323 6.478-14.195.662-1.58.81-2.1 1.44-2.24.823-.183 1.417-.183 2.247-.082.548.067.823.21.802.97-.058 2.052-.195 4.373-.195 6.783 0 4.079.436 8.663 2.002 8.663 2.103 0 3.95-9.809 3.297-18.237-.045-.582.165-1.174.785-1.238.31-.032.94-.068 1.648-.068 1.615 0 2.486.289 2.486 2.054z" fill="#ffffff"/></svg>');
         const ctrl = createParticles({
           container: el,
           preset: 'imageText',
-          config: { maxCount: 2000, continuous: true, zIndex: 1 },
+          config: { maxCount: 5000, continuous: true, zIndex: 1 },
           renderer: 'webgl',
           autoResize: true,
         });
-        ctrl.textToParticles('Hello', {
-          height: el.clientHeight * 0.45,
-          resolution: 100,
+        ctrl.imageToParticles({
+          image: woltSvgDataUrl,
+          resolution: 200,
           shape: 'circle',
         });
         ctrl.addMouseForce({ track: true, strength: 2, radius: 50 });
@@ -467,14 +495,12 @@
         const ctrl = createParticles({
           container: el,
           preset: 'river',
-          config: { maxCount: 200, continuous: true, zIndex: 1 },
+          config: { maxCount: 200, continuous: true, autoStart: false, zIndex: 1 },
           renderer: 'webgl',
           autoResize: true,
         });
 
         const pr = ctrl.engine.pixelRatio;
-        const w = el.clientWidth / pr;
-        const h = el.clientHeight / pr;
 
         const riverConfig = configureParticle({
           ...presets.Ambient.river,
@@ -493,6 +519,10 @@
           trailShrink: 0.45,
           colors: mutedRiverColors,
         });
+
+        const w = el.clientWidth / pr;
+        const h = el.clientHeight / pr;
+
         const emitter = new Emitter({
           point: new Vector(0, h / 2),
           ...riverConfig,
@@ -505,18 +535,57 @@
         emitter.emit();
 
         // S-curve attractors
-        const curve = [
-          { x: 0.20, y: h * 0.35 },
-          { x: 0.45, y: h * 0.65 },
-          { x: 0.70, y: h * 0.35 },
-          { x: 0.90, y: h * 0.55 },
+        const curveFracs = [
+          { x: 0.20, y: 0.35 },
+          { x: 0.45, y: 0.65 },
+          { x: 0.70, y: 0.35 },
+          { x: 0.90, y: 0.55 },
         ];
-        for (const pt of curve) {
-          ctrl.addAttractor({ x: w * pt.x, y: pt.y, strength: 0.15, radius: w * 0.3 });
-        }
+        const attractors = curveFracs.map(function(pt) {
+          return ctrl.addAttractor({ x: w * pt.x, y: h * pt.y, strength: 0.15, radius: w * 0.3 });
+        });
+
+        // Reposition emitter + attractors on container resize
+        new ResizeObserver(function() {
+          const nw = el.clientWidth / pr;
+          const nh = el.clientHeight / pr;
+          emitter.configuration.point.y = nh / 2;
+          emitter.configuration.spawnHeight = nh * 0.6;
+          for (let i = 0; i < attractors.length; i++) {
+            const frac = curveFracs[i];
+            attractors[i].position.x = nw * frac.x;
+            attractors[i].position.y = nh * frac.y;
+            attractors[i].radius = nw * 0.3;
+          }
+        }).observe(el);
 
         ctrl.addBoundary({ element: inner, strength: -2, radius: 15 });
         ctrl.addMouseForce({ track: true, strength: 1.5, radius: 60 });
+      })();
+
+      // ── Demo: Boids ────────────────────────────────────────────────────────
+      (function initBoidsDemo() {
+        const el = document.getElementById('demo-boids');
+
+        const ctrl = createParticles({
+          container: el,
+          preset: 'flock',
+          config: {
+            maxCount: 80,
+            zIndex: 1,
+            sizeMin: 1.5,
+            sizeMax: 3,
+            velocity: Vector.fromAngle(0, 1),
+            velocityMultiplier: 1.5,
+            glowSize: 6,
+            trailLength: 6,
+          },
+          renderer: 'webgl',
+          autoResize: true,
+          mouseForce: { strength: -2, radius: 80 },
+        });
+
+        ctrl.addFlockingForce({ maxSpeed: 2, neighborRadius: 60, separationDistance: 15 });
       })();
 
       // ── CTA glow ──────────────────────────────────────────────────────────
@@ -531,7 +600,7 @@
         });
         ctrl.addContainerGlow({
           element: badge,
-          colors: ['#ffad33', '#ff9500', '#f57c00', '#e86100', '#ffcc66', '#ffd699'],
+          colors: colorPalettes.amber,
           rate: 0.6,
           sizeMin: 0.5,
           sizeMax: 2,
@@ -572,16 +641,33 @@
         });
       })();
 
-      // ── Fireworks on scroll to bottom ─────────────────────────────────────
+      // ── Fireworks on scroll to bottom (3D) ──────────────────────────────
       (function initFireworks() {
         const fwController = createParticles({
           canvas: fireworksCanvas,
-          container,
-          preset: 'fireworksShow',
-          config: { maxCount: 2000, continuous: false },
-          renderer: 'webgl',
+          preset: 'fireworks3d',
+          config: {
+            maxCount: 2000,
+            continuous: false,
+            autoStart: false,
+            camera: {
+              fov: 60,
+              position: { x: 0, y: -200, z: 600 },
+              target: { x: 0, y: 100, z: 0 },
+            },
+          },
+          renderer: 'webgl3d',
           autoResize: true,
         });
+
+        // Restore absolute positioning — createParticles sets position:fixed for non-container canvases
+        fireworksCanvas.style.position = 'absolute';
+        fireworksCanvas.style.inset = 'auto';
+        fireworksCanvas.style.bottom = '0';
+        fireworksCanvas.style.left = '0';
+        fireworksCanvas.style.width = '100%';
+        fireworksCanvas.style.height = '100vh';
+        fireworksCanvas.style.zIndex = '0';
 
         let firedFireworks = false;
 
@@ -593,31 +679,32 @@
           if (scrollBottom >= totalHeight - 150) {
             firedFireworks = true;
             const pr = fwController.engine.pixelRatio;
-            const w = container.clientWidth / pr;
-            const h = container.clientHeight / pr;
+            const w = window.innerWidth / pr;
+            const h = window.innerHeight / pr;
 
             const fwConfig = configureParticle({
-              ...presets.Ambient.fireworksShow,
+              ...presets.Burst3D.fireworks3d,
               rate: 1,
-              life: 3,
+              life: 5,
             });
 
-            const wave1 = [0.15, 0.35, 0.55, 0.75, 0.9];
-            const wave2 = [0.25, 0.45, 0.65, 0.85];
+            const wave1 = [0.3, 0.42, 0.5, 0.58, 0.7];
+            const wave2 = [0.35, 0.45, 0.55, 0.65];
+            const wave3 = [0.38, 0.5, 0.62];
 
             wave1.forEach((xFrac, i) => {
               setTimeout(() => {
                 const emitter = new Emitter({
                   point: new Vector(w * xFrac, h),
                   ...fwConfig,
-                  spawnWidth: w * 0.06,
+                  spawnWidth: w * 0.08,
                   spawnHeight: 0,
                   icons: [],
                 });
                 fwController.engine.addEmitter(emitter);
                 emitter.isEmitting = true;
                 emitter.emit();
-              }, i * 400);
+              }, i * 300);
             });
 
             wave2.forEach((xFrac, i) => {
@@ -625,14 +712,29 @@
                 const emitter = new Emitter({
                   point: new Vector(w * xFrac, h),
                   ...fwConfig,
-                  spawnWidth: w * 0.06,
+                  spawnWidth: w * 0.08,
                   spawnHeight: 0,
                   icons: [],
                 });
                 fwController.engine.addEmitter(emitter);
                 emitter.isEmitting = true;
                 emitter.emit();
-              }, 2200 + i * 500);
+              }, 1800 + i * 350);
+            });
+
+            wave3.forEach((xFrac, i) => {
+              setTimeout(() => {
+                const emitter = new Emitter({
+                  point: new Vector(w * xFrac, h),
+                  ...fwConfig,
+                  spawnWidth: w * 0.08,
+                  spawnHeight: 0,
+                  icons: [],
+                });
+                fwController.engine.addEmitter(emitter);
+                emitter.isEmitting = true;
+                emitter.emit();
+              }, 3400 + i * 400);
             });
 
             setTimeout(() => { firedFireworks = false; }, 10000);

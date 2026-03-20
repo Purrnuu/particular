@@ -5,6 +5,9 @@ import { defaultMouseForce } from '../core/defaults';
 // Reusable force vector — safe because getForce result is consumed immediately by velocity.add()
 const _tempForce = new Vector(0, 0);
 
+/** Projects a 3D particle position to 2D engine coords (screen space). */
+export type ScreenProjection = (px: number, py: number, pz: number) => { x: number; y: number } | null;
+
 export default class MouseForce implements ForceSource {
   position: Vector;
   velocity: Vector;
@@ -13,6 +16,9 @@ export default class MouseForce implements ForceSource {
   damping: number;
   maxSpeed: number;
   falloff: number;
+  /** When set, particle positions are projected to screen space before computing distance.
+   *  Used by the 3D renderer so the mouse affects particles based on visual proximity. */
+  projectToScreen: ScreenProjection | null = null;
 
   private _trackListener: ((e: MouseEvent) => void) | null = null;
   private _touchListener: ((e: TouchEvent) => void) | null = null;
@@ -133,8 +139,23 @@ export default class MouseForce implements ForceSource {
   }
 
   getForce(particlePosition: Vector): Vector {
-    const dx = particlePosition.x - this.position.x;
-    const dy = particlePosition.y - this.position.y;
+    let px = particlePosition.x;
+    let py = particlePosition.y;
+
+    // In 3D mode, project particle to screen space so distance is visual, not spatial
+    if (this.projectToScreen && particlePosition.z !== 0) {
+      const projected = this.projectToScreen(particlePosition.x, particlePosition.y, particlePosition.z);
+      if (!projected) {
+        _tempForce.x = 0;
+        _tempForce.y = 0;
+        return _tempForce;
+      }
+      px = projected.x;
+      py = projected.y;
+    }
+
+    const dx = px - this.position.x;
+    const dy = py - this.position.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
     if (dist === 0 || dist > this.radius) {

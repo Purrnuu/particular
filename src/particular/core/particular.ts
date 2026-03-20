@@ -5,6 +5,7 @@ import { setParticlePoolSize } from '../components/particle';
 import type Emitter from '../components/emitter';
 import type Attractor from '../components/attractor';
 import type MouseForce from '../components/mouseForce';
+import type FlockingForce from '../components/flockingForce';
 import type { ParticularConfig, ForceSource } from '../types';
 
 interface Renderer {
@@ -21,11 +22,14 @@ export default class Particular implements IEventDispatcher {
   emitters: Emitter[] = [];
   attractors: Attractor[] = [];
   mouseForces: MouseForce[] = [];
+  flockingForces: FlockingForce[] = [];
   renderers: Renderer[] = [];
   maxCount: number = defaultParticular.maxCount;
   width = 0;
   height = 0;
   pixelRatio = 2;
+  /** Multiplier for kill-zone bounds. 3D renderers set this higher so perspective-visible particles aren't culled prematurely. */
+  boundsPadding = 1;
   continuous = false;
   container: HTMLElement | null = null;
   private animateRequest: number | null = null;
@@ -59,7 +63,11 @@ export default class Particular implements IEventDispatcher {
   }
 
   stop(): void {
-    this.isOn = false;
+    if (this.isOn) {
+      this.isOn = false;
+      // Fire one final render so particles that just settled are drawn at their snapped home positions.
+      this.dispatchEvent(Particular.UPDATE_AFTER);
+    }
   }
 
   onResize(): void {
@@ -112,6 +120,17 @@ export default class Particular implements IEventDispatcher {
     }
   }
 
+  addFlockingForce(flockingForce: FlockingForce): void {
+    this.flockingForces.push(flockingForce);
+  }
+
+  removeFlockingForce(flockingForce: FlockingForce): void {
+    const index = this.flockingForces.indexOf(flockingForce);
+    if (index !== -1) {
+      this.flockingForces.splice(index, 1);
+    }
+  }
+
   update = (timestamp?: DOMHighResTimeStamp): void => {
     this.animateRequest = window.requestAnimationFrame(this.update);
     if (this.isOn) {
@@ -144,20 +163,37 @@ export default class Particular implements IEventDispatcher {
       mf.decay(dt);
     }
 
+    // Pre-compute flocking forces (requires all particles for neighbor queries)
+    if (this.flockingForces.length > 0) {
+      const allParticles = this.getAllParticles();
+      for (const ff of this.flockingForces) {
+        ff.boundsWidth = this.width / this.pixelRatio;
+        ff.boundsHeight = this.height / this.pixelRatio;
+        ff.preCompute(allParticles, dt);
+      }
+    }
+
     // Reuse cached array for combined forces to avoid per-frame allocation
     let forces: ForceSource[];
-    if (this.mouseForces.length > 0) {
+    const hasExtra = this.mouseForces.length > 0 || this.flockingForces.length > 0;
+    if (hasExtra) {
       const combined = this._combinedForces;
       combined.length = 0;
       for (const a of this.attractors) combined.push(a);
       for (const mf of this.mouseForces) combined.push(mf);
+      for (const ff of this.flockingForces) combined.push(ff);
       forces = combined;
     } else {
       forces = this.attractors;
     }
 
+    const margin = this.boundsPadding - 1;
+    const bx = this.width * (1 + margin);
+    const by = this.height * (1 + margin);
+    const mx = this.width * margin;
+    const my = this.height * margin;
     for (const emitter of this.emitters) {
-      emitter.update(this.width, this.height, forces, dt);
+      emitter.update(bx, by, mx, my, forces, dt);
     }
 
     // Compact in-place instead of filter() to avoid array allocation
@@ -204,6 +240,7 @@ export default class Particular implements IEventDispatcher {
     destroy(this.renderers);
     destroy(this.emitters);
     this.attractors = [];
+    this.flockingForces = [];
     destroy(this.mouseForces);
   }
 }

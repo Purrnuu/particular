@@ -14,7 +14,7 @@ Types in `src/particular/types.ts`:
 
 Config merge chain: `configureParticular({ ...preset, ...userConfig })` — user config always wins over preset.
 
-Defaults in `src/particular/core/defaults.ts`: `defaultParticular`, `defaultParticle`, `defaultMouseForce` (base physics), `defaultMouseWind` (screensaver wind overrides), `defaultContainerGlow` (glow particle halo), `defaultMouseTrail` (cursor trail wisps), `defaultImageShatter` (glass-break explosion), `defaultWobble` (per-frame velocity/rotation nudges + mouse-reactive tracking config). `MouseForce` constructor merges config with `defaultMouseForce`.
+Defaults in `src/particular/core/defaults.ts`: `defaultParticular`, `defaultParticle`, `defaultMouseForce` (base physics), `defaultMouseWind` (screensaver wind overrides), `defaultFlockingForce` (boids flocking weights and radii), `defaultContainerGlow` (glow particle halo), `defaultMouseTrail` (cursor trail wisps), `defaultImageShatter` (glass-break explosion), `defaultWobble` (per-frame velocity/rotation nudges + mouse-reactive tracking config). `MouseForce` constructor merges config with `defaultMouseForce`. `FlockingForce` constructor merges config with `defaultFlockingForce`.
 
 Key fields with non-obvious behavior:
 
@@ -66,9 +66,86 @@ Design: WebGL2 only, instanced drawing, separate circle and image shader program
 Key features: blend modes (normal/additive/multiply/screen), image support with optional tint, glow with size-scaled width and smoothed edge falloff, shadow pass (directional vector from burst origin, blur/offset retract with eased alpha during fade).
 
 Implementation notes:
-- Circle rendering uses a larger quad than image rendering to accommodate glow outside core radius.
+- Glow rendering: quads are expanded in the vertex shader via `u_glowExpand` uniform (UV-space expansion: `expand = 1.0 + u_glowExpand`). The SDF shape stays at original size while the quad grows to accommodate glow overflow. Glow falloff uses `smoothstep(-0.2, glowRange, sd)` — starting at -0.2 bleeds glow slightly inside the shape edge for visibility on dark backgrounds.
 - Shadow drawn as separate pass before main pass.
 - Particle alpha clamped to `[0, 1]` in `Particle.update()`.
+
+## WebGL 3D Renderer
+
+File: `src/particular/renderers/webgl3dRenderer.ts`
+
+Design: WebGL2 only, instanced drawing, perspective projection via Camera, billboarded quads, back-to-front depth sorting for non-additive blending.
+
+### Camera & Coordinate System
+
+File: `src/particular/renderers/camera.ts`, `src/particular/utils/mat4.ts`
+
+- `Camera` class holds `CameraConfig` (fov, position, target, up, near, far) and computes a `viewProjection` matrix via `update(aspect)`.
+- Default camera: fov 60, position `(0, 0, 500)`, target `(0, 0, 0)`, near 1, far 5000.
+- `mat4.ts` provides column-major Float32Array operations: `identity()`, `perspective(fov, aspect, near, far)`, `lookAt(eye, center, up)`, `multiply(a, b)`. Zero dependencies.
+- `Camera.orbit(azimuth, elevation, distance)` recomputes camera position on a sphere around the target, then calls `update()`.
+- `Camera.enableOrbitControls(canvas)` wires mouse-drag orbit + scroll zoom. Returns a cleanup function. Pointer events: mousedown/mousemove/mouseup for rotation, wheel for zoom (clamped to `[near+10, far-100]`).
+
+### Reference-Based Coordinate Mapping (Resize Stability)
+
+The 3D vertex shader maps engine coords to world coords using a center point and worldScale. If these were recomputed from the current viewport every frame, resizing the browser would shift the center and rescale all particle positions, causing visible teleportation.
+
+**Solution**: On the first valid render frame, the renderer captures `_refCenterX`, `_refCenterY`, and `_refWorldScale`. These reference values are used for the engine-to-world coordinate transform (`u_referenceCenter`, `u_worldScale` uniforms) for the lifetime of the renderer. Camera projection still uses the current aspect ratio (via `u_resolution`), so the frustum widens/narrows naturally on resize.
+
+- `u_referenceCenter` (vec2): Fixed viewport center in logical coords, captured once. Used in vertex shaders for position mapping.
+- `u_worldScale` (float): Fixed world scale, captured once. Used in vertex shaders and `sortBackToFront()`.
+- `u_resolution` (vec2): **Current** viewport size. Still used for `sizeNDC` (particle screen-pixel size) and aspect ratio correction.
+- `projectToScreen` in `convenience/index.ts` reads `referenceCenterX`, `referenceCenterY`, `referenceWorldScale` getters from the renderer to stay in sync.
+- AutoStart emitter repositioning on resize is only done for 2D mode. In 3D, the reference mapping keeps the initial center at world origin, so no repositioning is needed.
+
+### Billboarding
+
+Particles are rendered as screen-aligned quads regardless of camera orientation:
+1. Project particle center (`x, y, z`) through `u_viewProjection` to get clip-space position.
+2. Offset quad vertices in clip space using rotated 2D offsets scaled by `size / u_resolution`, with aspect ratio correction on the x-axis.
+3. This ensures all existing 2D shapes (circle, star, sparkle, triangle via SDF) work in 3D with zero per-shape changes.
+
+### Instance Data
+
+Instance stride = 10 floats: `(x, y, z, size, rotation, r, g, b, a, shapeId)`. Compared to 2D renderer's 9 floats (no z). Vertex shader reads z and uses it for projection.
+
+### Depth Sorting
+
+- **Additive blending**: Order-independent — no sorting needed.
+- **Non-additive blending**: Back-to-front CPU sort via `sortBackToFront()`. Computes view-space depth for each particle using the viewProjection matrix, sorts descending. Runs per batch, ~1ms for 10K particles.
+- `gl.DEPTH_TEST` is enabled. Depth writes (`gl.depthMask`) are disabled for all main render passes to prevent semi-transparent fragments (glow/SDF edges) from blocking particles behind them. Back-to-front sorting handles correct visual order.
+
+### Shared Code
+
+`webglShared.ts` provides shared utilities used by both 2D and 3D renderers: `compileShader()`, `linkProgram()`, `hexToRgba()`, `shapeToId()`, `setBlendMode()`, `SDF_SHAPE_FUNCTIONS` (fragment shader SDF shapes), `DrawBatch` type.
+
+### 3D Emission
+
+- `spawnDepth` (default 0): Randomizes particle spawn z within `[-spawnDepth/2, +spawnDepth/2]` centered on emitter point.
+- `spread3d` (default 0): When > 0, emission uses `Vector.fromSpherical(azimuth, elevation, magnitude)` for spherical cone emission instead of 2D angle+spread. The value is the **full cone angle**: `spread3d = PI` → half-angle PI/2 → full sphere. Values >= PI all clamp to full sphere. Uses `asin`-based sampling for uniform area distribution on the sphere surface (no polar bunching). For narrow cones (e.g. `PI/8`), the elevation range is proportionally smaller.
+- `emitDirection` (default `{x:0, y:-1, z:0}`): Base direction for spherical emission. Azimuth is derived from the 2D angle of this vector.
+- `spread3d` on `ChildExplosionConfig` / `DetonateConfig`: When > 0, detonation children emit in a spherical burst (via `Vector.fromSpherical`) instead of a 2D ring. Full sphere = PI. Default 0. Parent z-position is passed to child particles.
+
+### 3D Auto-Start
+
+`createParticles()` auto-creates a center emitter when `mergedConfig.autoStart` is true. `startScreensaver()` sets `autoStart: false` to avoid double-emission (it creates its own emitter). Stories that use ambient presets (river, fireworksShow) with manual emitters should also pass `autoStart: false`.
+
+### 3D Mouse Force
+
+When using `mouseForce` with the `webgl3d` renderer, `createParticles()` wires a `projectToScreen` function on the `MouseForce` instance. This projects particle 3D positions through the camera's `viewProjection` matrix to screen space, so the mouse force affects particles based on visual proximity (screen distance) rather than engine-coordinate distance. Without this, particles at different z-depths would be pushed inconsistently.
+
+### Auto-Orbit
+
+`enableAutoOrbit(speed?)` hooks into the engine's `UPDATE` event. Each frame it reads the camera's current azimuth/elevation (from `camera.position`) and advances the azimuth by `speed * dt`. This composes with orbit controls — user drag updates `camera.position`, and auto-orbit reads that position next frame instead of fighting it.
+
+### 3D Presets
+
+- `galaxySpin` — full spherical emission (spread3d = 2PI), continuous orbit, gravity 0, long-lived particles with trails, additive blending
+- `depthField` — z-spread parallax field, continuous gentle emission, no gravity
+- `supernova` — full spherical burst (spread3d = PI), high velocity, additive glow, dramatic detonation
+- `fireworks3d` — rockets launch upward with slight 3D spread, detonate at 65% lifetime into spherical sparkle sub-bursts (spread3d = PI on children), additive glow, continuous emission
+
+Registered in `presetRegistry` as `'galaxySpin'`, `'depthField'`, `'supernova'`, `'fireworks3d'`.
 
 ## Particle/Emitter Details
 
@@ -132,9 +209,43 @@ The `MouseForceConfig.track` field wires self-tracking through the convenience l
 
 `controller.addMouseForce({ track: true, strength: 1, ... })` replaces the old pattern of adding a force + wiring a `mousemove` listener + dividing by `pixelRatio` manually.
 
+## FlockingForce (Boids)
+
+File: `src/particular/components/flockingForce.ts`
+
+Craig Reynolds' Boids flocking — three steering rules applied as a ForceSource:
+
+- **Separation**: Push away from neighbors within `separationDistance` (default 25). Force = sum of normalized (self - neighbor) vectors.
+- **Alignment**: Steer toward average neighbor velocity. Force = `(avgVelocity - selfVelocity) * alignmentWeight`.
+- **Cohesion**: Steer toward average neighbor position. Force = `(avgPosition - selfPosition) * 0.01 * cohesionWeight`.
+
+### Architecture
+
+Uses `preCompute(particles, dt)` hook — called once per frame in `Particular.updateEmitters()` before particle updates. Pre-computes per-particle forces via spatial hash and stores in `WeakMap<Particle, {x,y,z}>`. `getForce(position, particle)` returns the pre-computed force via WeakMap lookup. Returns zero when `particle` param is omitted (backward compat).
+
+### Spatial Hash Grid
+
+2D grid (9-cell neighbor query) with Szudzik pairing. Cell arrays are pooled to avoid GC. Distance checks include z when any particle has `z !== 0` (detected once per `preCompute`). For pure 2D scenes, z-overhead is zero. Cell size = `neighborRadius`.
+
+### Config
+
+`FlockingForceConfig`: `neighborRadius` (100), `separationWeight` (1.5), `alignmentWeight` (1.5), `cohesionWeight` (0.3), `maxSteeringForce` (0.5), `maxSpeed` (4), `separationDistance` (25). Defaults in `defaultFlockingForce`.
+
+### Edge Avoidance
+
+When `boundsWidth` and `boundsHeight` are set (engine sets these automatically from viewport/pixelRatio), particles within `neighborRadius` of screen edges receive a soft linear repulsion force. This keeps the flock on screen without hard boundaries.
+
+### Force Smoothing
+
+Per-particle forces are exponentially smoothed (2% blend per frame) to prevent jittery movement. Stored forces blend with new: `entry.x += (fx - entry.x) * 0.02`. This creates graceful arcing motion instead of sudden direction changes.
+
+### Speed Clamping
+
+After computing the steering force, `getForce` checks if applying the force would exceed `maxSpeed`. If so, it adjusts the force to bring velocity to `maxSpeed` in the desired direction. This prevents runaway acceleration.
+
 ## ForceSource Interface
 
-Both `Attractor` and `MouseForce` implement `ForceSource { getForce(position: Vector): Vector }`. Engine merges `[...attractors, ...mouseForces]` each frame, passed to `Particle.update(forces)`.
+`Attractor`, `MouseForce`, and `FlockingForce` implement `ForceSource { getForce(position: Vector, particle?: Particle): Vector; preCompute?(particles, dt): void }`. Engine merges `[...attractors, ...mouseForces, ...flockingForces]` each frame, passed to `Particle.update(forces)`. The optional `particle` param is used by FlockingForce for identity-based WeakMap lookup. The optional `preCompute` hook is called once per frame before particle updates for forces that need neighbor access.
 
 ### Interaction Model Guideline
 
@@ -148,7 +259,14 @@ Engine-level components that need DOM event wiring (e.g. mouse tracking, touch i
 
 Chain: `ParticleConfig.colors?` → `Emitter` constructor (generates palette if empty) → `EmitterConfiguration.colors` → `Particle` constructor.
 
-Built-in palettes: snow (white-offwhite), grayscale, coolBlue (cool blue range), muted (desaturated warm/cool), blue (bold saturated blue), orange (bold saturated orange), green (bold saturated green), meteor (white-hot to deep red), finland, usa.
+Built-in palettes (all in `presets.ts`, exported via `colorPalettes` map and `presets.Colors`):
+- **Naturals**: snow (white-offwhite), grayscale, ash (dark grey), slate (dark blue-grey)
+- **Blues**: coolBlue, blue, magic (blue-purple sparkle, used by magic preset and defaults), nebula (blue-purple-pink, used by galaxySpin), fairy (pastel blue-purple-teal-mint)
+- **Warms**: orange, amber (warm orange-gold glow), gold (yellow-orange), solar (hot reds/whites, used by supernova), meteor (white-hot to deep red)
+- **Accents**: green, emerald (green to pastel mint), rose (hot-to-pastel pink), violet (deep purple), muted (desaturated warm/cool)
+- **Multi**: fireworks (vivid multicolor), water (cyan-white)
+- **Themed**: birds (earthy brown-grey), sunset (warm orange-red-purple, used by flock preset)
+- **Flags**: finland, usa
 
 The `colorPalettes` export from `presets.ts` provides a `Record<string, string[]>` lookup of all named palettes, used by Storybook's `colorPalette` select control.
 
@@ -165,6 +283,7 @@ Curated and intentionally limited. Polish over quantity.
 - `presets.Ambient.snow` — gentle snowfall (continuous, low rate, long life, gravityJitter 0.5 for natural drift)
 - `presets.Ambient.meteors` — bright diagonal streaks with glowing trails, accelerating as they fall, gravityJitter 0.3
 - `presets.Ambient.fireworksShow` — continuous fireworks screensaver: triangle rockets launch from bottom, auto-detonate into trailing triangle bursts (vivid palette), gravityJitter 0.15
+- `presets.Ambient.flock` — boids swarm: triangles with rotateToVelocity, additive blending, glow (ethereal white-peach), trails, zero gravity, continuous emission, sunset palette. Use with `addFlockingForce()` for self-organizing behavior. Edge avoidance keeps particles on screen.
 - `presets.Ambient.river` — horizontal water stream with cyan glow and short trails, designed for use with attractors (water palette)
 - `presets.Images.showcase` — tuned for icon/image particles
 - `presets.ImageParticles.text` — high-fidelity text as tiny square particles
@@ -572,4 +691,4 @@ Per-frame allocations eliminated via index-based pools and array reuse:
 
 ## Stable Public API
 
-From `src/index.ts`: `Particular`, `Emitter`, `Particle`, `Attractor`, `MouseForce`, `CanvasRenderer`, `WebGLRenderer`, `ParticularWrapper`, `useParticles`, `useScreensaver`, `createParticles`, `startScreensaver`, `presets`, `applyCanvasStyles`, and all public types (including `ImageShatterConfig`). Avoid breaking these exports.
+From `src/index.ts`: `Particular`, `Emitter`, `Particle`, `Attractor`, `MouseForce`, `FlockingForce`, `CanvasRenderer`, `WebGLRenderer`, `WebGL3DRenderer`, `Camera`, `ParticularWrapper`, `useParticles`, `useScreensaver`, `createParticles`, `startScreensaver`, `presets`, `applyCanvasStyles`, and all public types (including `FlockingForceConfig`, `ImageShatterConfig`, `CameraConfig`, `WebGL3DRendererOptions`, `defaultCamera`, `defaultFlockingForce`). Avoid breaking these exports.

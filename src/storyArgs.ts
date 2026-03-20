@@ -9,6 +9,7 @@
  *   Emission:       particleLife, fadeTime, maxCount
  *   Size & Physics: sizeMin, sizeMax, gravity, acceleration, accelerationSize, friction, frictionSize
  *   Glow:           glow, glowSize, glowColor, glowAlpha
+ *   Rotation:       rotateToVelocity
  *   Trail:          trail, trailLength, trailFade, trailShrink
  *   Shadow:         shadow, shadowBlur, shadowOffsetX, shadowOffsetY, shadowColor, shadowAlpha
  *
@@ -62,6 +63,7 @@ export interface ParticleStoryArgs {
   accelerationSize: number;
   friction: number;
   frictionSize: number;
+  rotateToVelocity: boolean;
   particleLife: number;
   fadeTime: number;
   maxCount: number;
@@ -72,7 +74,7 @@ export const particleArgTypes: Record<string, InputType> = {
   // — Rendering —
   colorPalette: {
     control: 'select',
-    options: ['random', 'snow', 'grayscale', 'coolBlue', 'muted', 'blue', 'orange', 'green', 'finland', 'usa'],
+    options: ['random', 'snow', 'grayscale', 'coolBlue', 'muted', 'blue', 'orange', 'green', 'birds', 'finland', 'usa'],
     description: 'Color palette (random = generated harmonious palette)',
     table: { category: 'Rendering' },
   },
@@ -100,6 +102,8 @@ export const particleArgTypes: Record<string, InputType> = {
   accelerationSize: { control: { type: 'number', min: 0, max: 0.1, step: 0.001 }, description: 'Size-coupled downward acceleration (× particle size)', table: { category: 'Size & Physics' } },
   friction: { control: { type: 'number', min: 0, max: 1, step: 0.01 }, description: 'Direct air resistance (size-independent)', table: { category: 'Size & Physics' } },
   frictionSize: { control: { type: 'number', min: 0, max: 0.01, step: 0.0001 }, description: 'Size-coupled air resistance (× particle size)', table: { category: 'Size & Physics' } },
+  // — Rotation —
+  rotateToVelocity: { control: 'boolean', description: 'Rotate particle to face velocity direction', table: { category: 'Size & Physics' } },
   // — Glow —
   glow: { control: 'boolean', description: 'Enable glow effect', table: { category: 'Glow' } },
   glowSize: { control: { type: 'number', min: 8, max: 30 }, description: 'Glow size', table: { category: 'Glow' } },
@@ -145,6 +149,7 @@ export const defaultParticleStoryArgs: ParticleStoryArgs = {
   accelerationSize: defaultParticle.accelerationSize,
   friction: defaultParticle.friction,
   frictionSize: defaultParticle.frictionSize,
+  rotateToVelocity: defaultParticle.rotateToVelocity,
   particleLife: defaultParticle.particleLife,
   fadeTime: defaultParticle.fadeTime,
   maxCount: defaultParticular.maxCount,
@@ -186,6 +191,7 @@ export function particleStoryArgsToConfig(args: ParticleStoryArgs): Partial<Full
     accelerationSize: args.accelerationSize,
     friction: args.friction,
     frictionSize: args.frictionSize,
+    rotateToVelocity: args.rotateToVelocity,
     particleLife: args.particleLife,
     fadeTime: args.fadeTime,
     maxCount: args.maxCount,

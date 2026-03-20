@@ -1,9 +1,11 @@
 import Vector from '../utils/vector';
+import { magicPalette } from '../presets';
 import type {
   ParticularConfig,
   ParticleConfig,
   AttractorConfig,
   MouseForceConfig,
+  FlockingForceConfig,
   FullParticularConfig,
   RendererType,
   ChildExplosionConfig,
@@ -41,11 +43,15 @@ export const defaultParticle: Required<Omit<ParticleConfig, 'detonate'>> = {
   scaleStep: 1,
   spawnWidth: 0,
   spawnHeight: 0,
+  spawnDepth: 0,
+  spread3d: 0,
+  emitDirection: { x: 0, y: -1, z: 0 },
   colors: [],
   acceleration: 0,
   accelerationSize: 0.01,
   friction: 0,
   frictionSize: 0.0005,
+  rotateToVelocity: false,
   shape: 'circle',
   blendMode: 'normal',
   glow: false,
@@ -65,7 +71,7 @@ export const defaultParticle: Required<Omit<ParticleConfig, 'detonate'>> = {
   shadowAlpha: 0.15,
 };
 
-export const defaultAttractor: Required<Omit<AttractorConfig, 'x' | 'y' | 'icon'>> = {
+export const defaultAttractor: Required<Omit<AttractorConfig, 'x' | 'y' | 'z' | 'icon'>> = {
   strength: 1,
   radius: 150,
   visible: false,
@@ -86,6 +92,16 @@ export const defaultMouseForce: Required<Omit<MouseForceConfig, 'track'>> = {
   damping: 0.85,
   maxSpeed: 10,
   falloff: 1,
+};
+
+export const defaultFlockingForce: Required<FlockingForceConfig> = {
+  neighborRadius: 100,
+  separationWeight: 1.5,
+  alignmentWeight: 1.5,
+  cohesionWeight: 0.3,
+  maxSteeringForce: 0.5,
+  maxSpeed: 4,
+  separationDistance: 25,
 };
 
 export const defaultExplosionChild: Required<ChildExplosionConfig> = {
@@ -111,6 +127,7 @@ export const defaultExplosionChild: Required<ChildExplosionConfig> = {
   trailLength: 3,
   trailFade: 0.6,
   trailShrink: 0.65,
+  spread3d: 0,
 };
 
 export const defaultHomeConfig: Required<HomePositionConfig> = {
@@ -151,7 +168,7 @@ export const defaultElementParticles: Partial<ElementParticlesConfig> = {
 
 /** Default container glow config — soft blue/purple halo with gentle pulse. */
 export const defaultContainerGlow: Required<Omit<ContainerGlowConfig, 'element'>> = {
-  colors: ['#a5d8ff', '#74c0fc', '#4dabf7', '#d0bfff', '#b197fc', '#9775fa'],
+  colors: magicPalette,
   rate: 0.5,
   sizeMin: 0.5,
   sizeMax: 2,
@@ -172,7 +189,7 @@ export const defaultContainerGlow: Required<Omit<ContainerGlowConfig, 'element'>
 
 /** Default mouse trail config — magical wisps streaming from cursor. */
 export const defaultMouseTrail: Required<Omit<MouseTrailConfig, 'target'>> = {
-  colors: ['#a5d8ff', '#74c0fc', '#4dabf7', '#d0bfff', '#b197fc', '#9775fa'],
+  colors: magicPalette,
   rate: 1.5,
   sizeMin: 1,
   sizeMax: 3,

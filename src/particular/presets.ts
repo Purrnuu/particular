@@ -15,6 +15,20 @@ const meteorPalette: string[] = ['#ffffff', '#e0f0ff', '#80d0ff', '#40a0e0', '#2
 const waterPalette: string[] = ['#e0f7fa', '#b2ebf2', '#80deea', '#4dd0e1', '#26c6da', '#00acc1', '#ffffff'];
 const finlandPalette: string[] = ['#003580', '#002f6c', '#ffffff', '#f8f9fa'];
 const usaPalette: string[] = ['#B22234', '#ffffff', '#3C3B6E'];
+export const magicPalette: string[] = ['#a5d8ff', '#74c0fc', '#4dabf7', '#d0bfff', '#b197fc', '#9775fa'];
+const nebulaPalette: string[] = ['#a5d8ff', '#74c0fc', '#4dabf7', '#d0bfff', '#b197fc', '#9775fa', '#e599f7', '#f783ac'];
+const solarPalette: string[] = ['#ff6b6b', '#ffa502', '#ff6348', '#ff4757', '#ffffff', '#ffd32a', '#ff9f1a'];
+const autumnPalette: string[] = ['#c0392b', '#d35400', '#e67e22', '#f39c12', '#d4a574', '#8b4513', '#a0522d', '#cd853f'];
+const ashPalette: string[] = ['#555566', '#606070', '#6a6a7a', '#757585', '#808090'];
+const slatePalette: string[] = ['#3a4a4f', '#455558', '#4f6065', '#5a6b70', '#647578'];
+const fairyPalette: string[] = ['#a5d8ff', '#74c0fc', '#d0bfff', '#b197fc', '#99e9f2', '#c3fae8'];
+const amberPalette: string[] = ['#ffad33', '#ff9500', '#f57c00', '#e86100', '#ffcc66', '#ffd699'];
+const rosePalette: string[] = ['#ff4757', '#ff6b81', '#ff8fa3', '#ffa8b8', '#ffc9d3', '#ffe0e6'];
+const goldPalette: string[] = ['#ffd699', '#ffcc66', '#ffad33', '#ff9500', '#f57c00', '#e86100'];
+const violetPalette: string[] = ['#d0bfff', '#b197fc', '#9775fa', '#845ef7', '#7048e8', '#5f3dc4'];
+const emeraldPalette: string[] = ['#006b3f', '#00a85e', '#1edd80', '#4deda0', '#96f2c8', '#c3fae8'];
+const birdsPalette: string[] = ['#2c2c2c', '#4a4a4a', '#6b5b4f', '#8b7355', '#a0926b', '#c4b8a0', '#d4cfc4', '#f5f0e8'];
+const sunsetPalette: string[] = ['#ff6b35', '#e84545', '#c9184a', '#a4133c', '#ff8c42', '#d4a05a', '#845ec2', '#2c003e'];
 
 // ── Presets ─────────────────────────────────────────────────────────────────
 
@@ -71,7 +85,7 @@ const Burst = {
     trailLength: 8,
     trailFade: 0.35,
     trailShrink: 0.5,
-    colors: ['#a5d8ff', '#74c0fc', '#4dabf7', '#d0bfff', '#b197fc', '#9775fa'],
+    colors: magicPalette,
   } satisfies FullParticularConfig,
 
   /** Cinematic fireworks: glowing triangles with bright trailing bloom */
@@ -286,6 +300,41 @@ const Ambient = {
     },
   } satisfies FullParticularConfig,
 
+  /** Boids flock: self-organizing swarm of bird-like triangles. Use with addFlockingForce() for full effect. */
+  flock: {
+    shape: 'triangle' as const,
+    blendMode: 'additive' as const,
+    glow: true,
+    glowSize: 12,
+    glowColor: '#ffe0d0',
+    glowAlpha: 0.5,
+
+    trail: true,
+    trailLength: 10,
+    trailFade: 0.5,
+    trailShrink: 0.8,
+    rate: 1,
+    life: 999999,
+    particleLife: 600,
+    velocity: Vector.fromAngle(0, 2),
+    spread: Math.PI * 2,
+    colors: sunsetPalette,
+    sizeMin: 3,
+    sizeMax: 6,
+    velocityMultiplier: 3,
+    fadeTime: 80,
+    gravity: 0,
+    acceleration: 0,
+    accelerationSize: 0,
+    friction: 0.01,
+    frictionSize: 0,
+    rotateToVelocity: true,
+    scaleStep: 1,
+    maxCount: 150,
+    continuous: true,
+    autoStart: true,
+  } satisfies FullParticularConfig,
+
   /** River flow: horizontal stream of water particles, designed for use with attractors */
   river: {
     shape: 'circle' as const,
@@ -340,6 +389,162 @@ const ImageParticles = {
   } satisfies FullParticularConfig,
 } as const;
 
+const Burst3D = {
+  /** Spinning galaxy: spherical emission with slow orbit drift */
+  galaxySpin: {
+    shape: 'ring' as const,
+    blendMode: 'additive' as const,
+    glow: true,
+    glowSize: 12,
+    glowColor: '#b197fc',
+    glowAlpha: 0.35,
+    trail: true,
+    trailLength: 14,
+    trailFade: 0.35,
+    trailShrink: 0.45,
+
+    rate: 4,
+    life: 999999,
+    particleLife: 400,
+    velocity: Vector.fromAngle(-90, 1),
+    spread: Math.PI * 2,
+    spread3d: Math.PI * 2,
+    spawnDepth: 300,
+    sizeMin: 2,
+    sizeMax: 6,
+    velocityMultiplier: 5,
+    gravityJitter: 0.6,
+    fadeTime: 80,
+    gravity: 0,
+    acceleration: 0,
+    accelerationSize: 0,
+    friction: 0.004,
+    scaleStep: 0.8,
+    maxCount: 600,
+    continuous: true,
+    autoStart: true,
+    colors: nebulaPalette,
+  } satisfies FullParticularConfig,
+
+  /** Depth field: particles spread along z-axis for parallax effect */
+  depthField: {
+    shape: 'circle' as const,
+    blendMode: 'normal' as const,
+    glow: true,
+    glowSize: 8,
+    glowColor: '#ffffff',
+    glowAlpha: 0.2,
+
+    rate: 0.5,
+    life: 999999,
+    particleLife: 400,
+    velocity: Vector.fromAngle(Math.PI / 2, 0.3),
+    spread: Math.PI * 0.2,
+    spawnDepth: 600,
+    spawnWidth: 400,
+    sizeMin: 1,
+    sizeMax: 5,
+    velocityMultiplier: 0.3,
+    fadeTime: 80,
+    gravity: 0.002,
+    friction: 0.001,
+    scaleStep: 1,
+    maxCount: 300,
+    continuous: true,
+    autoStart: true,
+    colors: snowPalette,
+  } satisfies FullParticularConfig,
+
+  /** Supernova: explosive 3D burst with spherical emission */
+  supernova: {
+    shape: 'star' as const,
+    blendMode: 'additive' as const,
+    glow: true,
+    glowSize: 14,
+    glowColor: '#ff6b6b',
+    glowAlpha: 0.4,
+    trail: true,
+    trailLength: 8,
+    trailFade: 0.25,
+    trailShrink: 0.4,
+
+    rate: 30,
+    life: 30,
+    particleLife: 120,
+    velocity: Vector.fromAngle(-90, 6),
+    spread: Math.PI,
+    spread3d: Math.PI,
+    sizeMin: 2,
+    sizeMax: 8,
+    velocityMultiplier: 8,
+    fadeTime: 40,
+    gravity: 0,
+    friction: 0.008,
+    scaleStep: 1.2,
+    maxCount: 800,
+    colors: solarPalette,
+  } satisfies FullParticularConfig,
+
+  /** 3D fireworks show: rockets launch upward and detonate into spherical sub-bursts */
+  fireworks3d: {
+    shape: 'triangle' as const,
+    blendMode: 'additive' as const,
+    glow: true,
+    glowSize: 12,
+    glowColor: '#ff9500',
+    glowAlpha: 0.4,
+    trail: true,
+    trailLength: 6,
+    trailFade: 0.3,
+    trailShrink: 0.5,
+
+    rate: 0.3,
+    life: 999999,
+    particleLife: 100,
+    velocity: Vector.fromAngle(-Math.PI / 2, 7),
+    spread: Math.PI / 8,
+    spread3d: Math.PI / 8,
+    spawnDepth: 150,
+    spawnWidth: 0,
+    sizeMin: 2,
+    sizeMax: 4,
+    velocityMultiplier: 2.5,
+    fadeTime: 15,
+    gravity: 0.05,
+    acceleration: 0,
+    accelerationSize: 0,
+    friction: 0.003,
+    scaleStep: 1,
+    maxCount: 2000,
+    continuous: true,
+    autoStart: true,
+    colors: fireworksPalette,
+    detonate: {
+      at: 0.65,
+      childCount: 18,
+      velocity: 4,
+      velocitySpread: 0.5,
+      friction: 0.012,
+      scaleStep: 0.8,
+      childLife: 60,
+      sizeMin: 1,
+      sizeMax: 3,
+      fadeTime: 25,
+      inheritColor: true,
+      shape: 'sparkle',
+      spread3d: Math.PI,
+      trail: true,
+      trailLength: 5,
+      trailFade: 0.4,
+      trailShrink: 0.5,
+      glow: true,
+      glowSize: 10,
+      glowColor: '#ffa502',
+      glowAlpha: 0.45,
+    },
+  } satisfies FullParticularConfig,
+} as const;
+
 // ── Spreadable Color Presets ────────────────────────────────────────────────
 
 const Colors = {
@@ -365,6 +570,36 @@ const Colors = {
   meteor: { colors: meteorPalette },
   /** Cyan-to-white water palette */
   water: { colors: waterPalette },
+  /** Blue-purple sparkle (magic preset signature) */
+  magic: { colors: magicPalette },
+  /** Extended blue-purple-pink (galaxy/nebula effects) */
+  nebula: { colors: nebulaPalette },
+  /** Hot reds, oranges, whites (explosions/supernova) */
+  solar: { colors: solarPalette },
+  /** Earth tones: deep reds, burnt orange, sienna */
+  autumn: { colors: autumnPalette },
+  /** Dark greys for subtle/muted backgrounds */
+  ash: { colors: ashPalette },
+  /** Dark blue-grey tones */
+  slate: { colors: slatePalette },
+  /** Pastel blue, purple, teal, mint mix */
+  fairy: { colors: fairyPalette },
+  /** Warm glowing orange-gold */
+  amber: { colors: amberPalette },
+  /** Soft pink gradient from hot to pastel */
+  rose: { colors: rosePalette },
+  /** Warm yellow-orange gradient */
+  gold: { colors: goldPalette },
+  /** Deep violet-purple range */
+  violet: { colors: violetPalette },
+  /** Bright green to pastel mint */
+  emerald: { colors: emeraldPalette },
+  /** Natural bird flock: charcoals, browns, warm grays */
+  birds: { colors: birdsPalette },
+  /** Sunset murmuration: deep oranges, magentas, dusky purples */
+  sunset: { colors: sunsetPalette },
+  /** Multicolor vivid fireworks */
+  fireworks: { colors: fireworksPalette },
 } as const;
 
 // ── Registry & Exports ─────────────────────────────────────────────────────
@@ -379,12 +614,18 @@ const presetRegistry = {
   imageShape: ImageParticles.shape,
   snow: Ambient.snow,
   meteors: Ambient.meteors,
+  flock: Ambient.flock,
   river: Ambient.river,
   fireworksShow: Ambient.fireworksShow,
+  galaxySpin: Burst3D.galaxySpin,
+  depthField: Burst3D.depthField,
+  supernova: Burst3D.supernova,
+  fireworks3d: Burst3D.fireworks3d,
 } as const;
 
 export const presets = {
   Burst,
+  Burst3D,
   Images,
   ImageParticles,
   Ambient,
@@ -399,8 +640,13 @@ export const presets = {
   imageShape: ImageParticles.shape,
   snow: Ambient.snow,
   meteors: Ambient.meteors,
+  flock: Ambient.flock,
   river: Ambient.river,
   fireworksShow: Ambient.fireworksShow,
+  galaxySpin: Burst3D.galaxySpin,
+  depthField: Burst3D.depthField,
+  supernova: Burst3D.supernova,
+  fireworks3d: Burst3D.fireworks3d,
 } as const;
 
 export type PresetName = keyof typeof presetRegistry;
@@ -422,4 +668,19 @@ export const colorPalettes: Record<string, string[]> = {
   green: greenPalette,
   meteor: meteorPalette,
   water: waterPalette,
+  magic: magicPalette,
+  nebula: nebulaPalette,
+  solar: solarPalette,
+  autumn: autumnPalette,
+  ash: ashPalette,
+  slate: slatePalette,
+  fairy: fairyPalette,
+  amber: amberPalette,
+  rose: rosePalette,
+  gold: goldPalette,
+  violet: violetPalette,
+  emerald: emeraldPalette,
+  birds: birdsPalette,
+  sunset: sunsetPalette,
+  fireworks: fireworksPalette,
 };

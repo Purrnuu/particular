@@ -434,6 +434,7 @@ const RiverDemo: React.FC<{ renderer: 'canvas' | 'webgl' }> = ({ renderer }) => 
     const controller = createParticles({
       canvas,
       preset: 'river',
+      config: { autoStart: false },
       renderer,
       autoResize: true,
     });

@@ -26,7 +26,7 @@ export default class Attractor {
 
   constructor(config: AttractorConfig) {
     const merged = { ...defaultAttractor, ...config };
-    this.position = new Vector(merged.x, merged.y);
+    this.position = new Vector(merged.x, merged.y, config.z ?? 0);
     this.strength = merged.strength;
     this.radius = merged.radius;
 
@@ -54,11 +54,15 @@ export default class Attractor {
   getForce(particlePosition: Vector): Vector {
     const dx = this.position.x - particlePosition.x;
     const dy = this.position.y - particlePosition.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
+    const dz = this.position.z - particlePosition.z;
+    const dist = dz === 0
+      ? Math.sqrt(dx * dx + dy * dy)
+      : Math.sqrt(dx * dx + dy * dy + dz * dz);
 
     if (dist === 0 || dist > this.radius) {
       _tempForce.x = 0;
       _tempForce.y = 0;
+      _tempForce.z = 0;
       return _tempForce;
     }
 
@@ -66,6 +70,7 @@ export default class Attractor {
     const scale = this.strength * (1 - dist / this.radius) / dist;
     _tempForce.x = dx * scale;
     _tempForce.y = dy * scale;
+    _tempForce.z = dz * scale;
     return _tempForce;
   }
 

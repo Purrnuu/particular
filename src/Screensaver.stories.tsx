@@ -229,6 +229,7 @@ const FireworksShowDemo: React.FC<{ renderer: 'canvas' | 'webgl' }> = ({ rendere
     const controller = createParticles({
       canvas,
       preset: 'fireworksShow',
+      config: { autoStart: false },
       renderer,
       autoResize: true,
     });

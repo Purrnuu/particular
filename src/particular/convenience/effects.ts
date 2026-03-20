@@ -72,6 +72,10 @@ export function createEffects(engine: Particular, mergedConfig: MergedConfig) {
       const magnitude = baseVelocity * (0.3 + Math.random() * 1.4);
       particle.velocity.x += Math.cos(angle) * magnitude;
       particle.velocity.y += Math.sin(angle) * magnitude;
+      // Add z impulse if particle is in 3D space
+      if (particle.position.z !== 0 || (particle.homePosition && particle.homePosition.z !== 0)) {
+        particle.velocity.z += (Math.random() - 0.5) * magnitude;
+      }
       if (rotationImpulse > 0) {
         particle.rotationVelocity += (Math.random() - 0.5) * 2 * rotationImpulse;
       }

@@ -19,9 +19,11 @@ import Particular from '../core/particular';
 import { getPreset } from '../presets';
 import CanvasRenderer from '../renderers/canvasRenderer';
 import WebGLRenderer from '../renderers/webglRenderer';
+import WebGL3DRenderer from '../renderers/webgl3dRenderer';
 import Vector from '../utils/vector';
 import { applyCanvasStyles } from '../canvasStyles';
 import type { FullParticularConfig } from '../types';
+import { Camera, type CameraConfig } from '../renderers/camera';
 import { createForces } from './forces';
 import { createBoundaryHelper } from './boundary';
 import { createContainerGlowHelper } from './containerGlow';
@@ -29,6 +31,7 @@ import { createMouseTrailHelper } from './mouseTrail';
 import { createEffects } from './effects';
 import { createImageParticles } from './imageParticles';
 import { createImageShatterHelper } from './imageShatter';
+import { getViewportSize } from './resize';
 import type { BurstOptions, CreateParticlesOptions, ParticlesController } from './types';
 
 // Re-export public types (screensaver exported separately to avoid circular dep)
@@ -98,7 +101,16 @@ export function createParticles({
   const mergedConfig = configureParticular({ ...basePreset, ...config, container });
 
   engine.initialize(mergedConfig);
-  if (renderer === 'webgl') {
+  let camera3d: Camera | null = null;
+  let renderer3d: WebGL3DRenderer | null = null;
+  if (renderer === 'webgl3d') {
+    renderer3d = new WebGL3DRenderer(canvas, {
+      maxInstances: mergedConfig.webglMaxInstances,
+      camera: config?.camera as CameraConfig | undefined,
+    });
+    camera3d = renderer3d.camera;
+    engine.addRenderer(renderer3d);
+  } else if (renderer === 'webgl') {
     engine.addRenderer(
       new WebGLRenderer(canvas, {
         maxInstances: mergedConfig.webglMaxInstances,
@@ -114,14 +126,30 @@ export function createParticles({
   // ── Auto-resize ──
 
   if (autoResize) {
+    const handleResize = () => {
+      engine.onResize();
+      // Reposition autoStart emitter to new center
+      if (autoStartEmitter) {
+        const pr = mergedConfig.pixelRatio;
+        if (renderer3d && renderer3d.referenceWorldScale > 0) {
+          // 3D: position at reference center so it stays at world origin
+          autoStartEmitter.configuration.point.x = renderer3d.referenceCenterX;
+          autoStartEmitter.configuration.point.y = renderer3d.referenceCenterY;
+        } else {
+          // 2D: position at current viewport center
+          const newSize = getViewportSize(container);
+          autoStartEmitter.configuration.point.x = newSize.w / 2 / pr;
+          autoStartEmitter.configuration.point.y = newSize.h / 2 / pr;
+        }
+      }
+    };
     if (container) {
-      const ro = new ResizeObserver(() => engine.onResize());
+      const ro = new ResizeObserver(handleResize);
       ro.observe(container);
       cleanups.push(() => ro.disconnect());
     } else {
-      const onResize = () => engine.onResize();
-      window.addEventListener('resize', onResize);
-      cleanups.push(() => window.removeEventListener('resize', onResize));
+      window.addEventListener('resize', handleResize);
+      cleanups.push(() => window.removeEventListener('resize', handleResize));
     }
   }
 
@@ -135,7 +163,22 @@ export function createParticles({
       x -= rect.left;
       y -= rect.top;
     }
-    return { x: x / mergedConfig.pixelRatio, y: y / mergedConfig.pixelRatio };
+    const pr = mergedConfig.pixelRatio;
+    let engineX = x / pr;
+    let engineY = y / pr;
+
+    // In 3D mode, adjust for the difference between the current viewport center
+    // and the reference center captured on first frame. The shader maps engine coords
+    // to world coords using the reference center, so click positions must be expressed
+    // in that same coordinate frame to land at the correct visual position after resize.
+    if (renderer3d && renderer3d.referenceWorldScale > 0) {
+      const currentCenterX = (engine.width / pr) * 0.5;
+      const currentCenterY = (engine.height / pr) * 0.5;
+      engineX += renderer3d.referenceCenterX - currentCenterX;
+      engineY += renderer3d.referenceCenterY - currentCenterY;
+    }
+
+    return { x: engineX, y: engineY };
   };
 
   // ── Burst (stays here — depends on toEngineCoords) ──
@@ -183,6 +226,24 @@ export function createParticles({
     cleanups.push(cleanupClick);
   }
 
+  // ── Auto-start: create an initial emitter at center when preset requests it ──
+
+  let autoStartEmitter: Emitter | null = null;
+  if (mergedConfig.autoStart) {
+    const size = getViewportSize(container);
+    const centerX = size.w / 2 / mergedConfig.pixelRatio;
+    const centerY = size.h / 2 / mergedConfig.pixelRatio;
+    const particleConfig = configureParticle({}, mergedConfig);
+    autoStartEmitter = new Emitter({
+      point: new Vector(centerX, centerY),
+      ...particleConfig,
+      icons: [],
+    });
+    engine.addEmitter(autoStartEmitter);
+    autoStartEmitter.isEmitting = true;
+    autoStartEmitter.emit();
+  }
+
   // ── Compose helpers ──
 
   const forces = createForces(engine, container, cleanups);
@@ -197,8 +258,97 @@ export function createParticles({
 
   if (mouseForce) {
     const mouseConfig = mouseForce === true ? { track: true as const } : { track: true as const, ...mouseForce };
-    forces.addMouseForce(mouseConfig);
+    const mf = forces.addMouseForce(mouseConfig);
+
+    // In 3D mode, project particle positions to screen space so the mouse affects
+    // particles based on visual proximity, not engine-coord distance.
+    if (camera3d && renderer3d) {
+      mf.projectToScreen = (px: number, py: number, pz: number) => {
+        const cam = camera3d!;
+        const r3d = renderer3d!;
+        const w = engine.width;
+        const h = engine.height;
+        const pr = engine.pixelRatio;
+        const logicalW = w / pr;
+        const logicalH = h / pr;
+        if (logicalW <= 0 || logicalH <= 0) return null;
+
+        // Read reference values from the 3D renderer (same transform as vertex shader)
+        const refCX = r3d.referenceCenterX;
+        const refCY = r3d.referenceCenterY;
+        const ws = r3d.referenceWorldScale;
+        if (ws === 0) return null; // not yet initialized
+
+        // Engine coords → world coords (uses reference center, matches shader)
+        const wx = (px - refCX) * ws;
+        const wy = -(py - refCY) * ws;
+        const wz = pz * ws;
+
+        // Project through viewProjection matrix
+        const vp = cam.viewProjection;
+        const clipW = vp[3]! * wx + vp[7]! * wy + vp[11]! * wz + vp[15]!;
+        if (clipW <= 0) return null; // behind camera
+
+        const clipX = vp[0]! * wx + vp[4]! * wy + vp[8]! * wz + vp[12]!;
+        const clipY = vp[1]! * wx + vp[5]! * wy + vp[9]! * wz + vp[13]!;
+
+        // NDC → engine coords (uses CURRENT viewport, not reference — mouse coords are in current screen space)
+        return {
+          x: (clipX / clipW + 1) * 0.5 * logicalW,
+          y: (1 - clipY / clipW) * 0.5 * logicalH,
+        };
+      };
+    }
   }
+
+  // ── Camera controls (3D only) ──
+
+  const setCameraPosition = (x: number, y: number, z: number): void => {
+    if (!camera3d) return;
+    camera3d.position.x = x;
+    camera3d.position.y = y;
+    camera3d.position.z = z;
+  };
+
+  const orbitCamera = (azimuth: number, elevation: number, distance: number): void => {
+    if (!camera3d) return;
+    camera3d.orbit(azimuth, elevation, distance);
+  };
+
+  const enableOrbitControls = (): (() => void) | null => {
+    if (!camera3d) return null;
+    const cleanup = camera3d.enableOrbitControls(canvas);
+    cleanups.push(cleanup);
+    return cleanup;
+  };
+
+  const enableAutoOrbit = (speed = 0.3): (() => void) | null => {
+    if (!camera3d) return null;
+    let lastTime = performance.now();
+
+    const onUpdate = () => {
+      const now = performance.now();
+      const dt = (now - lastTime) / 1000;
+      lastTime = now;
+      // Read current state from camera each frame so orbit controls can override freely
+      const cam = camera3d!;
+      const azimuth = Math.atan2(
+        cam.position.z - cam.target.z,
+        cam.position.x - cam.target.x,
+      );
+      const elevation = Math.asin(
+        Math.min(1, Math.max(-1,
+          (cam.position.y - cam.target.y) / cam.getDistance(),
+        )),
+      );
+      cam.orbit(azimuth + speed * dt, elevation, cam.getDistance());
+    };
+
+    engine.addEventListener('UPDATE', onUpdate);
+    const cleanup = () => engine.removeEventListener('UPDATE', onUpdate);
+    cleanups.push(cleanup);
+    return cleanup;
+  };
 
   // ── Lifecycle ──
 
@@ -213,6 +363,7 @@ export function createParticles({
   return {
     engine,
     canvas,
+    camera: camera3d,
     burst,
     attachClickBurst,
     ...forces,
@@ -222,6 +373,10 @@ export function createParticles({
     ...effects,
     ...imageApi,
     ...imageShatter,
+    setCameraPosition,
+    orbitCamera,
+    enableOrbitControls,
+    enableAutoOrbit,
     destroy,
   };
 }
