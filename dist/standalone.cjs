@@ -6467,10 +6467,16 @@ function createParticles({
   if (autoResize) {
     const handleResize = () => {
       engine.onResize();
-      if (autoStartEmitter && renderer !== "webgl3d") {
-        const newSize = getViewportSize(container);
-        autoStartEmitter.configuration.point.x = newSize.w / 2 / mergedConfig.pixelRatio;
-        autoStartEmitter.configuration.point.y = newSize.h / 2 / mergedConfig.pixelRatio;
+      if (autoStartEmitter) {
+        const pr = mergedConfig.pixelRatio;
+        if (renderer3d && renderer3d.referenceWorldScale > 0) {
+          autoStartEmitter.configuration.point.x = renderer3d.referenceCenterX;
+          autoStartEmitter.configuration.point.y = renderer3d.referenceCenterY;
+        } else {
+          const newSize = getViewportSize(container);
+          autoStartEmitter.configuration.point.x = newSize.w / 2 / pr;
+          autoStartEmitter.configuration.point.y = newSize.h / 2 / pr;
+        }
       }
     };
     if (container) {
@@ -6490,7 +6496,16 @@ function createParticles({
       x -= rect.left;
       y -= rect.top;
     }
-    return { x: x / mergedConfig.pixelRatio, y: y / mergedConfig.pixelRatio };
+    const pr = mergedConfig.pixelRatio;
+    let engineX = x / pr;
+    let engineY = y / pr;
+    if (renderer3d && renderer3d.referenceWorldScale > 0) {
+      const currentCenterX = engine.width / pr * 0.5;
+      const currentCenterY = engine.height / pr * 0.5;
+      engineX += renderer3d.referenceCenterX - currentCenterX;
+      engineY += renderer3d.referenceCenterY - currentCenterY;
+    }
+    return { x: engineX, y: engineY };
   };
   const burst = (options) => {
     const { x, y, ...overrides } = options;

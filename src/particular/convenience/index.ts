@@ -128,11 +128,19 @@ export function createParticles({
   if (autoResize) {
     const handleResize = () => {
       engine.onResize();
-      // Reposition autoStart emitter to new center (2D only — 3D uses reference mapping)
-      if (autoStartEmitter && renderer !== 'webgl3d') {
-        const newSize = getViewportSize(container);
-        autoStartEmitter.configuration.point.x = newSize.w / 2 / mergedConfig.pixelRatio;
-        autoStartEmitter.configuration.point.y = newSize.h / 2 / mergedConfig.pixelRatio;
+      // Reposition autoStart emitter to new center
+      if (autoStartEmitter) {
+        const pr = mergedConfig.pixelRatio;
+        if (renderer3d && renderer3d.referenceWorldScale > 0) {
+          // 3D: position at reference center so it stays at world origin
+          autoStartEmitter.configuration.point.x = renderer3d.referenceCenterX;
+          autoStartEmitter.configuration.point.y = renderer3d.referenceCenterY;
+        } else {
+          // 2D: position at current viewport center
+          const newSize = getViewportSize(container);
+          autoStartEmitter.configuration.point.x = newSize.w / 2 / pr;
+          autoStartEmitter.configuration.point.y = newSize.h / 2 / pr;
+        }
       }
     };
     if (container) {
@@ -155,7 +163,22 @@ export function createParticles({
       x -= rect.left;
       y -= rect.top;
     }
-    return { x: x / mergedConfig.pixelRatio, y: y / mergedConfig.pixelRatio };
+    const pr = mergedConfig.pixelRatio;
+    let engineX = x / pr;
+    let engineY = y / pr;
+
+    // In 3D mode, adjust for the difference between the current viewport center
+    // and the reference center captured on first frame. The shader maps engine coords
+    // to world coords using the reference center, so click positions must be expressed
+    // in that same coordinate frame to land at the correct visual position after resize.
+    if (renderer3d && renderer3d.referenceWorldScale > 0) {
+      const currentCenterX = (engine.width / pr) * 0.5;
+      const currentCenterY = (engine.height / pr) * 0.5;
+      engineX += renderer3d.referenceCenterX - currentCenterX;
+      engineY += renderer3d.referenceCenterY - currentCenterY;
+    }
+
+    return { x: engineX, y: engineY };
   };
 
   // ── Burst (stays here — depends on toEngineCoords) ──
