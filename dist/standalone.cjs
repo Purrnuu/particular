@@ -5346,10 +5346,15 @@ function createTextImage(config) {
   const font = `${fontWeight} ${fontSize}px ${fontFamily}`;
   ctx.font = font;
   const metrics = ctx.measureText(text);
-  canvas.width = Math.ceil(metrics.width) + 4;
-  canvas.height = Math.ceil(fontSize * 1.3);
+  const paddingY = Math.max(8, Math.round(fontSize * 0.18));
+  const textWidth = Math.ceil(metrics.width);
+  const ascent = metrics.actualBoundingBoxAscent ?? metrics.fontBoundingBoxAscent ?? fontSize * 0.8;
+  const descent = metrics.actualBoundingBoxDescent ?? metrics.fontBoundingBoxDescent ?? fontSize * 0.24;
+  const glyphHeight = Math.ceil(ascent + descent);
+  canvas.width = textWidth;
+  canvas.height = glyphHeight + paddingY * 2;
   ctx.font = font;
-  ctx.textBaseline = "top";
+  ctx.textBaseline = "alphabetic";
   if (typeof fill === "string") {
     ctx.fillStyle = fill;
   } else {
@@ -5360,7 +5365,7 @@ function createTextImage(config) {
     }
     ctx.fillStyle = gradient;
   }
-  ctx.fillText(text, 2, fontSize * 0.12);
+  ctx.fillText(text, 0, paddingY + ascent);
   return canvas;
 }
 function createHeartImage(size = 400) {
