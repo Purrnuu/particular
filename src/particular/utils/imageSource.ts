@@ -24,13 +24,28 @@ export function createTextImage(config: TextImageConfig): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d')!;
   const font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+
+  // Measure actual glyph bounds (must set font before measuring)
   ctx.font = font;
   const metrics = ctx.measureText(text);
-  canvas.width = Math.ceil(metrics.width) + 4;
-  canvas.height = Math.ceil(fontSize * 1.3);
-  // Re-set font after canvas resize
+
+  const paddingY = Math.max(8, Math.round(fontSize * 0.18));
+
+  const textWidth = Math.ceil(metrics.width);
+  const ascent = metrics.actualBoundingBoxAscent
+    ?? metrics.fontBoundingBoxAscent
+    ?? fontSize * 0.8;
+  const descent = metrics.actualBoundingBoxDescent
+    ?? metrics.fontBoundingBoxDescent
+    ?? fontSize * 0.24;
+  const glyphHeight = Math.ceil(ascent + descent);
+
+  canvas.width = textWidth;
+  canvas.height = glyphHeight + paddingY * 2;
+
+  // Re-set font after canvas resize (resets context state)
   ctx.font = font;
-  ctx.textBaseline = 'top';
+  ctx.textBaseline = 'alphabetic';
 
   if (typeof fill === 'string') {
     ctx.fillStyle = fill;
@@ -42,7 +57,8 @@ export function createTextImage(config: TextImageConfig): HTMLCanvasElement {
     }
     ctx.fillStyle = gradient;
   }
-  ctx.fillText(text, 2, fontSize * 0.12);
+
+  ctx.fillText(text, 0, paddingY + ascent);
   return canvas;
 }
 
