@@ -5,7 +5,7 @@ An opinionated particle engine: pretty defaults, performant, minimal setup. Canv
 ## Install
 
 ```bash
-npm install particular
+npm install @purrnuu/particular
 ```
 
 ## Quick start
@@ -13,7 +13,7 @@ npm install particular
 ### React — Click Burst
 
 ```tsx
-import { useParticles } from "particular";
+import { useParticles } from "@purrnuu/particular";
 
 function App() {
   const { canvasRef, canvasStyle, burstFromEvent } = useParticles();
@@ -31,7 +31,7 @@ function App() {
 
 ```tsx
 import { useRef, useEffect } from "react";
-import { createParticles } from "particular";
+import { createParticles } from "@purrnuu/particular";
 
 function TextParticles() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -56,7 +56,7 @@ function TextParticles() {
 
 ```tsx
 import { useRef, useEffect } from "react";
-import { createParticles } from "particular";
+import { createParticles } from "@purrnuu/particular";
 
 function ImageParticles() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -83,7 +83,7 @@ function ImageParticles() {
 ### React — Screensaver
 
 ```tsx
-import { useScreensaver } from "particular";
+import { useScreensaver } from "@purrnuu/particular";
 
 function Snow() {
   const { canvasRef, canvasStyle } = useScreensaver({ preset: "snow" });
@@ -95,7 +95,7 @@ function Snow() {
 ### Vanilla — Click Burst
 
 ```html
-<script src="https://unpkg.com/particular/dist/particular.global.js"></script>
+<script src="https://unpkg.com/@purrnuu/particular/dist/particular.global.js"></script>
 <script>
   const { createParticles } = window.Particular;
 
@@ -108,7 +108,7 @@ function Snow() {
 
 ```html
 <div id="container" style="position:relative;width:100%;height:100vh"></div>
-<script src="https://unpkg.com/particular/dist/particular.global.js"></script>
+<script src="https://unpkg.com/@purrnuu/particular/dist/particular.global.js"></script>
 <script>
   const { createParticles } = window.Particular;
 
@@ -126,7 +126,7 @@ function Snow() {
 
 ```html
 <div id="container" style="position:relative;width:100%;height:100vh"></div>
-<script src="https://unpkg.com/particular/dist/particular.global.js"></script>
+<script src="https://unpkg.com/@purrnuu/particular/dist/particular.global.js"></script>
 <script>
   const { createParticles } = window.Particular;
 
@@ -146,7 +146,7 @@ function Snow() {
 ### Vanilla — Screensaver
 
 ```html
-<script src="https://unpkg.com/particular/dist/particular.global.js"></script>
+<script src="https://unpkg.com/@purrnuu/particular/dist/particular.global.js"></script>
 <script>
   const { startScreensaver } = window.Particular;
 
@@ -236,7 +236,7 @@ The library is designed for zero-config usage:
 Use `renderer: 'webgl3d'` for 3D perspective rendering with depth, camera controls, and spherical emission. All 2D shapes work automatically as billboarded quads.
 
 ```js
-import { createParticles } from "particular";
+import { createParticles } from "@purrnuu/particular";
 
 const p = createParticles({
   container: document.getElementById("hero"),
@@ -266,7 +266,7 @@ By default, particles render as a full-viewport overlay (`position: fixed`). To 
 
 ```tsx
 import { useRef } from "react";
-import { useParticles } from "particular";
+import { useParticles } from "@purrnuu/particular";
 
 function HeroSection() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -288,7 +288,7 @@ function HeroSection() {
 
 ```html
 <div id="hero" style="position:relative;height:400px;overflow:hidden"></div>
-<script src="https://unpkg.com/particular/dist/particular.global.js"></script>
+<script src="https://unpkg.com/@purrnuu/particular/dist/particular.global.js"></script>
 <script>
   const { createParticles } = window.Particular;
   const container = document.getElementById("hero");

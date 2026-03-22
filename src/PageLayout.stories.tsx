@@ -508,7 +508,7 @@ const ScrollingLandingDemo: React.FC<PageLayoutArgs> = ({
   ];
 
   const steps = [
-    { num: '01', title: 'Install', body: 'npm install particular — zero dependencies, tree-shakeable.' },
+    { num: '01', title: 'Install', body: 'npm install @purrnuu/particular — zero dependencies, tree-shakeable.' },
     { num: '02', title: 'Create', body: 'One call to createParticles() or useParticles() to get started.' },
     { num: '03', title: 'Customize', body: 'Choose a preset, add forces, boundaries, and interactions.' },
   ];
@@ -574,7 +574,7 @@ const ScrollingLandingDemo: React.FC<PageLayoutArgs> = ({
             fontWeight: 600,
             fontSize: '0.9rem',
           }}>
-            npm install particular
+            npm install @purrnuu/particular
           </div>
         </div>
       </section>

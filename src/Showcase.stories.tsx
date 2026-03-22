@@ -986,7 +986,7 @@ const WelcomeDemo: React.FC = () => {
   ];
 
   const steps = [
-    { num: '01', title: 'Install', body: 'npm install particular \u2014 zero dependencies, tree-shakeable.' },
+    { num: '01', title: 'Install', body: 'npm install @purrnuu/particular \u2014 zero dependencies, tree-shakeable.' },
     { num: '02', title: 'Create', body: 'One call to createParticles() or useParticles() to get started.' },
     { num: '03', title: 'Customize', body: 'Choose a preset, add forces, boundaries, and interactions.' },
   ];
@@ -1139,7 +1139,7 @@ const WelcomeDemo: React.FC = () => {
               fontSize: '0.9rem',
             }}
           >
-            npm install particular
+            npm install @purrnuu/particular
           </div>
         </div>
       </section>

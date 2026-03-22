@@ -5,13 +5,13 @@
 
 ## Install
 
-npm install particular
+npm install @purrnuu/particular
 
 ## Quick Start
 
 ### Vanilla — zero config
 ```js
-import { createParticles } from "particular";
+import { createParticles } from "@purrnuu/particular";
 const p = createParticles();            // auto-creates canvas, appends to body, WebGL
 p.attachClickBurst(document);           // click anywhere for particles
 // p.destroy() to clean up
@@ -19,27 +19,27 @@ p.attachClickBurst(document);           // click anywhere for particles
 
 ### Vanilla — text to particles
 ```js
-import { createParticles } from "particular";
+import { createParticles } from "@purrnuu/particular";
 const p = createParticles({ preset: "imageText", mouseForce: true });
 p.textToParticles("Hello");             // auto-centered, 1:1 size (capped at 50% viewport)
 ```
 
 ### Vanilla — image to particles
 ```js
-import { createParticles } from "particular";
+import { createParticles } from "@purrnuu/particular";
 const p = createParticles({ preset: "imageShape", mouseForce: { strength: 3, radius: 80 } });
 p.imageToParticles({ image: "/photo.png", width: 500 });
 ```
 
 ### Vanilla — screensaver
 ```js
-import { startScreensaver } from "particular";
+import { startScreensaver } from "@purrnuu/particular";
 startScreensaver({ preset: "snow" });   // auto-creates canvas, continuous snowfall
 ```
 
 ### Vanilla — container mode
 ```js
-import { createParticles } from "particular";
+import { createParticles } from "@purrnuu/particular";
 const p = createParticles({ container: document.getElementById("hero"), preset: "magic" });
 p.attachClickBurst(document.getElementById("hero"));
 // container must have position: relative
@@ -47,7 +47,7 @@ p.attachClickBurst(document.getElementById("hero"));
 
 ### React — click burst
 ```tsx
-import { useParticles } from "particular";
+import { useParticles } from "@purrnuu/particular";
 function App() {
   const { canvasRef, canvasStyle, burstFromEvent } = useParticles();
   return (
@@ -61,7 +61,7 @@ function App() {
 
 ### React — screensaver
 ```tsx
-import { useScreensaver } from "particular";
+import { useScreensaver } from "@purrnuu/particular";
 function Snow() {
   const { canvasRef, canvasStyle } = useScreensaver({ preset: "snow" });
   return <canvas ref={canvasRef} style={canvasStyle} />;
