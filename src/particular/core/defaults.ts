@@ -85,6 +85,7 @@ export const defaultAttractor: Required<Omit<AttractorConfig, 'x' | 'y' | 'z' | 
 };
 
 export const defaultMouseForce: Required<Omit<MouseForceConfig, 'track'>> = {
+  mode: 'wind',
   x: 0,
   y: 0,
   strength: 1,

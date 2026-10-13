@@ -130,7 +130,10 @@ npm run validate
 ```
 
 This checks types, lint, source tests, freshly built package entries, and Storybook.
-Build checks write to `.build/` so tracked `dist/` and `docs/` stay unchanged.
+Build checks write reference outputs to `.build/`. Before committing source changes,
+run `npm run build:lib` and include `dist/` in the feature-branch commit.
+`npm run validate` verifies the distributable matches source and tests its entries.
+Generated Storybook `docs/` remains release-only.
 
 ### Run Tests Once
 

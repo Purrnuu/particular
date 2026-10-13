@@ -11,7 +11,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const distDir = path.resolve(__dirname, '../.build/lib');
+const distDir = path.resolve(__dirname, '..', process.env.PARTICULAR_TEST_DIST ?? '.build/lib');
 
 function createMockCanvasContext(): Partial<CanvasRenderingContext2D> {
   return {
@@ -76,6 +76,8 @@ describe('built standalone embed', () => {
     expect(typeof api.Emitter).toBe('function');
     expect(typeof api.Vector).toBe('function');
     expect(typeof api.createParticles).toBe('function');
+    const predator = new api.MouseForce({ mode: 'repel', x: 100, y: 100, strength: 2, radius: 100 });
+    expect(predator.getForce(new api.Vector(120, 100)).x).toBeGreaterThan(0);
 
     const canvas = document.createElement('canvas');
     const controller = api.createParticles({

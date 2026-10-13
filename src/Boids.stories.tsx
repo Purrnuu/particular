@@ -55,7 +55,7 @@ export const BasicFlock: StoryObj<{ renderer: 'canvas' | 'webgl' }> = {
 // ── Predator Mouse ──────────────────────────────────────────────────────────
 // Mouse scatters the flock with a repelling force, which regroups after.
 
-const PredatorMouseComponent: React.FC = () => {
+const PredatorMouseComponent: React.FC<{ renderer: 'canvas' | 'webgl' }> = ({ renderer }) => {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!ref.current) return;
@@ -64,14 +64,15 @@ const PredatorMouseComponent: React.FC = () => {
       container: ref.current,
       preset: 'flock',
       config: { autoStart: false },
-      mouseForce: { strength: -2, radius: 150, track: true },
+      renderer,
+      mouseForce: { mode: 'repel', strength: 2, radius: 150, track: true },
     });
 
     controller.addFlockingForce();
     controller.burst({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
 
     return () => controller.destroy();
-  }, []);
+  }, [renderer]);
 
   return (
     <div
@@ -90,8 +91,10 @@ const PredatorMouseComponent: React.FC = () => {
   );
 };
 
-export const PredatorMouse: StoryObj = {
-  render: () => <PredatorMouseComponent />,
+export const PredatorMouse: StoryObj<{ renderer: 'canvas' | 'webgl' }> = {
+  args: { renderer: 'webgl' },
+  argTypes: { renderer: { control: 'inline-radio', options: ['canvas', 'webgl'] } },
+  render: (args) => <PredatorMouseComponent {...args} />,
 };
 
 // ── Flock + Attractor ───────────────────────────────────────────────────────

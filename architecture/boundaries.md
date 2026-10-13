@@ -100,7 +100,13 @@ viewport side. This avoids long, shallow volumes that disappear during orbit.
 - /effects/images: image and shatter factories for explicit compositions.
 
 The build shares ESM/CJS chunks. IIFE remains one standalone browser bundle.
-Release artifacts remain in dist; tests build fresh artifacts under .build/lib.
+Distributables in dist are rebuilt and committed with feature-branch source
+changes. Package tests build under .build/lib; the dist guard builds an isolated
+project mirror under .build/ with the same dist layout, compares the full output
+tree with dist, and tests the committed package entries. Source-map
+paths and checkout line endings are normalized for cross-platform comparison;
+source content, mappings, code, declarations, and file names must still match.
+Generated Storybook docs remains release-only.
 
 React hooks return canvasKey alongside canvasRef/canvasStyle. Consumers that
 change rendering backends use `<canvas key={canvasKey} ref={canvasRef}

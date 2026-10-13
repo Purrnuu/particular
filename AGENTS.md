@@ -7,8 +7,14 @@ Keep the default integration simple and preserve existing public exports.
 
 - Develop on a feature branch. Codex branches use `codex/description`.
 - `master` is the release branch. Merge reviewed source changes before releasing.
-- `dist/` and `docs/` are tracked release artifacts. Build/commit them on master.
-- Development validation writes to ignored `.build/`, never to release outputs.
+- `dist/` is tracked distributable code. Rebuild with `npm run build:lib` and
+  commit it with source/API changes on feature branches so PRs are ready to merge.
+- `docs/` is generated Storybook hosting output. Build/commit it on master at release.
+- Validation builds reference outputs in ignored `.build/` and verifies dist;
+  it does not regenerate tracked artifacts automatically.
+- Keep source and dist line endings LF as defined by `.gitattributes`; chunk
+  hashes include source maps. The dist checker uses an isolated project copy
+  with canonical source lines and the same output-directory layout.
 - Publishing, pushing releases, and creating release tags require a release request.
 
 ## Validation
@@ -18,12 +24,15 @@ Keep the default integration simple and preserve existing public exports.
 - `npm run lint`: lint source with `eslint.config.mjs`.
 - `npm test`: source/unit/integration tests; physics runs in Node, DOM tests in jsdom.
 - `npm run test:package`: build `.build/lib`, test IIFE/React, and import package subpaths without React.
+- `npm run check:dist`: build a fresh reference and reject stale, missing, or extra dist files.
+- `npm run test:dist`: check dist consistency and test the actual distributable entries.
 - `npm run build:storybook:check`: build Storybook into `.build/storybook`.
 - `npm run validate`: run all of the above checks except dependency installation.
 - `npm run storybook`: interactive visual validation on port 6006.
 
 Use relevant tests while iterating and `npm run validate` before completing a
-change. Rendering changes also need visual checks in the affected renderers;
+change. Rebuild dist before final validation when source changes. Rendering
+changes also need visual checks in the affected renderers;
 canvas mocks and successful builds do not prove visual correctness.
 
 ## Architecture Rules

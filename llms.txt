@@ -623,7 +623,7 @@ p.addFlockingForce(); // particles self-organize via separation, alignment, cohe
 
 ### Flock with predator mouse
 ```js
-const p = createParticles({ preset: "flock", mouseForce: { strength: -2, radius: 150 } });
+const p = createParticles({ preset: "flock", mouseForce: { mode: "repel", strength: 2, radius: 150 } });
 p.addFlockingForce();
 ```
 
@@ -682,3 +682,8 @@ const p = createParticles({ config: { colors: ["#ff6b6b", "#feca57", "#48dbfb"] 
 - Flight bounds use logical dimensions (viewport / pixelRatio), optionally a centered boundsScale region and +/-boundsDepth/2. The containment fallback keeps bodies inside and reverses outward velocity components. containment: false leaves soft steering only.
 - 3D bounds are engine-space volumes, not a guarantee against camera cropping at arbitrary zoom/orbit settings.
 - When boundsDepth is positive, boundsScale uses the shorter logical viewport side for a centered square xy footprint. The orbiting 3D demo uses this compact volume.
+
+### Predator cursor and distributables
+- MouseForceConfig.mode: 'wind' (default) or 'repel'. Repel pushes radially away from cursor position, including at rest; strength is a magnitude. Wind follows cursor velocity and retains signed strength.
+- Self-tracking repel fields wait for the first pointer position rather than creating a phantom threat at the origin.
+- Rebuild and commit dist with source/API changes on feature branches. npm run build:lib regenerates it; npm run check:dist compares a fresh build and npm run test:dist tests the distributable. CI includes this guard via npm run validate. Generated Storybook docs remains release-only.

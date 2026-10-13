@@ -14,6 +14,7 @@ export type ScreenProjection = (
 ) => { x: number; y: number } | null;
 
 export default class MouseForce implements ForceSource {
+  mode: 'wind' | 'repel';
   position: Vector;
   velocity: Vector;
   strength: number;
@@ -35,9 +36,11 @@ export default class MouseForce implements ForceSource {
   private _rectInvalidator: (() => void) | null = null;
   private _resizeObserver: ResizeObserver | null = null;
   private pointerMotion = new PointerMotion();
+  private hasTrackedPosition = false;
 
   constructor(config: MouseForceConfig = {}) {
     const merged = { ...defaultMouseForce, ...config };
+    this.mode = merged.mode;
     this.position = new Vector(merged.x, merged.y);
     this.velocity = new Vector(0, 0);
     this.strength = merged.strength;
@@ -57,6 +60,7 @@ export default class MouseForce implements ForceSource {
     this._container = container ?? null;
     this._rectDirty = true;
     this._cachedRect = null;
+    this.hasTrackedPosition = false;
     this.velocity.x = 0;
     this.velocity.y = 0;
 
@@ -85,6 +89,7 @@ export default class MouseForce implements ForceSource {
       }
       this.position.x = x / this._pixelRatio;
       this.position.y = y / this._pixelRatio;
+      this.hasTrackedPosition = true;
       this.pointerMotion.record(this.position.x, this.position.y);
     };
 
@@ -165,6 +170,12 @@ export default class MouseForce implements ForceSource {
   }
 
   getForce(particlePosition: Vector): Vector {
+    _tempForce.z = 0;
+    if (this.isTracking && !this.hasTrackedPosition) {
+      _tempForce.x = 0;
+      _tempForce.y = 0;
+      return _tempForce;
+    }
     let px = particlePosition.x;
     let py = particlePosition.y;
 
@@ -194,16 +205,23 @@ export default class MouseForce implements ForceSource {
       return _tempForce;
     }
 
+    const linearFalloff = 1 - dist / this.radius;
+    const distanceFalloff =
+      this.falloff === 1 ? linearFalloff : Math.pow(linearFalloff, this.falloff);
+
+    if (this.mode === 'repel') {
+      const scale = Math.abs(this.strength) * distanceFalloff / dist;
+      _tempForce.x = dx * scale;
+      _tempForce.y = dy * scale;
+      return _tempForce;
+    }
+
     const speed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y);
     if (speed < 0.01) {
       _tempForce.x = 0;
       _tempForce.y = 0;
       return _tempForce;
     }
-
-    const linearFalloff = 1 - dist / this.radius;
-    const distanceFalloff =
-      this.falloff === 1 ? linearFalloff : Math.pow(linearFalloff, this.falloff);
     const speedFactor = Math.min(speed, this.maxSpeed) / this.maxSpeed;
 
     // Combine normalize + scale: (vel/speed) * strength * falloff * speedFactor

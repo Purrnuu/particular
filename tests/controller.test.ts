@@ -29,6 +29,30 @@ afterEach(() => {
 });
 
 describe('controller lifecycle', () => {
+  it.each([30, 60, 120, 144])('scatters birds away from a stationary predator at %i Hz', (hz) => {
+    const controller = create({
+      pixelRatio: 2, rate: 1, life: 0, velocity: new Vector(0, 0),
+      velocityMultiplier: 0, gravity: 0, accelerationSize: 0, frictionSize: 0,
+    });
+    const target = document.createElement('div');
+    const force = controller.addMouseForce({ mode: 'repel', strength: 1, radius: 80, track: target });
+    controller.addFlockingForce({ separationWeight: 0, alignmentWeight: 0, cohesionWeight: 0 });
+    expect(force.getForce(new Vector(10, 0)).x).toBe(0); // No phantom threat before first input.
+    const birds = [[240, 200], [160, 200], [200, 240], [200, 160]].map(([x, y]) => {
+      const source = controller.burst({ x: x!, y: y! });
+      source.isEmitting = false;
+      return source.particles[0]!;
+    });
+    target.dispatchEvent(new MouseEvent('mousemove', { clientX: 200, clientY: 200 }));
+    expect(force.position.x).toBe(100);
+    controller.engine.updateEmitters(60 / hz);
+    for (const bird of birds) {
+      const dx = bird.position.x - 100;
+      const dy = bird.position.y - 100;
+      expect(bird.velocity.x * dx + bird.velocity.y * dy).toBeGreaterThan(0);
+    }
+  });
+
   it.each([60, 120, 144])('normalizes tracked mouse wind and pointer batching at %i Hz', (hz) => {
     const controller = create({ pixelRatio: 1 });
     const target = document.createElement('div');

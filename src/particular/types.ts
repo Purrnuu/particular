@@ -401,6 +401,8 @@ export interface ForceSource {
 }
 
 export interface MouseForceConfig {
+  /** Wind follows cursor velocity; repel pushes away from cursor position, even at rest. Default 'wind'. */
+  mode?: 'wind' | 'repel';
   x?: number;
   y?: number;
   strength?: number;

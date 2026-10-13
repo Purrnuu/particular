@@ -187,7 +187,7 @@ Directional force from mouse velocity (brushing/sweeping), unlike attractors (ra
 
 - `updatePosition(x, y, dt = 1)` — programmatic movement: computes velocity from displacement / elapsed 60 Hz ticks. Self-tracking aggregates events through PointerMotion and samples once per engine update.
 - `decay()` — per-frame, velocity *= damping.
-- `getForce(pos)` — `strength * (1 - dist/radius)^falloff * min(speed, maxSpeed)/maxSpeed`, in mouse velocity direction.
+- `getForce(pos)` — wind mode (default): `strength * (1 - dist/radius)^falloff * min(speed, maxSpeed)/maxSpeed`, in mouse velocity direction. Repel mode: `abs(strength) * (1 - dist/radius)^falloff`, radially away from cursor position even at rest. A self-tracking field stays inactive until its first pointer position.
 - Falloff curve: `< 1` = broad wind, `= 1` = linear (default), `> 1` = localized push.
 
 ### Self-Tracking

@@ -138,7 +138,9 @@
     "build:check": "tsup --out-dir .build/lib",
     "build:storybook:check": "storybook build -o .build/storybook",
     "test:package": "npm run build:check && vitest run tests/embed.test.ts",
-    "validate": "npm run type-check && npm run lint && npm test && npm run test:package && npm run build:storybook:check"
+    "check:dist": "node scripts/check-dist.mjs",
+    "test:dist": "node scripts/check-dist.mjs --test",
+    "validate": "npm run type-check && npm run lint && npm test && npm run test:package && npm run test:dist && npm run build:storybook:check"
   },
   "author": "Niilo Säämänen <purrnuu@gmail.com>",
   "license": "MIT",

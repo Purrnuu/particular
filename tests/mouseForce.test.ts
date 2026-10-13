@@ -77,6 +77,37 @@ describe('MouseForce', () => {
   });
 
   describe('getForce', () => {
+    it.each([[20, 0], [-20, 0], [0, 20], [0, -20], [20, 20]])('repels from the cursor in direction (%s, %s), even while stationary', (x, y) => {
+      const mf = new MouseForce({ mode: 'repel', x: 100, y: 100, strength: 2, radius: 100 });
+      const f = mf.getForce(new Vector(100 + x, 100 + y));
+      expect(f.x * x + f.y * y).toBeGreaterThan(0);
+      expect(f.z).toBe(0);
+    });
+
+    it('repulsion ignores cursor travel direction and the sign of strength', () => {
+      const mf = new MouseForce({ mode: 'repel', strength: -2, radius: 100 });
+      mf.updatePosition(100, 100);
+      mf.velocity.x = -10;
+      expect(mf.getForce(new Vector(120, 100)).x).toBeCloseTo(1.6);
+      mf.velocity.x = 10;
+      expect(mf.getForce(new Vector(120, 100)).x).toBeCloseTo(1.6);
+    });
+
+    it('retains negative wind strength as reverse cursor drag', () => {
+      const mf = new MouseForce({ strength: -2, radius: 100 });
+      expect(mf.mode).toBe('wind');
+      mf.updatePosition(10, 0);
+      expect(mf.getForce(new Vector(20, 0)).x).toBeLessThan(0);
+    });
+
+    it('keeps repulsion local and finite at the cursor', () => {
+      const mf = new MouseForce({ mode: 'repel', radius: 100 });
+      for (const point of [new Vector(0, 0), new Vector(100, 0), new Vector(120, 0)]) {
+        const f = mf.getForce(point);
+        expect([f.x, f.y, f.z]).toEqual([0, 0, 0]);
+      }
+    });
+
     it('returns zero when particle is beyond radius', () => {
       const mf = new MouseForce({ radius: 50 });
       mf.updatePosition(10, 0); // give it velocity
