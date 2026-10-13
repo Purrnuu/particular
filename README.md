@@ -264,7 +264,7 @@ With bounded depth, the horizontal footprint is square and uses the shorter
 viewport side, keeping orbiting flight volumes compact.
 
 For a predator cursor, use
-`mouseForce: { mode: 'repel', strength: 2, radius: 150 }`. It pushes away from
+`mouseForce: { mode: 'repel', strength: 2, radius: 75 }`. It pushes away from
 cursor position even while the cursor is stationary. The default `'wind'` mode
 follows cursor motion; negative wind strength reverses drag, not radial direction.
 

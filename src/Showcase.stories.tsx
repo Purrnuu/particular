@@ -603,7 +603,7 @@ const BoidsDemo: React.FC = () => {
       },
       renderer: 'webgl',
       autoResize: true,
-      mouseForce: { strength: -2, radius: 80 },
+      mouseForce: { mode: 'repel', strength: 2, radius: 75 },
     });
     engineRef.current = ctrl.engine;
 

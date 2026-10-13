@@ -623,7 +623,7 @@ p.addFlockingForce(); // particles self-organize via separation, alignment, cohe
 
 ### Flock with predator mouse
 ```js
-const p = createParticles({ preset: "flock", mouseForce: { mode: "repel", strength: 2, radius: 150 } });
+const p = createParticles({ preset: "flock", mouseForce: { mode: "repel", strength: 2, radius: 75 } });
 p.addFlockingForce();
 ```
 

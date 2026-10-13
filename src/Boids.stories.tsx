@@ -65,7 +65,7 @@ const PredatorMouseComponent: React.FC<{ renderer: 'canvas' | 'webgl' }> = ({ re
       preset: 'flock',
       config: { autoStart: false },
       renderer,
-      mouseForce: { mode: 'repel', strength: 2, radius: 150, track: true },
+      mouseForce: { mode: 'repel', strength: 2, radius: 75, track: true },
     });
 
     controller.addFlockingForce();
