@@ -13,8 +13,8 @@
 
 import Emitter from '../components/emitter';
 import Particle from '../components/particle';
-import type Particular from '../core/particular';
-import { configureParticle, defaultImageShatter, type MergedConfig } from '../core/defaults';
+import type { FeatureContext } from './context';
+import { configureParticle, defaultImageShatter } from '../core/defaults';
 import Vector from '../utils/vector';
 import { loadImage } from '../utils/pixelSampler';
 import { createTextImage, canvasToDataURL } from '../utils/imageSource';
@@ -22,13 +22,15 @@ import { generateImageChunks } from '../utils/imageChunker';
 import { getViewportSize } from './resize';
 import type { ImageShatterConfig, TextImageConfig } from '../types';
 
-export function createImageShatterHelper(
-  engine: Particular,
-  mergedConfig: MergedConfig,
-  container?: HTMLElement,
-) {
-
+export function createImageShatterHelper({
+  engine,
+  config: mergedConfig,
+  container,
+  resources,
+  coordinates,
+}: FeatureContext) {
   const shatterImage = async (config: ImageShatterConfig): Promise<Emitter> => {
+    resources.assertActive();
     const resolved = { ...defaultImageShatter, ...config };
     const {
       image: imageSrc,
@@ -50,11 +52,17 @@ export function createImageShatterHelper(
     // Load image
     let image: HTMLImageElement;
     try {
-      image = await loadImage(imageSrc);
+      image = await loadImage(imageSrc, resources.signal);
     } catch (err) {
-      console.warn('Particular: shatterImage failed to load image.', typeof imageSrc === 'string' ? imageSrc : '(HTMLImageElement)', err);
+      if (!resources.disposed)
+        console.warn(
+          'Particular: shatterImage failed to load image.',
+          typeof imageSrc === 'string' ? imageSrc : '(HTMLImageElement)',
+          err
+        );
       throw err;
     }
+    resources.assertActive();
     const aspect = image.naturalWidth / image.naturalHeight;
 
     // Smart defaults for position and size
@@ -87,8 +95,7 @@ export function createImageShatterHelper(
     const pr = mergedConfig.pixelRatio;
     const engineW = displayW / pr;
     const engineH = displayH / pr;
-    const centerX = x / pr;
-    const centerY = y / pr;
+    const { x: centerX, y: centerY } = coordinates.localToEngine(x, y);
 
     // Draw image to an offscreen canvas at display resolution for chunking
     const sourceCanvas = document.createElement('canvas');
@@ -98,10 +105,11 @@ export function createImageShatterHelper(
     sourceCtx.drawImage(image, 0, 0, sourceCanvas.width, sourceCanvas.height);
 
     // Generate irregular polygon chunks
-    const chunks = await generateImageChunks(sourceCanvas, chunkCount, jitter);
+    const chunks = await resources.waitFor(generateImageChunks(sourceCanvas, chunkCount, jitter));
+    resources.assertActive();
 
     // Ensure maxCount can hold all chunks
-    if (engine.maxCount < engine.getCount() + chunks.length) {
+    if (resolved.expandBudget && engine.maxCount < engine.getCount() + chunks.length) {
       engine.maxCount = engine.getCount() + chunks.length;
     }
 
@@ -115,16 +123,19 @@ export function createImageShatterHelper(
       icons: [],
     });
     collector.isEmitting = false;
+    engine.addEmitter(collector);
 
     const imageCenter = new Vector(centerX, centerY);
 
     for (const chunk of chunks) {
+      resources.assertActive();
+      if (engine.getCount() >= engine.maxCount) break;
       // Chunk position in engine coords
       const px = centerX - engineW / 2 + chunk.cx * engineW;
       const py = centerY - engineH / 2 + chunk.cy * engineH;
 
       // Engine-scale size for this chunk
-      const chunkSize = (chunk.size / sourceCanvas.width) * engineW / 2;
+      const chunkSize = ((chunk.size / sourceCanvas.width) * engineW) / 2;
 
       if (interactive) {
         // Interactive mode: chunks start assembled at home, no velocity
@@ -149,6 +160,10 @@ export function createImageShatterHelper(
         });
 
         particle.init(chunk.image, engine);
+        if (resources.disposed) {
+          particle.destroy();
+          resources.assertActive();
+        }
         collector.particles.push(particle);
       } else {
         // Destructive mode: chunks explode outward with rotation
@@ -163,10 +178,7 @@ export function createImageShatterHelper(
 
         const particle = Particle.create({
           point: new Vector(px, py),
-          velocity: new Vector(
-            Math.cos(spreadAngle) * speed,
-            Math.sin(spreadAngle) * speed,
-          ),
+          velocity: new Vector(Math.cos(spreadAngle) * speed, Math.sin(spreadAngle) * speed),
           acceleration: new Vector(0, 0),
           friction,
           size: chunkSize,
@@ -181,6 +193,10 @@ export function createImageShatterHelper(
 
         particle.rotationVelocity = (Math.random() - 0.5) * 2 * rotationSpeed;
         particle.init(chunk.image, engine);
+        if (resources.disposed) {
+          particle.destroy();
+          resources.assertActive();
+        }
         collector.particles.push(particle);
       }
     }
@@ -191,8 +207,9 @@ export function createImageShatterHelper(
 
   const shatterText = async (
     text: string,
-    config?: Omit<ImageShatterConfig, 'image'> & { textConfig?: Omit<TextImageConfig, 'text'> },
+    config?: Omit<ImageShatterConfig, 'image'> & { textConfig?: Omit<TextImageConfig, 'text'> }
   ): Promise<Emitter> => {
+    resources.assertActive();
     const { textConfig, ...shatterConfig } = config ?? {};
     const textCanvas = createTextImage({ text, ...textConfig });
     return shatterImage({

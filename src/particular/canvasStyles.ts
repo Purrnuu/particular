@@ -1,4 +1,12 @@
-import type { CSSProperties } from 'react';
+/** Framework-independent styles that are also assignable to React's canvas style prop. */
+export interface CanvasLayerStyle {
+  position: 'fixed' | 'absolute';
+  inset: number;
+  width: string;
+  height: string;
+  pointerEvents: 'none';
+  zIndex?: number;
+}
 
 const DEFAULT_Z_INDEX = 10000;
 
@@ -7,7 +15,7 @@ const DEFAULT_Z_INDEX = 10000;
  * so particles render on top of the page without blocking clicks or other interaction.
  * Use with useParticles (spread as canvasStyle) or with a vanilla canvas element.
  */
-export const particlesBackgroundLayerStyle: CSSProperties = {
+export const particlesBackgroundLayerStyle: CanvasLayerStyle = {
   position: 'fixed',
   inset: 0,
   width: '100%',
@@ -16,7 +24,7 @@ export const particlesBackgroundLayerStyle: CSSProperties = {
   zIndex: DEFAULT_Z_INDEX,
 };
 
-export function getParticlesBackgroundLayerStyle(zIndex?: number): CSSProperties {
+export function getParticlesBackgroundLayerStyle(zIndex?: number): CanvasLayerStyle {
   return zIndex !== undefined
     ? { ...particlesBackgroundLayerStyle, zIndex }
     : particlesBackgroundLayerStyle;
@@ -27,7 +35,7 @@ export function getParticlesBackgroundLayerStyle(zIndex?: number): CSSProperties
  * The canvas fills its parent container using absolute positioning.
  * The parent element must have `position: relative` (or absolute/fixed).
  */
-export const particlesContainerLayerStyle: CSSProperties = {
+export const particlesContainerLayerStyle: CanvasLayerStyle = {
   position: 'absolute',
   inset: 0,
   width: '100%',
@@ -35,7 +43,7 @@ export const particlesContainerLayerStyle: CSSProperties = {
   pointerEvents: 'none',
 };
 
-export function getParticlesContainerLayerStyle(zIndex?: number): CSSProperties {
+export function getParticlesContainerLayerStyle(zIndex?: number): CanvasLayerStyle {
   return zIndex !== undefined
     ? { ...particlesContainerLayerStyle, zIndex }
     : particlesContainerLayerStyle;
@@ -51,7 +59,7 @@ export { DEFAULT_Z_INDEX as particlesDefaultZIndex };
 export function applyCanvasStyles(
   canvas: HTMLCanvasElement,
   container?: HTMLElement,
-  zIndex?: number,
+  zIndex?: number
 ): void {
   const style = container
     ? getParticlesContainerLayerStyle(zIndex)

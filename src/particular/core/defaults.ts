@@ -96,10 +96,15 @@ export const defaultMouseForce: Required<Omit<MouseForceConfig, 'track'>> = {
 
 export const defaultFlockingForce: Required<FlockingForceConfig> = {
   neighborRadius: 100,
-  separationWeight: 1.5,
+  separationWeight: 1.2,
   alignmentWeight: 1.5,
-  cohesionWeight: 0.3,
-  maxSteeringForce: 0.5,
+  cohesionWeight: 0.15,
+  maxSteeringForce: 0.08,
+  boundarySteeringForce: 0.12,
+  minSpeed: 1.5,
+  containment: true,
+  boundsScale: 1,
+  boundsDepth: 0,
   maxSpeed: 4,
   separationDistance: 25,
 };
@@ -150,6 +155,7 @@ export const defaultHomeConfig: Required<HomePositionConfig> = {
 
 /** Default image-to-particles config — 1px-ish particles, no effects, permanent lifetime. */
 export const defaultImageParticles: Partial<ImageParticlesConfig> = {
+  expandBudget: true,
   alphaThreshold: 0.1,
   particleLife: Infinity,
   gravity: 0,
@@ -212,7 +218,10 @@ export const defaultMouseTrail: Required<Omit<MouseTrailConfig, 'target'>> = {
 };
 
 /** Default image shatter config — dramatic glass-break explosion. */
-export const defaultImageShatter: Required<Omit<ImageShatterConfig, 'image' | 'x' | 'y' | 'width' | 'height' | 'homeConfig'>> = {
+export const defaultImageShatter: Required<
+  Omit<ImageShatterConfig, 'image' | 'x' | 'y' | 'width' | 'height' | 'homeConfig'>
+> = {
+  expandBudget: true,
   chunkCount: 36,
   jitter: 0.4,
   velocity: 5,
@@ -245,11 +254,10 @@ export const defaultMouseWind: Omit<MouseForceConfig, 'track'> = {
 type ParticleDefaults = Required<Omit<ParticleConfig, 'detonate'>>;
 
 /** Return type of configureParticular() — the fully-merged config used by helpers. */
-export type MergedConfig = Required<Omit<ParticularConfig, 'container'>> & ParticleDefaults & { renderer?: RendererType; container?: HTMLElement };
+export type MergedConfig = Required<Omit<ParticularConfig, 'container'>> &
+  ParticleDefaults & { renderer?: RendererType; container?: HTMLElement };
 
-export function configureParticular(
-  configuration?: FullParticularConfig,
-): MergedConfig {
+export function configureParticular(configuration?: FullParticularConfig): MergedConfig {
   return { ...defaultParticular, ...defaultParticle, ...configuration };
 }
 

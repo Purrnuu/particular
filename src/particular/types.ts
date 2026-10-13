@@ -13,11 +13,7 @@ export type ParticleShape =
   | 'sparkle';
 
 /** Blend mode for particle rendering. 'additive' creates glowing/fire effects, 'multiply' darkens. */
-export type BlendMode =
-  | 'normal'
-  | 'additive'
-  | 'multiply'
-  | 'screen';
+export type BlendMode = 'normal' | 'additive' | 'multiply' | 'screen';
 
 /** Visual effect configuration shared by all particle types. */
 export interface ShapeConfig {
@@ -35,7 +31,7 @@ export interface ShapeConfig {
   glowAlpha?: number;
   /** Enable particle trails (motion streaks). Default false. */
   trail?: boolean;
-  /** Trail max age in ticks — how many frames trail segments persist. Default 3. */
+  /** Trail max age in 60 Hz ticks; sampled once per tick regardless of display FPS. Default 3. */
   trailLength?: number;
   /** Trail alpha multiplier (0–1). Lower = more transparent trails. Default 0.75. */
   trailFade?: number;
@@ -129,12 +125,12 @@ export interface DetonateConfig extends ChildExplosionConfig {
 
 /** Per-particle behavioral configuration — physics, lifetime, and emission parameters. */
 export interface ParticleConfig extends ShapeConfig {
-  /** Emission rate (particles per tick in continuous mode). Default 8. */
+  /** Emission rate in particles per 60 Hz tick (rate * 60 per second). Default 8. */
   rate?: number;
   /** Emitter emission budget — total number of particles the emitter will create before stopping (burst mode only).
    *  Not to be confused with `particleLife` (individual particle lifetime). Default 30. */
   life?: number;
-  /** Individual particle lifetime in ticks (~frames). Controls how long each particle lives before being removed.
+  /** Individual particle lifetime in 60 Hz ticks. Controls how long each particle lives before being removed.
    *  Fading begins at `particleLife - fadeTime` ticks. Default 100. */
   particleLife?: number;
   /** Initial velocity vector (direction + magnitude). Default { x: 0, y: -3 } (upward). */
@@ -145,8 +141,8 @@ export interface ParticleConfig extends ShapeConfig {
   sizeMin?: number;
   /** Maximum particle size. Default 8. */
   sizeMax?: number;
-  /** Multiplier for randomized velocity magnitude. Each particle's speed is `velocity × random(0, velocityMultiplier)`.
-   *  Higher values = more speed variation between particles. Default 6. */
+  /** Size-dependent upward velocity bias: y -= (sizeMax - size) / 15 * velocityMultiplier.
+   *  Applied once at spawn, not each frame. Default 6. */
   velocityMultiplier?: number;
   /** Fade-out duration in ticks before particle is removed. Default 30. */
   fadeTime?: number;
@@ -308,13 +304,15 @@ export interface IntroConfig {
 
 /** Configuration for mapping an image into a grid of colored particles. */
 export interface ImageParticlesConfig extends ShapeConfig {
+  /** Expand the engine budget to fit this image. Default true; false preserves maxCount. */
+  expandBudget?: boolean;
   /** Image source — URL string or HTMLImageElement. */
   image: string | HTMLImageElement;
   /** X center position in screen pixels. Default: center of container/viewport. */
   x?: number;
   /** Y center position in screen pixels. Default: center of container/viewport. */
   y?: number;
-  /** Display width in screen pixels. Calculated from height + aspect ratio if omitted. Default: 80% of container/viewport width (max 800px). */
+  /** Display width in local CSS pixels. Default: natural size capped to 50% of viewport/container dimensions. */
   width?: number;
   /** Display height in screen pixels. Calculated from width + aspect ratio if omitted. Defaults to image natural height. */
   height?: number;
@@ -382,9 +380,24 @@ export interface AttractorConfig {
   glowAlpha?: number;
 }
 
+/** Frame data is reused by the engine; copy it if retaining a historical snapshot. */
+export interface FrameContext {
+  timestamp: number;
+  /** Simulation delta in 60 Hz ticks, clamped to [0, 3]. */
+  dt: number;
+  deltaSeconds: number;
+  elapsedSeconds: number;
+}
+
 export interface ForceSource {
+  /** Velocity change per 60 Hz tick; particle integration applies dt once on all axes. */
   getForce(particlePosition: Vector, particle?: Particle): Vector;
   preCompute?(particles: Particle[], dt: number): void;
+  update?(frame: FrameContext): void;
+  setBounds?(width: number, height: number): void;
+  /** Positional safety constraint after integration, before particle rendering. */
+  constrain?(particle: Particle): void;
+  destroy?(): void;
 }
 
 export interface MouseForceConfig {
@@ -409,14 +422,26 @@ export interface MouseForceConfig {
 export interface FlockingForceConfig {
   /** Radius within which other particles are considered neighbors. Default 100. */
   neighborRadius?: number;
-  /** Weight for separation rule (avoid crowding). Default 1.5. */
+  /** Weight for separation rule (avoid crowding). Default 1.2. */
   separationWeight?: number;
-  /** Weight for alignment rule (match neighbor heading). Default 1.0. */
+  /** Weight for alignment rule (match neighbor heading). Default 1.5. */
   alignmentWeight?: number;
-  /** Weight for cohesion rule (steer toward neighbor center). Default 1.0. */
+  /** Weight for cohesion rule (steer toward neighbor center). Default 0.15. */
   cohesionWeight?: number;
-  /** Maximum steering force magnitude per frame. Default 0.5. */
+  /** Maximum steering velocity change per 60 Hz tick. Default 0.08 for gentle flight arcs. */
   maxSteeringForce?: number;
+  /** Steering budget for edge turns, separate from flock-neighbor steering. Default 0.12. */
+  boundarySteeringForce?: number;
+  /** Minimum cruising speed for moving birds, in engine units per 60 Hz tick.
+   *  Set to 0 for passive swarms that may stop. Capped by maxSpeed. Default 1.5. */
+  minSpeed?: number;
+  /** Enforce logical flight bounds as a fallback after smooth edge steering. Default true. */
+  containment?: boolean;
+  /** Centered fraction of the logical viewport (0-1). With bounded depth,
+   *  the xy footprint is square, based on the shorter viewport side. Default 1. */
+  boundsScale?: number;
+  /** Full flight-region depth in engine units; 0 leaves z unbounded. Default 0. */
+  boundsDepth?: number;
   /** Maximum particle speed (velocity clamped to this). Default 4. */
   maxSpeed?: number;
   /** Minimum distance before separation kicks in. Default 25. */
@@ -512,25 +537,27 @@ export interface MouseTrailConfig {
   blendMode?: BlendMode;
   /** Enable particle trails (streak). Default true. */
   trail?: boolean;
-  /** Trail length (segments). Default 6. */
+  /** Trail max age in 60 Hz ticks. Default 6. */
   trailLength?: number;
   /** Trail fade multiplier. Default 0.4. */
   trailFade?: number;
   /** Trail shrink ratio. Default 0.5. */
   trailShrink?: number;
-  /** Minimum mouse speed (engine units/frame) to emit. Default 0.5. */
+  /** Minimum mouse speed in engine units per 60 Hz tick to emit. Default 0.5. */
   minSpeed?: number;
 }
 
 /** Configuration for shattering an image into irregular polygon chunk particles. */
 export interface ImageShatterConfig {
+  /** Expand the engine budget to fit all chunks. Default true; false preserves maxCount. */
+  expandBudget?: boolean;
   /** Image source — URL string or HTMLImageElement. */
   image: string | HTMLImageElement;
   /** X center position in screen pixels. Default: center of container/viewport. */
   x?: number;
   /** Y center position in screen pixels. Default: center of container/viewport. */
   y?: number;
-  /** Display width in screen pixels. Default: 80% of container/viewport width (max 800px). */
+  /** Display width in local CSS pixels. Default: natural size capped to 50% of viewport/container dimensions. */
   width?: number;
   /** Display height in screen pixels. Calculated from width + aspect ratio if omitted. */
   height?: number;

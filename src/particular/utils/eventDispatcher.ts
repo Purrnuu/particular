@@ -79,10 +79,14 @@ export default class EventDispatcher implements IEventDispatcher {
       const arr = this.listeners[type];
       if (!arr || arr.length === 0) return result;
 
-      // Iterate backwards so in-dispatch removals (splice) are safe
-      let i = arr.length;
+      // A snapshot keeps arbitrary removals/additions from repeating or skipping listeners.
+      const snapshot = arr.slice();
+      let i = snapshot.length;
       while (i--) {
-        result = result || !!arr[i]!(args);
+        const listener = snapshot[i]!;
+        if (!this.listeners?.[type]?.includes(listener)) continue;
+        const handled = !!listener(args);
+        result = handled || result;
       }
     }
 

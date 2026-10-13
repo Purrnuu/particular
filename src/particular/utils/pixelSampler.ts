@@ -1,3 +1,5 @@
+import { abortError } from '../core/resourceScope';
+
 export interface PixelSample {
   /** Normalized x position (0–1) within the image. */
   nx: number;
@@ -20,39 +22,61 @@ export interface PixelSample {
  */
 export function loadImage(
   src: string | HTMLImageElement | HTMLCanvasElement,
+  signal?: AbortSignal
 ): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(abortError());
+      return;
+    }
+    const image = src instanceof HTMLImageElement ? src : new Image();
+    const cleanup = () => {
+      image.removeEventListener('load', onLoad);
+      image.removeEventListener('error', onError);
+      signal?.removeEventListener('abort', onAbort);
+    };
+    const onLoad = () => {
+      cleanup();
+      resolve(image);
+    };
+    const onError = (error: Event) => {
+      cleanup();
+      reject(error);
+    };
+    const onAbort = () => {
+      cleanup();
+      reject(abortError());
+    };
+    image.addEventListener('load', onLoad, { once: true });
+    image.addEventListener('error', onError, { once: true });
+    signal?.addEventListener('abort', onAbort, { once: true });
     if (src instanceof HTMLCanvasElement) {
-      const img = new Image();
-      img.onload = () => resolve(img);
-      img.onerror = reject;
-      img.src = src.toDataURL('image/png');
+      try {
+        image.src = src.toDataURL('image/png');
+      } catch (error) {
+        cleanup();
+        reject(error);
+      }
       return;
     }
     if (src instanceof HTMLImageElement) {
       if (src.complete && src.naturalWidth > 0) {
-        resolve(src);
-      } else {
-        src.onload = () => resolve(src);
-        src.onerror = reject;
+        onLoad();
       }
       return;
     }
-    const img = new Image();
     // Only set crossOrigin for absolute cross-origin HTTP URLs.
     // Relative paths, data URIs, blob URLs, and same-origin URLs must NOT have
     // crossOrigin set — otherwise servers without CORS headers taint the canvas.
     try {
       const absolute = new URL(src, window.location.href);
       if (absolute.origin !== window.location.origin && /^https?:$/.test(absolute.protocol)) {
-        img.crossOrigin = 'anonymous';
+        image.crossOrigin = 'anonymous';
       }
     } catch {
       // Invalid URL (e.g. data URI on some engines) — skip crossOrigin
     }
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = src;
+    image.src = src;
   });
 }
 
@@ -69,7 +93,7 @@ export function loadImage(
 export function sampleImagePixels(
   source: HTMLImageElement | HTMLCanvasElement,
   resolution: number,
-  alphaThreshold: number,
+  alphaThreshold: number
 ): PixelSample[] {
   const srcWidth = source instanceof HTMLCanvasElement ? source.width : source.naturalWidth;
   const srcHeight = source instanceof HTMLCanvasElement ? source.height : source.naturalHeight;

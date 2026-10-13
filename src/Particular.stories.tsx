@@ -223,7 +223,7 @@ type Story = StoryObj<Meta<StoryArgs>>;
 
 const withBaseConfig = (
   baseConfig: Partial<FullParticularConfig>
-): Story['render'] => (args: Partial<StoryArgs>) => {
+): Story['render'] => function PresetStory(args: Partial<StoryArgs>) {
   const config = buildConfig(baseConfig, args as Partial<StoryArgs>);
   const Child = (args as Partial<StoryArgs>).continuous ? PlaygroundContinuous : Playground;
   const Wrapped = ParticularWrapper(config)(Child);

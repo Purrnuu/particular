@@ -71,7 +71,7 @@ const MouseForceDemo: React.FC<MouseForceStoryArgs> = (props) => {
 
   return (
     <div style={{ minHeight: '100vh', cursor: 'crosshair' }}>
-      <canvas ref={canvasRef} style={particlesBackgroundLayerStyle} />
+      <canvas key={renderer} ref={canvasRef} style={particlesBackgroundLayerStyle} />
       <h1
         style={{
           textAlign: 'center',

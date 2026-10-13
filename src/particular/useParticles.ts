@@ -1,15 +1,22 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useStableConfig } from './useStableConfig';
 import type { CSSProperties, MouseEvent as ReactMouseEvent, MutableRefObject } from 'react';
 
-import {
-  createParticles,
-  type BurstOptions,
-  type ParticlesController,
-} from './convenience';
+import { createParticles, type BurstOptions, type ParticlesController } from './convenience';
 import { startScreensaver } from './convenience/screensaver';
 import type { ScreensaverController } from './convenience/types';
 import { getParticlesBackgroundLayerStyle, getParticlesContainerLayerStyle } from './canvasStyles';
-import type { FullParticularConfig, MouseForceConfig, RendererType, ExplodeOptions, ImageParticlesConfig, TextImageConfig, ElementParticlesConfig, ImageShatterConfig, WobbleConfig } from './types';
+import type {
+  FullParticularConfig,
+  MouseForceConfig,
+  RendererType,
+  ExplodeOptions,
+  ImageParticlesConfig,
+  TextImageConfig,
+  ElementParticlesConfig,
+  ImageShatterConfig,
+  WobbleConfig,
+} from './types';
 import type { PresetName } from './presets';
 
 export interface UseParticlesOptions {
@@ -31,6 +38,8 @@ export interface UseParticlesOptions {
 
 export interface UseParticlesResult {
   canvasRef: MutableRefObject<HTMLCanvasElement | null>;
+  /** Use as the canvas key so renderer changes create a fresh browser context. */
+  canvasKey: RendererType;
   /** Full-viewport click-through style when backgroundLayer is true; use as <canvas style={canvasStyle} /> */
   canvasStyle: CSSProperties | undefined;
   /** The full particles controller. Available after mount. */
@@ -38,23 +47,23 @@ export interface UseParticlesResult {
   burst: (options: BurstOptions) => void;
   burstFromEvent: (
     event: MouseEvent | ReactMouseEvent<HTMLElement> | ReactMouseEvent<HTMLButtonElement>,
-    overrides?: Partial<FullParticularConfig>,
+    overrides?: Partial<FullParticularConfig>
   ) => void;
   explode: (options?: ExplodeOptions) => void;
   scatter: (options?: { velocity?: number; rotation?: number }) => void;
   startWobble: (config?: WobbleConfig) => void;
   stopWobble: () => void;
-  imageToParticles: (config: ImageParticlesConfig) => void;
+  imageToParticles: ParticlesController['imageToParticles'];
   textToParticles: (
     text: string,
-    config?: Omit<ImageParticlesConfig, 'image'> & { textConfig?: Omit<TextImageConfig, 'text'> },
-  ) => void;
-  elementToParticles: (element: HTMLElement, config?: ElementParticlesConfig) => void;
-  shatterImage: (config: ImageShatterConfig) => void;
+    config?: Omit<ImageParticlesConfig, 'image'> & { textConfig?: Omit<TextImageConfig, 'text'> }
+  ) => ReturnType<ParticlesController['textToParticles']>;
+  elementToParticles: ParticlesController['elementToParticles'];
+  shatterImage: ParticlesController['shatterImage'];
   shatterText: (
     text: string,
-    config?: Omit<ImageShatterConfig, 'image'> & { textConfig?: Omit<TextImageConfig, 'text'> },
-  ) => void;
+    config?: Omit<ImageShatterConfig, 'image'> & { textConfig?: Omit<TextImageConfig, 'text'> }
+  ) => ReturnType<ParticlesController['shatterText']>;
   setIdleEffect: (enabled: boolean) => void;
 }
 
@@ -62,10 +71,10 @@ export interface UseParticlesResult {
  * Hooks-first API for React apps.
  *
  * Usage:
- * const { canvasRef, canvasStyle, burstFromEvent } = useParticles({ preset: "magic" });
+ * const { canvasRef, canvasKey, canvasStyle, burstFromEvent } = useParticles({ preset: "magic" });
  * return (
  *   <>
- *     <canvas ref={canvasRef} style={canvasStyle} />
+ *     <canvas key={canvasKey} ref={canvasRef} style={canvasStyle} />
  *     <button onClick={burstFromEvent}>Burst</button>
  *   </>
  * );
@@ -83,6 +92,9 @@ export function useParticles({
 }: UseParticlesOptions = {}): UseParticlesResult {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const controllerRef = useRef<ParticlesController | null>(null);
+  const [controller, setController] = useState<ParticlesController | null>(null);
+  const stableConfig = useStableConfig(config);
+  const stableMouseForce = useStableConfig(mouseForce);
 
   const canvasStyle = container
     ? getParticlesContainerLayerStyle(config?.zIndex)
@@ -97,22 +109,40 @@ export function useParticles({
     const controller = createParticles({
       canvas,
       preset,
-      config,
+      config: stableConfig,
       renderer,
       autoResize,
       autoClick,
       clickTarget,
       container,
-      mouseForce,
+      mouseForce: stableMouseForce,
     });
 
     controllerRef.current = controller;
+    setController(controller);
 
     return () => {
       controller.destroy();
       controllerRef.current = null;
+      setController(null);
     };
-  }, [preset, config, renderer, autoResize, autoClick, clickTarget, container, mouseForce]);
+  }, [
+    preset,
+    stableConfig,
+    renderer,
+    autoResize,
+    autoClick,
+    clickTarget,
+    container,
+    stableMouseForce,
+  ]);
+
+  const requireController = useCallback(() => {
+    const active = controllerRef.current;
+    if (!active)
+      throw new Error('Particular: the canvas must be mounted before creating particles.');
+    return active;
+  }, []);
 
   const burst = useCallback((options: BurstOptions) => {
     controllerRef.current?.burst(options);
@@ -121,7 +151,7 @@ export function useParticles({
   const burstFromEvent = useCallback(
     (
       event: MouseEvent | ReactMouseEvent<HTMLElement> | ReactMouseEvent<HTMLButtonElement>,
-      overrides?: Partial<FullParticularConfig>,
+      overrides?: Partial<FullParticularConfig>
     ) => {
       const { clientX, clientY } = event;
       controllerRef.current?.burst({
@@ -130,7 +160,7 @@ export function useParticles({
         ...(overrides ?? {}),
       });
     },
-    [],
+    []
   );
 
   const explode = useCallback((options?: ExplodeOptions) => {
@@ -149,39 +179,45 @@ export function useParticles({
     controllerRef.current?.stopWobble();
   }, []);
 
-  const imageToParticles = useCallback((config: ImageParticlesConfig) => {
-    controllerRef.current?.imageToParticles(config);
-  }, []);
+  const imageToParticles = useCallback(
+    async (config: ImageParticlesConfig) => {
+      return requireController().imageToParticles(config);
+    },
+    [requireController]
+  );
 
   const textToParticles = useCallback(
-    (
+    async (
       text: string,
-      config?: Omit<ImageParticlesConfig, 'image'> & { textConfig?: Omit<TextImageConfig, 'text'> },
+      config?: Omit<ImageParticlesConfig, 'image'> & { textConfig?: Omit<TextImageConfig, 'text'> }
     ) => {
-      controllerRef.current?.textToParticles(text, config);
+      return requireController().textToParticles(text, config);
     },
-    [],
+    [requireController]
   );
 
   const elementToParticles = useCallback(
-    (element: HTMLElement, config?: ElementParticlesConfig) => {
-      controllerRef.current?.elementToParticles(element, config);
+    async (element: HTMLElement, config?: ElementParticlesConfig) => {
+      return requireController().elementToParticles(element, config);
     },
-    [],
+    [requireController]
   );
 
-  const shatterImage = useCallback((config: ImageShatterConfig) => {
-    controllerRef.current?.shatterImage(config);
-  }, []);
+  const shatterImage = useCallback(
+    async (config: ImageShatterConfig) => {
+      return requireController().shatterImage(config);
+    },
+    [requireController]
+  );
 
   const shatterText = useCallback(
-    (
+    async (
       text: string,
-      config?: Omit<ImageShatterConfig, 'image'> & { textConfig?: Omit<TextImageConfig, 'text'> },
+      config?: Omit<ImageShatterConfig, 'image'> & { textConfig?: Omit<TextImageConfig, 'text'> }
     ) => {
-      controllerRef.current?.shatterText(text, config);
+      return requireController().shatterText(text, config);
     },
-    [],
+    [requireController]
   );
 
   const setIdleEffect = useCallback((enabled: boolean) => {
@@ -190,8 +226,9 @@ export function useParticles({
 
   return {
     canvasRef,
+    canvasKey: renderer,
     canvasStyle,
-    controller: controllerRef.current,
+    controller,
     burst,
     burstFromEvent,
     explode,
@@ -225,6 +262,8 @@ export interface UseScreensaverOptions {
 
 export interface UseScreensaverResult {
   canvasRef: MutableRefObject<HTMLCanvasElement | null>;
+  /** Use as the canvas key so renderer changes create a fresh browser context. */
+  canvasKey: RendererType;
   /** Full-viewport click-through style when backgroundLayer is true; use as <canvas style={canvasStyle} /> */
   canvasStyle: CSSProperties | undefined;
   destroy: () => void;
@@ -245,6 +284,8 @@ export function useScreensaver({
 }: UseScreensaverOptions = {}): UseScreensaverResult {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const screensaverRef = useRef<ScreensaverController | null>(null);
+  const stableConfig = useStableConfig(config);
+  const stableMouseWind = useStableConfig(mouseWind);
 
   const canvasStyle = container
     ? getParticlesContainerLayerStyle(config?.zIndex)
@@ -259,10 +300,10 @@ export function useScreensaver({
     const screensaver = startScreensaver({
       canvas,
       preset,
-      config,
+      config: stableConfig,
       renderer,
       autoResize,
-      mouseWind,
+      mouseWind: stableMouseWind,
       container,
     });
 
@@ -272,7 +313,7 @@ export function useScreensaver({
       screensaver.destroy();
       screensaverRef.current = null;
     };
-  }, [preset, config, renderer, autoResize, mouseWind, container]);
+  }, [preset, stableConfig, renderer, autoResize, stableMouseWind, container]);
 
   const destroy = useCallback(() => {
     screensaverRef.current?.destroy();
@@ -281,6 +322,7 @@ export function useScreensaver({
 
   return {
     canvasRef,
+    canvasKey: renderer,
     canvasStyle,
     destroy,
   };

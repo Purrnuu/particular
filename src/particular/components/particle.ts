@@ -2,7 +2,13 @@ import Vector from '../utils/vector';
 import { getRandomInt } from '../utils/math';
 import EventDispatcher from '../utils/eventDispatcher';
 import { defaultHomeConfig } from '../core/defaults';
-import type { ParticleConstructorParams, ParticleShape, BlendMode, ForceSource, HomePositionConfig } from '../types';
+import type {
+  ParticleConstructorParams,
+  ParticleShape,
+  BlendMode,
+  ForceSource,
+  HomePositionConfig,
+} from '../types';
 import type Particular from '../core/particular';
 
 export interface TrailSegment {
@@ -80,6 +86,7 @@ export default class Particle {
   shadowAlpha: number;
   shadowLightOrigin: Vector;
   trailSegments: TrailSegment[] = [];
+  private trailSampleRemainder = 0;
 
   // Home position — spring return + idle animation
   homePosition: Vector | null = null;
@@ -105,6 +112,7 @@ export default class Particle {
   // Cached squared thresholds — avoids 2× Math.sqrt per home-particle per frame
   private homeThresholdSq: number = 0;
   private velocityThresholdSq: number = 0;
+  private destroyed = false;
 
   addEventListener!: EventDispatcher['addEventListener'];
   removeEventListener!: EventDispatcher['removeEventListener'];
@@ -205,6 +213,7 @@ export default class Particle {
     homeCenter,
     homeConfig,
   }: ParticleConstructorParams): void {
+    this.destroyed = false;
     // Reuse existing Vector objects — copy values instead of allocating new ones
     if (point) {
       this.position.x = point.x;
@@ -248,7 +257,10 @@ export default class Particle {
     }
     this.rotationDirection = Math.random() > 0.5 ? 1 : -1;
     this.factoredSize = 1;
-    this.lifeTime = particleLife === Infinity ? Infinity : getRandomInt(Math.round(particleLife * 0.75), particleLife);
+    this.lifeTime =
+      particleLife === Infinity
+        ? Infinity
+        : getRandomInt(Math.round(particleLife * 0.75), particleLife);
     this.lifeTick = 0;
     this.size = size ?? getRandomInt(5, 15);
     this.gravity = gravity;
@@ -257,8 +269,9 @@ export default class Particle {
     this.alpha = 1;
     this.baseAlpha = baseAlpha;
 
-    this.color = color
-      ?? (colors && colors.length > 0
+    this.color =
+      color ??
+      (colors && colors.length > 0
         ? colors[Math.floor(Math.random() * colors.length)]!
         : '#888888');
     const hex = this.color;
@@ -277,6 +290,7 @@ export default class Particle {
     this.trailLength = trailLength;
     this.trailFade = trailFade;
     this.trailShrink = trailShrink;
+    this.trailSampleRemainder = 0;
     this.imageTint = imageTint;
     this.shadow = shadow;
     this.shadowBlur = shadowBlur;
@@ -320,7 +334,8 @@ export default class Particle {
       }
       this.homeConfig = { ...defaultHomeConfig, ...homeConfig };
       this.homeThresholdSq = this.homeConfig.homeThreshold * this.homeConfig.homeThreshold;
-      this.velocityThresholdSq = this.homeConfig.velocityThreshold * this.homeConfig.velocityThreshold;
+      this.velocityThresholdSq =
+        this.homeConfig.velocityThreshold * this.homeConfig.velocityThreshold;
       // Image particles should not spin or have random rotation — they represent fixed pixels
       this.rotation = 0;
       this.rotationVelocity = 0;
@@ -328,7 +343,9 @@ export default class Particle {
       this.springMultiplier = 0.6 + Math.random() * 0.8;
       // First pulse wave: deterministic random interval so all particles agree
       this.nextPulseAt = Particle.deterministicInterval(
-        0, this.homeConfig.idlePulseIntervalMin, this.homeConfig.idlePulseIntervalMax,
+        0,
+        this.homeConfig.idlePulseIntervalMin,
+        this.homeConfig.idlePulseIntervalMax
       );
       // Distance + angle from image center for ripple wave
       if (homeCenter) {
@@ -353,16 +370,24 @@ export default class Particle {
     // ── Settled home-position fast path ──
     // Particles at rest at home skip velocity integration, friction, gravity, spring math.
     // Only forces and idle pulses can wake them. Saves ~25 ops/particle/frame for 10K+ text particles.
-    if (this.homePosition && this.homeConfig && !this.preventSettle
-      && this.velocity.x === 0 && this.velocity.y === 0 && this.velocity.z === 0
-      && this.position.x === this.homePosition.x && this.position.y === this.homePosition.y && this.position.z === this.homePosition.z) {
-
+    if (
+      this.homePosition &&
+      this.homeConfig &&
+      !this.preventSettle &&
+      this.velocity.x === 0 &&
+      this.velocity.y === 0 &&
+      this.velocity.z === 0 &&
+      this.position.x === this.homePosition.x &&
+      this.position.y === this.homePosition.y &&
+      this.position.z === this.homePosition.z
+    ) {
       // Only evaluate external forces — everything else would be a no-op
       if (forces && forces.length > 0) {
         for (let i = 0; i < forces.length; i++) {
           const f = forces[i]!.getForce(this.position, this);
           this.velocity.x += f.x * dt;
           this.velocity.y += f.y * dt;
+          this.velocity.z += (f.z ?? 0) * dt;
         }
       }
 
@@ -378,7 +403,9 @@ export default class Particle {
             this.velocity.y = Math.sin(angle) * mag;
             this.pulseCycleCount++;
             this.nextPulseAt += Particle.deterministicInterval(
-              this.pulseCycleCount, this.homeConfig.idlePulseIntervalMin, this.homeConfig.idlePulseIntervalMax,
+              this.pulseCycleCount,
+              this.homeConfig.idlePulseIntervalMin,
+              this.homeConfig.idlePulseIntervalMax
             );
           }
         }
@@ -392,11 +419,12 @@ export default class Particle {
         this.factoredSize = this.size;
       } else if (this.idleEnabled && this.homeConfig.breathingAmplitude > 0) {
         this.breathingPhase += this.homeConfig.breathingSpeed * dt;
-        this.factoredSize = this.size * (1 + Math.sin(this.breathingPhase) * this.homeConfig.breathingAmplitude);
+        this.factoredSize =
+          this.size * (1 + Math.sin(this.breathingPhase) * this.homeConfig.breathingAmplitude);
       }
 
       // If still at rest, nothing else changed — early exit
-      if (this.velocity.x === 0 && this.velocity.y === 0) {
+      if (this.velocity.x === 0 && this.velocity.y === 0 && this.velocity.z === 0) {
         if (this.particular && this.particular.hasEventListener('PARTICLE_UPDATE')) {
           this.particular.dispatchEvent('PARTICLE_UPDATE', this);
         }
@@ -406,6 +434,8 @@ export default class Particle {
       // Disturbed — apply velocity and let spring catch it next frame
       this.position.x += this.velocity.x * dt;
       this.position.y += this.velocity.y * dt;
+      if (this.velocity.z !== 0) this.position.z += this.velocity.z * dt;
+      this.applyConstraints(forces);
       if (this.particular && this.particular.hasEventListener('PARTICLE_UPDATE')) {
         this.particular.dispatchEvent('PARTICLE_UPDATE', this);
       }
@@ -437,6 +467,7 @@ export default class Particle {
         const f = forces[i]!.getForce(this.position, this);
         this.velocity.x += f.x * dt;
         this.velocity.y += f.y * dt;
+        this.velocity.z += (f.z ?? 0) * dt;
       }
     }
 
@@ -446,8 +477,12 @@ export default class Particle {
       const dy = this.homePosition.y - this.position.y;
       const dz = this.homePosition.z - this.position.z;
       const distSq = dx * dx + dy * dy + dz * dz;
-      const speedSq = this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y + this.velocity.z * this.velocity.z;
-      const isSettled = !this.preventSettle && distSq < this.homeThresholdSq && speedSq < this.velocityThresholdSq;
+      const speedSq =
+        this.velocity.x * this.velocity.x +
+        this.velocity.y * this.velocity.y +
+        this.velocity.z * this.velocity.z;
+      const isSettled =
+        !this.preventSettle && distSq < this.homeThresholdSq && speedSq < this.velocityThresholdSq;
 
       // Idle pulse timer ticks when idle is enabled (monotonic, never resets).
       if (this.homeConfig.idlePulseStrength > 0 && this.homeConfig.idlePulseIntervalMin > 0) {
@@ -465,7 +500,11 @@ export default class Particle {
         this.rotationVelocity = 0;
         this.rotation = 0;
         // Coordinated idle ripple
-        if (this.idleEnabled && this.homeConfig.idlePulseStrength > 0 && this.homeConfig.idlePulseIntervalMin > 0) {
+        if (
+          this.idleEnabled &&
+          this.homeConfig.idlePulseStrength > 0 &&
+          this.homeConfig.idlePulseIntervalMin > 0
+        ) {
           const waveDelay = this.homeDistFromCenter * 0.3;
           if (this.idleTicks >= this.nextPulseAt + waveDelay) {
             const angle = this.homeAngleFromCenter + (Math.random() - 0.5) * 1.0;
@@ -474,7 +513,9 @@ export default class Particle {
             this.velocity.y = Math.sin(angle) * mag;
             this.pulseCycleCount++;
             this.nextPulseAt += Particle.deterministicInterval(
-              this.pulseCycleCount, this.homeConfig.idlePulseIntervalMin, this.homeConfig.idlePulseIntervalMax,
+              this.pulseCycleCount,
+              this.homeConfig.idlePulseIntervalMin,
+              this.homeConfig.idlePulseIntervalMax
             );
           }
         }
@@ -489,14 +530,14 @@ export default class Particle {
         this.velocity.y *= dampFactor;
         if (this.velocity.z !== 0) this.velocity.z *= dampFactor;
         if (this.homeConfig.returnNoise > 0) {
-          const noise = this.homeConfig.returnNoise * dt;
+          const noise = this.homeConfig.returnNoise * Math.sqrt(dt);
           this.velocity.x += (Math.random() - 0.5) * noise;
           this.velocity.y += (Math.random() - 0.5) * noise;
         }
         // Rotation spring: dampen spin and pull rotation angle toward 0
         if (this.rotationVelocity !== 0 || this.rotation !== 0) {
           this.rotationVelocity *= dampFactor;
-          let normRot = ((this.rotation % 360) + 540) % 360 - 180;
+          let normRot = (((this.rotation % 360) + 540) % 360) - 180;
           this.rotationVelocity -= normRot * k * dt;
         }
       }
@@ -506,27 +547,34 @@ export default class Particle {
     this.position.x += this.velocity.x * dt;
     this.position.y += this.velocity.y * dt;
     if (this.velocity.z !== 0) this.position.z += this.velocity.z * dt;
-    if (this.rotateToVelocity) {
-      // Point in velocity direction (-90° because triangle tip is at negative y)
-      this.rotation = Math.atan2(this.velocity.y, this.velocity.x) * (180 / Math.PI) - 90;
-    } else {
-      this.rotation = this.rotation + this.rotationVelocity * dt;
-    }
-
     // Size: grow toward target, apply breathing if configured and idle is enabled
     const baseSize = Math.min(this.factoredSize + this.scaleStep * dt, this.size);
-    if (this.idleEnabled && this.homePosition && this.homeConfig && this.homeConfig.breathingAmplitude > 0) {
+    if (
+      this.idleEnabled &&
+      this.homePosition &&
+      this.homeConfig &&
+      this.homeConfig.breathingAmplitude > 0
+    ) {
       this.breathingPhase += this.homeConfig.breathingSpeed * dt;
-      this.factoredSize = baseSize * (1 + Math.sin(this.breathingPhase) * this.homeConfig.breathingAmplitude);
+      this.factoredSize =
+        baseSize * (1 + Math.sin(this.breathingPhase) * this.homeConfig.breathingAmplitude);
     } else {
       this.factoredSize = baseSize;
+    }
+
+    this.applyConstraints(forces);
+    if (this.rotateToVelocity) {
+      this.rotation = Math.atan2(this.velocity.y, this.velocity.x) * (180 / Math.PI) - 90;
+    } else {
+      this.rotation += this.rotationVelocity * dt;
     }
 
     // Permanent particles (homePosition) skip lifetime countdown entirely
     if (this.homePosition) {
       this.alpha = this.baseAlpha;
     } else {
-      this.alpha = Math.min(1, Math.max((this.lifeTime - this.lifeTick) / this.fadeTime, 0)) * this.baseAlpha;
+      this.alpha =
+        Math.min(1, Math.max((this.lifeTime - this.lifeTick) / this.fadeTime, 0)) * this.baseAlpha;
       this.lifeTick += dt;
     }
 
@@ -536,11 +584,17 @@ export default class Particle {
     }
   }
 
+  private applyConstraints(forces?: ForceSource[]): void {
+    if (!forces) return;
+    for (let i = 0; i < forces.length; i++) forces[i]!.constrain?.(this);
+  }
+
   advanceTrail(dt = 1): void {
     this.updateTrail(false, dt);
   }
 
   private updateTrail(addCurrentPoint: boolean, dt = 1): void {
+    if (dt <= 0) return;
     if (!this.trail || this.trailLength <= 0) {
       if (this.trailSegments.length) {
         // Return segments to pool before clearing
@@ -557,7 +611,7 @@ export default class Particle {
     for (let i = 0; i < this.trailSegments.length; i++) {
       const segment = this.trailSegments[i]!;
       segment.age += dt;
-      if (segment.age < maxAge) {
+      if (segment.age < maxAge - 1e-9) {
         this.trailSegments[writeIdx++] = segment;
       } else {
         if (freeSegments.length < _maxFreeSegments) freeSegments.push(segment);
@@ -565,32 +619,32 @@ export default class Particle {
     }
     this.trailSegments.length = writeIdx;
 
+    const previousRemainder = this.trailSampleRemainder;
+    const elapsed = previousRemainder + dt;
+    const samples = Math.floor(elapsed + 1e-9);
+    this.trailSampleRemainder = Math.max(0, elapsed - samples);
+
     if (!addCurrentPoint) return;
 
     // Do not add new trail points once particle is fully transparent.
     if (this.alpha <= 0) return;
 
-    // Reuse a recycled segment or create a new one
-    const seg = freeSegments.pop();
-    if (seg) {
-      seg.x = this.position.x;
-      seg.y = this.position.y;
-      seg.z = this.position.z;
+    // Sample once per 60 Hz tick, not per display frame. Reconstruct intermediate
+    // points at low FPS; the one-tick lag preserves existing 60 Hz trail positions.
+    for (let i = Math.max(0, samples - maxAge); i < samples; i++) {
+      const sampleTime = 1 - previousRemainder + i;
+      const offset = sampleTime - 1;
+      const seg = freeSegments.pop() ?? {
+        x: 0, y: 0, z: 0, size: 0, rotation: 0, alpha: 0, age: 0,
+      };
+      seg.x = this.position.x + this.velocity.x * offset;
+      seg.y = this.position.y + this.velocity.y * offset;
+      seg.z = this.position.z + this.velocity.z * offset;
       seg.size = this.factoredSize;
       seg.rotation = this.rotation;
       seg.alpha = this.alpha;
-      seg.age = 0;
+      seg.age = Math.max(0, dt - sampleTime);
       this.trailSegments.push(seg);
-    } else {
-      this.trailSegments.push({
-        x: this.position.x,
-        y: this.position.y,
-        z: this.position.z,
-        size: this.factoredSize,
-        rotation: this.rotation,
-        alpha: this.alpha,
-        age: 0,
-      });
     }
   }
 
@@ -618,6 +672,8 @@ export default class Particle {
 
   /** Dispatch PARTICLE_DEAD event and return this particle to the pool for reuse. */
   destroy(): void {
+    if (this.destroyed) return;
+    this.destroyed = true;
     this.dispatch('PARTICLE_DEAD', this);
     // Return trail segments to segment pool
     for (let i = 0; i < this.trailSegments.length; i++) {
@@ -629,6 +685,7 @@ export default class Particle {
     this.image = null;
     this.homePosition = null;
     this.homeConfig = null;
+    this.removeAllEventListeners();
     // Return to particle pool for reuse
     if (_particlePool.length < _maxPoolSize) {
       _particlePool.push(this);

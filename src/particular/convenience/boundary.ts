@@ -1,5 +1,5 @@
 import Attractor from '../components/attractor';
-import type Particular from '../core/particular';
+import type { FeatureContext } from './context';
 import type { BoundaryConfig } from '../types';
 import type { BoundaryHandle } from './types';
 
@@ -9,18 +9,16 @@ import type { BoundaryHandle } from './types';
  * Tiles repulsion attractors along an HTML element's perimeter, auto-syncing
  * on resize (via ResizeObserver) and scroll (via rAF-throttled scroll listener).
  */
-export function createBoundaryHelper(
-  engine: Particular,
-  container: HTMLElement | undefined,
-  cleanups: Array<() => void>,
-) {
+export function createBoundaryHelper({
+  engine,
+  container,
+  resources,
+  coordinates,
+}: FeatureContext) {
   const addBoundary = (config: BoundaryConfig): BoundaryHandle => {
-    const {
-      element,
-      strength = -1.5,
-      radius = 10,
-      inset: insetFraction = 0.4,
-    } = config;
+    resources.assertActive();
+    let disposed = false;
+    const { element, strength = -1.5, radius = 10, inset: insetFraction = 0.4 } = config;
     const pr = engine.pixelRatio;
     let attractors: Attractor[] = [];
     // Store offsets relative to element top-left (engine coords) for fast scroll reposition
@@ -28,17 +26,13 @@ export function createBoundaryHelper(
 
     /** Full rebuild: recompute tiling and create/destroy attractors. Called on resize. */
     const rebuild = () => {
+      if (disposed || resources.disposed) return;
       for (const a of attractors) engine.removeAttractor(a);
       attractors = [];
       offsets = [];
 
-      const refRect = container
-        ? container.getBoundingClientRect()
-        : { left: 0, top: 0 };
-
       const elRect = element.getBoundingClientRect();
-      const elLeft = (elRect.left - refRect.left) / pr;
-      const elTop = (elRect.top - refRect.top) / pr;
+      const { x: elLeft, y: elTop } = coordinates.clientToEngine(elRect.left, elRect.top);
       const elW = elRect.width / pr;
       const elH = elRect.height / pr;
 
@@ -79,9 +73,7 @@ export function createBoundaryHelper(
     /** Lightweight reposition: move existing attractors without alloc. Called on scroll. */
     const reposition = () => {
       if (attractors.length === 0) return;
-      const refRect = container
-        ? container.getBoundingClientRect()
-        : { left: 0, top: 0 };
+      const refRect = container ? container.getBoundingClientRect() : { left: 0, top: 0 };
       const elRect = element.getBoundingClientRect();
       const elLeft = (elRect.left - refRect.left) / pr;
       const elTop = (elRect.top - refRect.top) / pr;
@@ -123,7 +115,8 @@ export function createBoundaryHelper(
 
     const handle: BoundaryHandle = {
       update: rebuild,
-      destroy: () => {
+      destroy: resources.add(() => {
+        disposed = true;
         ro.disconnect();
         if (rebuildRafId) cancelAnimationFrame(rebuildRafId);
         scrollTarget.removeEventListener('scroll', onScroll);
@@ -131,10 +124,9 @@ export function createBoundaryHelper(
         for (const a of attractors) engine.removeAttractor(a);
         attractors = [];
         offsets = [];
-      },
+      }),
     };
 
-    cleanups.push(() => handle.destroy());
     return handle;
   };
 

@@ -1,0 +1,699 @@
+# Particular — Engine Deep Reference
+
+Deep implementation reference for AI agents working on engine internals.
+For project rules and validation, see `AGENTS.md` at the project root. File maps and modification checklists are in `architecture/development.md`.
+
+## Config Model
+
+Types in `src/particular/types.ts`:
+
+- `ShapeConfig`: visual effect fields (shape, blendMode, glow*, trail*, shadow*, imageTint)
+- `ParticleConfig extends ShapeConfig`: per-particle behavior (rate, life, particleLife, velocity, spread, size, gravity, acceleration, friction, fadeTime, colors, spawnWidth/Height)
+- `ParticularConfig`: engine-level (pixelRatio, maxCount, continuous, autoStart, webglMaxInstances, particlePoolSize)
+- `FullParticularConfig extends ParticularConfig, ParticleConfig`: merged surface + icons + renderer
+
+Config merge chain: `configureParticular({ ...preset, ...userConfig })` — user config always wins over preset.
+
+Defaults in `src/particular/core/defaults.ts`: `defaultParticular`, `defaultParticle`, `defaultMouseForce` (base physics), `defaultMouseWind` (screensaver wind overrides), `defaultFlockingForce` (boids flocking weights and radii), `defaultContainerGlow` (glow particle halo), `defaultMouseTrail` (cursor trail wisps), `defaultImageShatter` (glass-break explosion), `defaultWobble` (per-frame velocity/rotation nudges + mouse-reactive tracking config). `MouseForce` constructor merges config with `defaultMouseForce`. `FlockingForce` constructor merges config with `defaultFlockingForce`.
+
+Key fields with non-obvious behavior:
+
+- `spawnWidth`, `spawnHeight` — randomize particle spawn within a rectangle centered on emitter point. Default 0 (point spawn). Used internally by screensaver to spread across viewport.
+- `acceleration` + `accelerationSize` — downward acceleration split into direct (size-independent) and size-coupled components. Formula: `acceleration + accelerationSize * size`. Defaults: `acceleration: 0, accelerationSize: 0.01`. To disable size-based acceleration, set `accelerationSize: 0`. To add constant downward pull, increase `acceleration`.
+- `friction` + `frictionSize` — air resistance split into direct and size-coupled components. Formula: `friction + frictionSize * size`. Defaults: `friction: 0, frictionSize: 0.0005`. To apply uniform drag regardless of size, set `friction` directly and `frictionSize: 0`.
+- `webglMaxInstances` — max particles per WebGL draw call (default 4096). Increase for fewer draw calls with many particles.
+
+## Runtime Flow
+
+1. `Particular.initialize(...)` sets core settings and starts RAF update loop.
+2. Renderer(s) added via `addRenderer(...)`.
+3. Emitters added via `addEmitter(...)`.
+4. Each frame: `UPDATE` event (renderers clear) → emitters emit/update → `UPDATE_AFTER` event (renderers draw).
+
+## Delta-Time Normalization
+
+Normalized dt for refresh-rate independence: 60fps → `dt = 1.0`; 120fps → `dt ≈ 0.5`; 30fps → `dt ≈ 2.0`.
+
+```
+dt = clamp((timestamp - lastTimestamp) * 60 / 1000, 0, 3)
+```
+
+Upper clamp of 3 (~20fps floor) prevents teleportation after tab-backgrounding.
+
+Update flow: `Particular.update(timestamp)` → `updateEmitters(dt)` → `emitter.emit(dt)` / `mouseForce.decay(dt)` / `emitter.update(..., dt)` → `particle.update(forces, dt)`.
+
+Scaling rules:
+- Additive per-frame values (velocity, gravity, position, rotation, scale, lifetime): multiply by `dt`.
+- Exponential decay (friction, mouse damping): use `Math.pow(base, dt)`.
+- `Vector.add(v, scale)` accepts an optional scale parameter (default 1) for dt-scaled addition.
+- Emitter `lifeCycle` counter is a particle count, not time — not scaled by dt.
+
+## Canvas Renderer
+
+File: `src/particular/renderers/canvasRenderer.ts`
+
+- Uses Canvas 2D shadow system for both glow and shadow.
+- Glow uses configurable `glowColor` + `glowAlpha`.
+- Glow size scales with particle size (`factoredSize`).
+- Shadow: directional offset from burst origin, fade tied to particle alpha, offset/blur retraction during fade.
+
+## WebGL Renderer
+
+File: `src/particular/renderers/webglRenderer.ts`
+
+Design: WebGL2 only, instanced drawing, separate circle and image shader programs, batch grouping by compatible draw state, chunked draws via `maxInstances`.
+
+Key features: blend modes (normal/additive/multiply/screen), image support with optional tint, glow with size-scaled width and smoothed edge falloff, shadow pass (directional vector from burst origin, blur/offset retract with eased alpha during fade).
+
+Implementation notes:
+- Glow rendering: quads are expanded in the vertex shader via `u_glowExpand` uniform (UV-space expansion: `expand = 1.0 + u_glowExpand`). The SDF shape stays at original size while the quad grows to accommodate glow overflow. Glow falloff uses `smoothstep(-0.2, glowRange, sd)` — starting at -0.2 bleeds glow slightly inside the shape edge for visibility on dark backgrounds.
+- Shadow drawn as separate pass before main pass.
+- Particle alpha clamped to `[0, 1]` in `Particle.update()`.
+
+## WebGL 3D Renderer
+
+File: `src/particular/renderers/webgl3dRenderer.ts`
+
+Design: WebGL2 only, instanced drawing, perspective projection via Camera, billboarded quads, back-to-front depth sorting for non-additive blending.
+
+### Camera & Coordinate System
+
+File: `src/particular/renderers/camera.ts`, `src/particular/utils/mat4.ts`
+
+- `Camera` class holds `CameraConfig` (fov, position, target, up, near, far) and computes a `viewProjection` matrix via `update(aspect)`.
+- Default camera: fov 60, position `(0, 0, 500)`, target `(0, 0, 0)`, near 1, far 5000.
+- `mat4.ts` provides column-major Float32Array operations: `identity()`, `perspective(fov, aspect, near, far)`, `lookAt(eye, center, up)`, `multiply(a, b)`. Zero dependencies.
+- `Camera.orbit(azimuth, elevation, distance)` recomputes camera position on a sphere around the target, then calls `update()`.
+- `Camera.enableOrbitControls(canvas)` wires mouse-drag orbit + scroll zoom. Returns a cleanup function. Pointer events: mousedown/mousemove/mouseup for rotation, wheel for zoom (clamped to `[near+10, far-100]`).
+
+### Reference-Based Coordinate Mapping (Resize Stability)
+
+The 3D vertex shader maps engine coords to world coords using a center point and worldScale. If these were recomputed from the current viewport every frame, resizing the browser would shift the center and rescale all particle positions, causing visible teleportation.
+
+**Solution**: On the first valid render frame, the renderer captures `_refCenterX`, `_refCenterY`, and `_refWorldScale`. These reference values are used for the engine-to-world coordinate transform (`u_referenceCenter`, `u_worldScale` uniforms) for the lifetime of the renderer. Camera projection still uses the current aspect ratio (via `u_resolution`), so the frustum widens/narrows naturally on resize.
+
+- `u_referenceCenter` (vec2): Fixed viewport center in logical coords, captured once. Used in vertex shaders for position mapping.
+- `u_worldScale` (float): Fixed world scale, captured once. Used in vertex shaders and `sortBackToFront()`.
+- `u_resolution` (vec2): **Current** viewport size. Still used for `sizeNDC` (particle screen-pixel size) and aspect ratio correction.
+- `projectToScreen` in `convenience/index.ts` reads `referenceCenterX`, `referenceCenterY`, `referenceWorldScale` getters from the renderer to stay in sync.
+- AutoStart emitter repositioning on resize is only done for 2D mode. In 3D, the reference mapping keeps the initial center at world origin, so no repositioning is needed.
+
+### Billboarding
+
+Particles are rendered as screen-aligned quads regardless of camera orientation:
+1. Project particle center (`x, y, z`) through `u_viewProjection` to get clip-space position.
+2. Offset quad vertices in clip space using rotated 2D offsets scaled by `size / u_resolution`, with aspect ratio correction on the x-axis.
+3. This ensures all existing 2D shapes (circle, star, sparkle, triangle via SDF) work in 3D with zero per-shape changes.
+
+### Instance Data
+
+Instance stride = 10 floats: `(x, y, z, size, rotation, r, g, b, a, shapeId)`. Compared to 2D renderer's 9 floats (no z). Vertex shader reads z and uses it for projection.
+
+### Depth Sorting
+
+- **Additive blending**: Order-independent — no sorting needed.
+- **Non-additive blending**: Back-to-front CPU sort via `sortBackToFront()`. Computes view-space depth for each particle using the viewProjection matrix, sorts descending. Runs per batch, ~1ms for 10K particles.
+- `gl.DEPTH_TEST` is enabled. Depth writes (`gl.depthMask`) are disabled for all main render passes to prevent semi-transparent fragments (glow/SDF edges) from blocking particles behind them. Back-to-front sorting handles correct visual order.
+
+### Shared Code
+
+`webglShared.ts` provides shared utilities used by both 2D and 3D renderers: `compileShader()`, `linkProgram()`, `hexToRgba()`, `shapeToId()`, `setBlendMode()`, `SDF_SHAPE_FUNCTIONS` (fragment shader SDF shapes), `DrawBatch` type.
+
+### 3D Emission
+
+- `spawnDepth` (default 0): Randomizes particle spawn z within `[-spawnDepth/2, +spawnDepth/2]` centered on emitter point.
+- `spread3d` (default 0): When > 0, emission uses `Vector.fromSpherical(azimuth, elevation, magnitude)` for spherical cone emission instead of 2D angle+spread. The value is the **full cone angle**: `spread3d = PI` → half-angle PI/2 → full sphere. Values >= PI all clamp to full sphere. Uses `asin`-based sampling for uniform area distribution on the sphere surface (no polar bunching). For narrow cones (e.g. `PI/8`), the elevation range is proportionally smaller.
+- `emitDirection` (default `{x:0, y:-1, z:0}`): Base direction for spherical emission. Azimuth is derived from the 2D angle of this vector.
+- `spread3d` on `ChildExplosionConfig` / `DetonateConfig`: When > 0, detonation children emit in a spherical burst (via `Vector.fromSpherical`) instead of a 2D ring. Full sphere = PI. Default 0. Parent z-position is passed to child particles.
+
+### 3D Auto-Start
+
+`createParticles()` auto-creates a center emitter when `mergedConfig.autoStart` is true. `startScreensaver()` sets `autoStart: false` to avoid double-emission (it creates its own emitter). Stories that use ambient presets (river, fireworksShow) with manual emitters should also pass `autoStart: false`.
+
+### 3D Mouse Force
+
+When using `mouseForce` with the `webgl3d` renderer, `createParticles()` wires a `projectToScreen` function on the `MouseForce` instance. This projects particle 3D positions through the camera's `viewProjection` matrix to screen space, so the mouse force affects particles based on visual proximity (screen distance) rather than engine-coordinate distance. Without this, particles at different z-depths would be pushed inconsistently.
+
+### Auto-Orbit
+
+`enableAutoOrbit(speed?)` hooks into the engine's `UPDATE` event. Each frame it reads the camera's current azimuth/elevation (from `camera.position`) and advances the azimuth by `speed * dt`. This composes with orbit controls — user drag updates `camera.position`, and auto-orbit reads that position next frame instead of fighting it.
+
+### 3D Presets
+
+- `galaxySpin` — full spherical emission (spread3d = 2PI), continuous orbit, gravity 0, long-lived particles with trails, additive blending
+- `depthField` — z-spread parallax field, continuous gentle emission, no gravity
+- `supernova` — full spherical burst (spread3d = PI), high velocity, additive glow, dramatic detonation
+- `fireworks3d` — rockets launch upward with slight 3D spread, detonate at 65% lifetime into spherical sparkle sub-bursts (spread3d = PI on children), additive glow, continuous emission
+
+Registered in `presetRegistry` as `'galaxySpin'`, `'depthField'`, `'supernova'`, `'fireworks3d'`.
+
+## Particle/Emitter Details
+
+- `Particle.shadowLightOrigin` stores spawn/burst origin for directional shadowing.
+- `Emitter.createParticle()` forwards all glow/shadow fields from emitter config.
+- Particle alpha decays over time, clamped to valid range.
+- **`gravityJitter`**: Per-particle gravity randomness (0–1). Applied in `Emitter.createParticle()`: `gravity * (1 - jitter + Math.random() * jitter * 2)`. At `gravityJitter: 0.5`, each particle gets gravity between 50%–150% of the base value, breaking uniform fall speeds. Used by snow (0.5), confetti (0.2), magic (0.15), fireworks (0.2), meteors (0.3), fireworksShow (0.15). Default 0.
+- **`life` vs `particleLife`**: `life` (default 30) = emitter emission budget (burst only). `particleLife` (default 100) = individual particle lifetime in ticks. Each particle lives `[particleLife * 0.75, particleLife]` ticks. Fading begins at `lifeTime - fadeTime`.
+- **Permanent particles**: Particles with `homePosition` are truly permanent — they skip `lifeTick` increment entirely and alpha stays at `baseAlpha` (no fade). `particleLife: Infinity` is also supported: the constructor detects it and sets `lifeTime = Infinity` directly (skipping `getRandomInt`). Resolved image defaults use `Infinity`; particles with home positions have permanent lifetimes.
+- **`preventSettle` flag**: `Particle.preventSettle` (boolean, default `false`). When `true`, the `isSettled` check in `update()` always returns `false`, so the spring path always runs and particles never hard-snap to home. Used by `startWobble()` to keep particles in continuous motion under external nudges.
+
+## Attractors
+
+File: `src/particular/components/attractor.ts`
+
+Engine-level point forces affecting all particles. Apply force after gravity, before position integration.
+
+- `getForce(pos)` returns force with linear falloff (`1 - dist/radius`), zero outside radius.
+- Negative strength = repulsion.
+- Coordinates: engine space (screen coords / pixelRatio). `addAttractor` takes engine coords directly.
+- Force flow: `Particular.updateEmitters()` → `Emitter.update(bounds, forces)` → `Particle.update(forces)`.
+
+### Visible Attractors
+
+Visual fields on `AttractorConfig`: `visible`, `icon`, `size` (default 12), `color` (default `'#adb5bd'`), `shape`, `glow*`.
+
+`Attractor.toDrawable()` returns a `Particle`-compatible object. Canvas renderer draws in `onUpdateAfter` on top of particles. WebGL renderer appends after particles in draw pipeline.
+
+### Random Placement
+
+- `controller.addRandomAttractors(count, config?)` — random positions within viewport (10% margin).
+- `controller.removeAllAttractors()` — clears all.
+
+## MouseForce
+
+File: `src/particular/components/mouseForce.ts`
+
+Directional force from mouse velocity (brushing/sweeping), unlike attractors (radial pull/push).
+
+- `updatePosition(x, y, dt = 1)` — programmatic movement: computes velocity from displacement / elapsed 60 Hz ticks. Self-tracking aggregates events through PointerMotion and samples once per engine update.
+- `decay()` — per-frame, velocity *= damping.
+- `getForce(pos)` — `strength * (1 - dist/radius)^falloff * min(speed, maxSpeed)/maxSpeed`, in mouse velocity direction.
+- Falloff curve: `< 1` = broad wind, `= 1` = linear (default), `> 1` = localized push.
+
+### Self-Tracking
+
+MouseForce can own its own mouse event listener via `startTracking`/`stopTracking`:
+
+- `startTracking(target, pixelRatio)` — attaches `mousemove`, `touchmove`, and `touchstart` listeners on `target`, auto-converts coordinates via `pixelRatio`, calls `updatePosition` internally. Touch events use `e.touches[0]` coordinates with `{ passive: true }`.
+- `stopTracking()` — removes all listeners (mouse + touch). Idempotent (safe to call when not tracking).
+- `destroy()` — calls `stopTracking()`. Called automatically by the engine's `destroy()` utility.
+- `isTracking` (getter) — returns `true` when a listener is active.
+
+### `track` Config Option
+
+The `MouseForceConfig.track` field wires self-tracking through the convenience layer:
+
+- `track: true` — track on `window`.
+- `track: someElement` — track on a specific `EventTarget`.
+- Omitted or `false` — manual mode (consumer calls `updatePosition` directly).
+
+`controller.addMouseForce({ track: true, strength: 1, ... })` replaces the old pattern of adding a force + wiring a `mousemove` listener + dividing by `pixelRatio` manually.
+
+## FlockingForce (Boids)
+
+File: `src/particular/components/flockingForce.ts`
+
+Craig Reynolds' Boids flocking — three steering rules applied as a ForceSource:
+
+- **Separation**: Push away from neighbors within `separationDistance` (default 25). Force = sum of normalized (self - neighbor) vectors.
+- **Alignment**: Steer toward average neighbor velocity. Force = `(avgVelocity - selfVelocity) * alignmentWeight`.
+- **Cohesion**: Steer toward average neighbor position. Force = `(avgPosition - selfPosition) * 0.01 * cohesionWeight`.
+
+### Architecture
+
+Uses `preCompute(particles, dt)` hook — called once per frame in `Particular.updateEmitters()` before particle updates. Pre-computes per-particle forces via spatial hash and stores in `WeakMap<Particle, {x,y,z}>`. `getForce(position, particle)` returns the pre-computed force via WeakMap lookup. Returns zero when `particle` param is omitted (backward compat).
+
+### Spatial Hash Grid
+
+2D grid (9-cell neighbor query) with Szudzik pairing. Cell arrays are pooled to avoid GC. Distance checks include z when any particle has `z !== 0` (detected once per `preCompute`). For pure 2D scenes, z-overhead is zero. Cell size = `neighborRadius`.
+
+### Config
+
+`FlockingForceConfig`: `neighborRadius` (100), `separationWeight` (1.2), `alignmentWeight` (1.5), `cohesionWeight` (0.15), `maxSteeringForce` (0.08), `minSpeed` (1.5), `maxSpeed` (4), `separationDistance` (25). Defaults in `defaultFlockingForce`. The flock preset uses friction 0.002 and no size-based upward spawn bias, preserving flight momentum. Lower steering and cohesion favour broad flight arcs; explicit overrides can restore a more reactive swarm.
+
+### Edge Avoidance
+
+Bounds come from viewport/pixelRatio, optionally scaled into a centered flight region. Predictive edge steering rotates velocity inward with a consistent tangent, preserving speed and bypassing neighbor-force smoothing. Separate boundarySteeringForce (default 0.12) permits timely, gentle edge turns. Margins are capped per axis so opposite edge zones do not overlap. Containment (default true) repairs positions before kill-zone checks and after integration, keeping bodies inside and reversing outward velocity only as a safety fallback. boundsDepth (default 0) optionally limits z; containment: false leaves soft steering only. The 3D demo uses a compact flight volume, not a camera-frustum constraint.
+
+### Force Smoothing
+
+Per-particle forces are exponentially smoothed (2% blend per 60 Hz tick) to prevent jittery movement. Stored forces blend with new: `entry.x += (fx - entry.x) * (1 - Math.pow(0.98, dt))`. This creates graceful arcing motion instead of sudden direction changes.
+
+### Speed Clamping
+
+After computing the steering force, `getForce` checks if applying the force would exceed `maxSpeed`. If so, it adjusts the force to bring velocity to `maxSpeed` in the desired direction. This prevents runaway acceleration. A separate minSpeed cruise floor maintains forward flight while preserving the candidate heading (or the existing heading if braking cancels velocity exactly). It is capped by maxSpeed; minSpeed: 0 restores passive swarms. Both speed corrections compensate for dt, independently of the steering cap. The flock preset launches within +/-PI/5 of a shared heading to avoid opposing velocities cancelling at the emitter.
+
+## ForceSource Interface
+
+`Attractor`, `MouseForce`, and `FlockingForce` implement `ForceSource { getForce(position: Vector, particle?: Particle): Vector; preCompute?(particles, dt): void }`. Engine merges `[...attractors, ...mouseForces, ...flockingForces]` each frame, passed to `Particle.update(forces)`. The optional `particle` param is used by FlockingForce for identity-based WeakMap lookup. The optional `preCompute` hook is called once per frame before particle updates for forces that need neighbor access.
+
+### Interaction Model Guideline
+
+Engine-level components that need DOM event wiring (e.g. mouse tracking, touch input) should own their event listeners internally via config options (like `MouseForceConfig.track`), not push wiring to consumers. This keeps consumer code minimal and eliminates boilerplate like manual `addEventListener`/`removeEventListener` + coordinate conversion.
+
+## Color System
+
+`colors` field (`string[]`): non-empty → random pick from array; empty → `generateHarmoniousPalette()` generates a cohesive 6-color analogous HSL palette once per emitter.
+
+`generateHarmoniousPalette()` (in `src/particular/utils/color.ts`) picks a random base hue (0–360) and creates 6 colors within ±30° (analogous scheme), with saturation 60–85% and lightness 42–82%. All particles from the same emitter share the palette, ensuring visual harmony.
+
+Chain: `ParticleConfig.colors?` → `Emitter` constructor (generates palette if empty) → `EmitterConfiguration.colors` → `Particle` constructor.
+
+Built-in palettes (all in `presets.ts`, exported via `colorPalettes` map and `presets.Colors`):
+- **Naturals**: snow (white-offwhite), grayscale, ash (dark grey), slate (dark blue-grey)
+- **Blues**: coolBlue, blue, magic (blue-purple sparkle, used by magic preset and defaults), nebula (blue-purple-pink, used by galaxySpin), fairy (pastel blue-purple-teal-mint)
+- **Warms**: orange, amber (warm orange-gold glow), gold (yellow-orange), solar (hot reds/whites, used by supernova), meteor (white-hot to deep red)
+- **Accents**: green, emerald (green to pastel mint), rose (hot-to-pastel pink), violet (deep purple), muted (desaturated warm/cool)
+- **Multi**: fireworks (vivid multicolor), water (cyan-white)
+- **Themed**: birds (earthy brown-grey), sunset (warm orange-red-purple, used by flock preset)
+- **Flags**: finland, usa
+
+The `colorPalettes` export from `presets.ts` provides a `Record<string, string[]>` lookup of all named palettes, used by Storybook's `colorPalette` select control.
+
+Usage: `{ ...presets.Burst.confetti, ...presets.Colors.finland }` to override colors on any preset.
+
+## Presets
+
+Curated and intentionally limited. Polish over quantity.
+
+- `presets.Burst.confetti` — colorful rectangle confetti (muted colors, friction for flutter)
+- `presets.Burst.magic` — glowing sparkles with soft trails, additive blending, blue/purple palette, gravityJitter 0.15
+- `presets.Burst.fireworks` — glowing triangles with trailing streaks, additive blending, orange glow, gravityJitter 0.2
+- `presets.Burst.fireworksDetonation` — narrow upward launch, triangle shape, additive blending, trailing rockets auto-detonate into triangle sub-bursts at 70% lifetime, gravityJitter 0.15
+- `presets.Ambient.snow` — gentle snowfall (continuous, low rate, long life, gravityJitter 0.5 for natural drift)
+- `presets.Ambient.meteors` — bright diagonal streaks with glowing trails, accelerating as they fall, gravityJitter 0.3
+- `presets.Ambient.fireworksShow` — continuous fireworks screensaver: triangle rockets launch from bottom, auto-detonate into trailing triangle bursts (vivid palette), gravityJitter 0.15
+- `presets.Ambient.flock` — boids swarm: triangles with rotateToVelocity, additive blending, glow (ethereal white-peach), trails, zero gravity, continuous emission, sunset palette. Use with `addFlockingForce()` for self-organizing behavior. Edge avoidance keeps particles on screen.
+- `presets.Ambient.river` — horizontal water stream with cyan glow and short trails, designed for use with attractors (water palette)
+- `presets.Images.showcase` — tuned for icon/image particles
+- `presets.ImageParticles.text` — high-fidelity text as tiny square particles
+- `presets.ImageParticles.shape` — shape/icon as circle particles with soft glow
+
+## Trail System
+
+Config: `trail` (enable), `trailLength` (max age), `trailFade` (alpha multiplier), `trailShrink` (min size ratio).
+
+Age and sampling cadence use 60 Hz ticks. A fractional accumulator samples once
+per tick rather than once per display frame, avoiding doubled trail density at
+120 FPS. Low-FPS frames reconstruct intermediate points using the current
+velocity; pooled particle reuse resets the accumulator.
+
+Rendering math (identical in Canvas and WebGL):
+```
+life = 1 - segment.age / maxAge
+sizeScale = trailShrink + life * (1 - trailShrink)
+alphaScale = life * trailFade
+```
+
+## Screensaver Internals
+
+`startScreensaver()` creates a `createParticles` instance with a single emitter at top-center, `spawnWidth` = viewport width, continuous mode. Adds a gentle `MouseForce` with `track: true` (strength 0.12) for drift — mouse tracking is config-driven, not manually wired. On resize, updates emitter `spawnWidth` and `point.x`.
+
+The `mouseWind` option (`MouseForceConfig | false`) controls the mouse wind effect. Omit or pass a partial config to merge over defaults (`strength: 0.12, radius: 100, damping: 0.92, maxSpeed: 8, falloff: 0.3`). Pass `false` to disable mouse wind entirely (no listener, no force). The `useScreensaver` hook also accepts `mouseWind` and passes it through.
+
+## Explosion & Detonation
+
+Two ways to spawn sub-bursts from existing particles:
+
+### Manual Explode: `controller.explode(options?)`
+
+Snapshots all alive particles, optionally destroys parents (`destroyParents: true` by default), creates a collector emitter (`isEmitting: false, life: 0, rate: 0`) and pre-populates it with children via `createExplosionChild()`. The collector emitter lives in the engine and its children fade out naturally.
+
+- `ExplodeOptions` extends `ChildExplosionConfig` with `destroyParents?: boolean`.
+- React: `useParticles()` returns `explode: (options?) => void`.
+- Colors: `inheritColor: true` (default) uses parent color. `inheritColor: false` generates a fresh harmonious palette.
+
+### Timed Detonation: `detonate` config on emitter
+
+Set `detonate: { at: 0.7, childCount: 12, velocity: 4 }` in particle config. In `Emitter.update()`, after `particle.update()`, checks if `particle.lifeTick >= particle.lifeTime * detonate.at`. When triggered:
+1. Snapshots parent position/color/shape/blendMode
+2. Creates children via `createExplosionChild()`
+3. Marks children as `isDetonationChild = true`
+4. Destroys parent (not pushed to `currentParticles`)
+5. Children pushed into same emitter's `particles` array
+
+### Infinite Recursion Guard
+
+Children created by detonation have `particle.isDetonationChild = true`. The detonation check in `Emitter.update()` skips particles with this flag, preventing infinite recursion since children live in the same emitter and share its `detonate` config.
+
+### Shared Utility: `createExplosionChild()`
+
+File: `src/particular/utils/explosion.ts`. Pure factory function used by both manual `explode()` and emitter detonation. Takes a `ParentSnapshot` (position, color, shape, blendMode) + merged `ChildExplosionConfig` + engine ref + fallback colors. Returns a single initialized `Particle` with:
+- Random outward direction: `Vector.fromAngle(Math.random() * Math.PI * 2, velocity)`
+- `scaleStep: size` for instant full size
+- No icon, engine ref set via `particle.init(null, engine)`
+
+### Config Types
+
+- `ChildExplosionConfig`: shared base (childCount, childLife, sizeMin/Max, velocity, velocitySpread, friction, scaleStep, gravity, fadeTime, inheritColor, shape/blendMode overrides, glow/shadow/trail)
+- `ExplodeOptions extends ChildExplosionConfig`: adds `destroyParents`
+- `DetonateConfig extends ChildExplosionConfig`: adds `at` (0-1 lifetime fraction)
+
+## Wobble Effect
+
+File: `src/particular/convenience/effects.ts`
+
+Continuous per-frame nudges that keep home-position particles visually alive. The spring system fights back, creating organic jittering motion. Supports two modes: simple random wobble (no `track`) and mouse-reactive directional wobble (with `track`).
+
+### How it works
+
+1. **`startWobble(config?)`**: Stops any existing wobble, merges `config` over `defaultWobble` (`velocity: 0.8`, `rotation: 0.4`). Sets `preventSettle = true` on all current particles so the settle-snap doesn't zero them out. Registers an `UPDATE` event listener on the engine that runs every frame. If `track` is provided, attaches mouse/touch listeners and uses the mouse-reactive algorithm (see below). If `track` is omitted, falls back to simple random nudges (`±velocity` per axis, `±rotation` jitter) — fully backward compatible.
+2. **`stopWobble()`**: Removes the `UPDATE` listener, detaches mouse/touch listeners (if any), and sets `preventSettle = false` on all particles, re-enabling the normal settle-snap behavior. Idempotent (safe to call when not wobbling).
+
+### Mouse-reactive mode (when `track` is provided)
+
+When a `track` element is given, wobble becomes directional and mouse-aware:
+
+1. **Image center**: Computed automatically as the average of all particle home positions. This is the "outward push origin."
+2. **Directional push**: Each particle's push direction is from the image center outward through its home position (not random). This creates a natural radial expansion from the center of the image.
+3. **Angular jitter**: The push direction is perturbed by ±23° each frame, creating an organic wobble feel rather than a rigid radial push.
+4. **Mouse proximity weighting**: Distance from each particle to the mouse cursor is computed. A proximity factor (0–1) is derived: `1 - clamp(dist / mouseRadius, 0, 1)`. Particles within `mouseRadius` (default 200px) of the cursor receive a stronger push, scaled by `mouseStrength` (default 3). Particles outside the radius still get the base wobble velocity.
+5. **Mouse velocity influence**: When the mouse is moving, nearby particles are additionally dragged in the direction of mouse movement. This creates a sense of physical interaction — swiping across the image pushes particles along with the cursor.
+6. **Organic noise**: A small random velocity perturbation is added on top of the directional push for visual richness.
+
+The effective per-particle velocity is: `baseVelocity * (1 + proximity * mouseStrength)`, applied along the jittered outward direction, plus mouse-velocity drag on nearby particles.
+
+### Simple mode (no `track`)
+
+Falls back to the original behavior: each frame adds random velocity nudges (`±velocity` per axis) and rotational jitter (`±rotation`) to all particles. No mouse tracking, no directional push.
+
+### Interaction with spring
+
+The wobble listener fires on the engine's `UPDATE` event (before `particle.update()`), so nudges are applied before the spring force is calculated. The spring pulls particles back toward home each frame while the wobble pushes them away — the balance creates a jittery orbit around the home position. In mouse-reactive mode, particles near the cursor orbit wider due to the amplified push. `preventSettle` ensures particles stay on the spring path and never hard-snap to home.
+
+### Config
+
+`WobbleConfig { velocity?: number, rotation?: number, track?: HTMLElement, mouseRadius?: number, mouseStrength?: number }`. Defaults in `defaultWobble` (`defaults.ts`): `velocity: 0.8`, `rotation: 0.4`, `mouseRadius: 200`, `mouseStrength: 3`.
+
+## Boundary System
+
+File: `src/particular/convenience/boundary.ts`
+
+Creates repulsion boundaries around HTML elements by tiling negative-strength `Attractor` instances along the element perimeter.
+
+### How it works
+
+1. **Tiling**: `rebuild()` computes element rect relative to container (or viewport), insets by `radius * insetFraction`, then places attractors every `radius` pixels along all four edges. Corners are shared between horizontal and vertical edges.
+2. **Inset**: The `inset` fraction (default 0.4) moves repulsors inside the element edge so the repulsion field aligns with the visible edge rather than extending beyond it.
+3. **Resize**: `ResizeObserver` watches both the element and container. On resize, calls `rebuild()` (tiling count may change).
+4. **Scroll**: rAF-throttled scroll listener calls `reposition()` — a lightweight path that just moves existing attractors without creating/destroying them. Uses pre-computed offsets relative to element top-left.
+5. **Cleanup**: `handle.destroy()` disconnects observers, removes scroll listener, and removes all attractors from engine.
+
+### Coordinate conversion
+
+All positions are in engine coords (screen pixels / pixelRatio). Container mode subtracts container rect offset before dividing by pixelRatio.
+
+## Container Glow System
+
+File: `src/particular/convenience/containerGlow.ts`
+
+Creates a glowing particle halo around any HTML element by placing 4 continuous emitters along its edges (top, bottom, left, right). Each emitter's velocity points outward (perpendicular to edge), with `spawnWidth`/`spawnHeight` matching the edge length.
+
+### How it works
+
+1. **Emitter placement**: `rebuild()` reads element rect relative to container (or viewport), divides by pixelRatio to get engine coords. Creates 4 emitters at edge centers with edge-length spawn bands.
+2. **Particle config**: Built via `configureParticle()` with glow-specific overrides (low velocity, short life, additive blend, sparkle shape by default). All defaults from `defaultContainerGlow` in `defaults.ts`.
+3. **Pulse**: Listens to engine `UPDATE` event and modulates emitter `rate` with `1 + amplitude * sin(tick * speed)`.
+4. **Pause/resume**: A `paused` flag is enforced every frame in the `UPDATE` handler (sets `isEmitting = false`), overriding the engine's continuous-mode reset. `stop()` sets the flag; `start()` clears it. Existing particles fade naturally.
+5. **Resize**: `ResizeObserver` watches element (and container), calls `rebuild()`.
+6. **Scroll**: rAF-throttled scroll listener calls `reposition()` — lightweight path that moves existing emitter `point` positions.
+7. **Cleanup**: `handle.destroy()` removes event listener, disconnects observers, removes emitters from engine.
+
+### Coordinate conversion
+
+Same as boundary system: container mode subtracts container rect before dividing by pixelRatio.
+
+## Mouse Trail System
+
+File: `src/particular/convenience/mouseTrail.ts`
+
+Emits particles that follow the mouse cursor, creating a magic wisp trail. Particles fly out behind the cursor direction with configurable trails/streaks.
+
+### How it works
+
+1. **Emitter**: A single continuous emitter (`life: 999999`) positioned at the cursor.
+2. **Tracking**: Listens to `mousemove`, `touchmove`, and `touchstart` on the target (default `window`). Converts coordinates via container offset and pixelRatio, same pattern as `MouseForce`.
+3. **Per-frame update**: On engine `UPDATE`, computes cursor velocity from position delta. If speed > `minSpeed`, sets emitter velocity to reverse cursor direction (particles fly out behind) and enables emission. If below threshold, disables emission.
+4. **Pause/resume**: `paused` flag enforced in the UPDATE handler, same pattern as container glow.
+5. **Cleanup**: `handle.destroy()` removes event listeners and emitter from engine.
+
+### Defaults
+
+Sparkle shape, additive blend, trail streaks enabled, glow enabled. Designed for a magical wisp aesthetic out of the box.
+
+## Home Position & Spring Physics
+
+Used by image/text particles. When a particle has `homePosition` set, it experiences spring-return forces and idle animations.
+
+### Spring return
+
+In `Particle.update()`, when `homePosition` is set:
+- Force = `(home - position) * springStrength` — pulls particle toward home.
+- Velocity *= `Math.pow(springDamping, dt)` — decays velocity during return.
+- `returnNoise` adds small random velocity perturbations so particles wobble organically instead of traveling in straight lines.
+- **Settle check**: `isSettled = !preventSettle && dist < homeThreshold && speed < velocityThreshold`. When settled, particle snaps to home and zeroes velocity/rotation. When `preventSettle` is `true`, the spring path always runs instead — particles orbit home without snapping.
+- **Permanent lifetime**: Particles with `homePosition` skip `lifeTick` increment entirely and hold `alpha = baseAlpha`. They never fade or die.
+
+### Runtime Toggle
+
+`particle.idleEnabled` (boolean, default `true`) gates all idle animations: breathing, wiggle, wave, and idle pulse. Spring return is unaffected — particles still return home, they just stay still once there. The convenience API exposes `controller.setIdleEffect(enabled)` which toggles this on all particles with home positions.
+
+The idle tick counter (`idleTicks`) keeps advancing even when disabled, so re-enabling doesn't fire a burst of missed pulses.
+
+### Idle state
+
+When distance to home < `homeThreshold` AND speed < `velocityThreshold`, particle enters idle mode:
+- **Breathing**: sinusoidal scale oscillation at `breathingSpeed`.
+- **Wiggle**: per-particle random scale pulsing at `wiggleSpeed` (uses per-particle random phase).
+- **Wave**: coordinated scale wave that sweeps across the image based on particle position relative to `homeCenter`, at `waveSpeed` and `waveFrequency`.
+
+### Idle pulse
+
+Periodic random impulse waves keep settled particles alive. Every `idlePulseIntervalMin`–`idlePulseIntervalMax` ticks, particles receive a small velocity impulse (`idlePulseStrength`) with ripple delay based on distance from `homeCenter`.
+
+## Image-to-Particles Pipeline
+
+File: `src/particular/convenience/imageParticles.ts`
+
+### Flow
+
+1. **Load image**: `loadImage()` from `pixelSampler.ts` — handles URL strings, `HTMLImageElement`, and `HTMLCanvasElement`. Sets `crossOrigin: 'anonymous'` for URL strings.
+2. **Smart defaults**: If `x`/`y` omitted, defaults to center of viewport/container. If `width`/`height` omitted, uses `the natural image size capped to 50% of viewport/container width and height`.
+3. **Sample pixels**: `sampleImagePixels(image, resolution, alphaThreshold)` — draws image to offscreen canvas, reads pixel data, returns grid of `PixelSample` objects with normalized positions, hex colors, and alpha values.
+4. **Grid sizing**: `resolution` = particles along longest axis. Squares use 400 (tighter packing), circles use 200. Particle size auto-calculated from grid spacing with shape-specific scale factors.
+5. **Particle creation**: Each sample becomes a `Particle` with `homePosition` (spring return) and `homeCenter` (for wave/pulse ripple). Triangle particles alternate rotation for tessellation.
+6. **Collector emitter**: A non-emitting `Emitter` (`rate: 0, life: 0`) holds all particles. Added to engine. No emission cycle — particles just exist and update.
+7. **maxCount**: Auto-expanded if needed to hold all image particles.
+
+### Intro animation
+
+When `intro` config is provided, particles animate in rather than appearing instantly. Four modes are available:
+
+1. **`scatter`** (default): All particles are created at once at random positions (scattered within 30% of image size from home). Each starts at `factoredSize = 0` with a small random velocity. The existing spring physics pulls them to home while `scaleStep` grows them from invisible to full size over ~250ms. Most dramatic — every particle takes a unique path.
+
+2. **`scaleIn`**: Particles fly outward from the image center to their home positions. Sorted **farthest-first** so outer edges form first, filling inward to center. Created in 30 distance-ordered batches over `duration` ms. Each particle gets distance-proportional outward velocity (`dist * 0.03`) with speed variance (0.8×–1.2×). Spring with heavy damping (`springDamping: 0.75`, `springStrength: 0.08`) ensures smooth settle without bounce.
+
+3. **`ripple`**: Shockwave from center. Particles are created at home in distance-ordered batches (nearest-first, 40 batches over `duration`). Each particle gets an outward velocity impulse (2.5–5.0 magnitude) with ±20° angular wobble. They overshoot their home position, then spring back with a bouncy settle. Scale from 0 with 0.4×–1.6× speed variance.
+
+4. **`paint`**: Particles spray from bottom center of the image, staggered left-to-right (sorted by x-position). Created in 40 batches over `duration`. Each particle starts at `(centerX, bottomY)` with velocity aimed at home (distance-proportional speed `dist * 0.03`, ±8° wobble). Spring with heavy damping (`springDamping: 0.75`, `springStrength: 0.08`) ensures smooth settle. Creates a spray-painting effect.
+
+Key implementation details:
+- All modes create the **final permanent particles** (with home positions, full visual config). No temporary emitters.
+- `factoredSize = 0` is set post-construction. The engine's existing `scaleStep` math (`factoredSize += scaleStep * dt`) smoothly grows particles via RAF — no setTimeout timing issues.
+- For scatter: `scatterRadius = max(engineW, engineH) * 0.3`. Particles get small random initial velocity `(±1, ±1)`.
+- For scaleIn: 30 batches via setTimeout over `duration` ms. For ripple/paint: 40 batches. First batch adds the collector to the engine. Subsequent batches push particles to the already-registered collector.
+- scaleIn and paint override per-particle `homeConfig` for heavier damping and no return noise, giving smooth ease-out arrival.
+- Intro `scaleStep = size / 15` (~250ms grow time), overriding the user's scaleStep only for the intro animation.
+
+Config: `IntroConfig { mode?: 'scatter' | 'scaleIn' | 'ripple' | 'paint', duration?: number }`. Pass `intro: {}` for defaults.
+
+### Text pipeline
+
+`textToParticles(text, config?)` → `createTextImage({ text, ...textConfig })` → offscreen canvas → `canvasToDataURL()` → `imageToParticles({ image: dataURL, ...config })`. The text is rendered with configurable font, size, weight, and fill (solid color or gradient stops).
+
+### Element capture pipeline
+
+`elementToParticles(element, config?)` captures any HTML element's visual appearance and replaces it with particles:
+
+1. **Capture**: `captureElement()` (in `utils/elementCapture.ts`) walks the element's DOM tree, reads `getComputedStyle()` for each node, and manually draws backgrounds, borders, and text onto an offscreen Canvas 2D at device pixel ratio. This avoids SVG foreignObject which taints the canvas and blocks pixel extraction.
+2. **Position**: Derives `x`, `y`, `width`, `height` from the element's `getBoundingClientRect()`, subtracting the container rect in container mode.
+3. **Render**: Converts the canvas to a data URL via `canvasToDataURL()` and passes it to `imageToParticles()`.
+4. **Hide**: Sets `element.style.visibility = 'hidden'` (default). Registers a cleanup to restore visibility on `destroy()`.
+
+Config type: `ElementParticlesConfig extends Omit<ImageParticlesConfig, 'image'>` with `hideElement` (default true) and `restoreElement` (default true).
+
+**Supported CSS properties in capture**:
+- Background colors (solid and linear-gradient)
+- Gradient text (`-webkit-background-clip: text`)
+- Text rendering with computed font, weight, size, color
+- Borders (all four sides, colors)
+- Border radius (per-corner)
+- Box shadow (first shadow, basic parsing)
+- Opacity
+
+**Known limitations**:
+- External/inline images (e.g. `<img>` tags, `background-image: url(...)`) are not rendered.
+- CSS pseudo-elements (`::before`, `::after`) don't appear (no DOM nodes to read).
+- Complex layouts (flexbox alignment, transforms, clip-path) may not position perfectly.
+- Multi-line text draws as a single fillText call at the first line rect position.
+
+## Image Shatter Pipeline
+
+File: `src/particular/convenience/imageShatter.ts`
+Chunker: `src/particular/utils/imageChunker.ts`
+
+Shatters an image into irregular polygon chunks that explode outward like broken glass. Each chunk is a particle with its own piece of the source image as a texture.
+
+### Flow
+
+1. **Load image**: `loadImage()` from `pixelSampler.ts` — same loader used by imageToParticles.
+2. **Smart defaults**: Position defaults to center of viewport/container, width defaults to `the natural image size capped to 50% of viewport/container width and height`. Config merged over `defaultImageShatter` from `defaults.ts`.
+3. **Draw to offscreen canvas**: Source image is drawn to an offscreen canvas at display resolution. This canvas becomes the source for polygon clipping.
+4. **Generate chunks**: `generateImageChunks(sourceCanvas, chunkCount, jitter)` produces polygon pieces:
+   - **Jittered grid**: `buildJitteredGrid()` creates a `(cols+1) x (rows+1)` grid of points over the image. Edge points stay on the boundary; interior points jitter randomly within their cell by `jitter` fraction. `cols` and `rows` are derived from `chunkCount` preserving image aspect ratio.
+   - **Polygon clipping**: For each grid cell, the four corner points form an irregular quadrilateral. `clipPolygon()` creates a canvas for each quad, uses Canvas 2D `clip()` to mask the polygon region, draws the source image through the mask, and pads the result to a square.
+   - **Image conversion**: Each clipped canvas is converted to an `HTMLImageElement` via `canvas.toDataURL()` + `new Image()`, resolved with `Promise.all`.
+   - **Output**: Array of `ChunkResult { image, cx, cy, size }` where `cx`/`cy` are normalized (0-1) center positions and `size` is the square canvas side length in source pixels.
+5. **Particle creation**: Each chunk becomes a `Particle`:
+   - Position: chunk center mapped to engine coordinates (screen pixels / pixelRatio).
+   - Velocity: outward from image center, scaled by distance (edge pieces fly further). Angle has `±0.3 rad` random spread, speed has `velocitySpread` randomness. `distFactor = 0.5 + (dist / max(w,h)) * 1.5` ensures natural explosion.
+   - Size: proportional to chunk canvas size relative to image width, in engine coords.
+   - Rotation: `rotationVelocity` set to random `±rotationSpeed` for spinning glass shards.
+   - Image: `particle.init(chunk.image, engine)` so renderers pick up the chunk as a texture.
+6. **Collector emitter**: Non-emitting `Emitter` (`rate: 0, life: 0`) holds all chunk particles. Same pattern as imageToParticles.
+7. **maxCount**: Auto-expanded if needed to hold all chunks.
+
+### Interactive mode (homeConfig)
+
+When `homeConfig` is provided in the config, chunks are created in **interactive mode**:
+- Chunks start assembled at their home positions with zero velocity
+- `particleLife` is set to `Infinity` (truly permanent — no lifetime decrement)
+- `gravity` is 0 (would fight the spring)
+- `fadeTime` is `Infinity` (no fade)
+- Each chunk gets a `homePosition` at its grid center
+- Use `scatter({ velocity, rotation })` to push chunks outward
+- The spring system (from `particle.ts`) automatically pulls them back
+- **Rotation dampening**: The spring return section in `particle.ts` also dampens `rotationVelocity` and springs the rotation angle back to 0 — chunks de-spin and re-orient as they return home
+
+This enables hover-to-break/reassemble effects. The `shatterText()` method renders text via `createTextImage()` then passes it through `shatterImage()`.
+
+### Key differences from imageToParticles
+
+- No pixel sampling — works with polygon clipping instead of per-pixel grid.
+- Home positions only when `homeConfig` is provided (interactive mode). Without it, chunks fly outward and fade.
+- Chunk count is much smaller (default 36 vs hundreds/thousands of pixel particles).
+- Each particle has a unique image texture (its polygon piece) rather than a solid color.
+- Rotation is a key visual element — spinning shards sell the glass-break effect. Rotation dampening added to spring return so chunks smoothly de-rotate.
+
+### Defaults
+
+All defaults in `defaultImageShatter` (`defaults.ts`): chunkCount 36, jitter 0.4, velocity 5, velocitySpread 0.5, gravity 0.12, rotationSpeed 5, particleLife 120, fadeTime 40, friction 0.005, scaleStep 100 (instant).
+
+## Convenience API Architecture
+
+The convenience layer lives in `src/particular/convenience/` as focused modules composed by the orchestrator (`index.ts`):
+
+- `index.ts` — `createParticles()` orchestrator: auto-creates canvas, applies styles, composes helpers
+- `types.ts` — All interfaces (`CreateParticlesOptions`, `ParticlesController`, etc.)
+- `resize.ts` — Shared resize watcher: `getViewportSize()`, `watchResize()` — see Resize Utility below
+- `forces.ts` — `createForces()`: attractor + mouse force management
+- `boundary.ts` — `createBoundaryHelper()`: DOM element repulsion boundaries with resize/scroll sync
+- `containerGlow.ts` — `createContainerGlowHelper()`: glowing particle halo around DOM elements
+- `mouseTrail.ts` — `createMouseTrailHelper()`: particle trail following mouse cursor
+- `effects.ts` — `createEffects()`: explode() + scatter() + startWobble()/stopWobble() (scatter supports optional rotation impulse)
+- `imageParticles.ts` — `createImageParticles()`: image/text/element to particle grids with smart defaults
+- `imageShatter.ts` — `createImageShatterHelper()`: image/text-to-polygon-chunks glass-break explosion + interactive mode
+- `screensaver.ts` — `startScreensaver()`: continuous ambient emission
+
+Each module exports a factory function that receives a `FeatureContext` (engine, resolved config, container, resource scope, coordinate mapping) and returns an API slice. The orchestrator spreads them together into the `ParticlesController`.
+
+## Resize Utility
+
+File: `src/particular/convenience/resize.ts`
+
+Shared resize watcher used by convenience modules that need to respond to viewport/container size changes. Abstracts container-vs-window detection, debouncing, scale factor calculation, and cleanup registration.
+
+### `getViewportSize(container?)`
+
+Returns `{ w, h }` — uses `container.clientWidth/Height` in container mode, `window.innerWidth/Height` otherwise. Single source of truth for viewport measurement. Used by `imageParticles.ts`, `imageShatter.ts`, `forces.ts`, and `screensaver.ts`.
+
+### `watchResize(callback, options?)`
+
+Watches for resize on the container (via `ResizeObserver`) or window (via `resize` event). Returns the initial size snapshot `{ w, h }`.
+
+Callback signature: `(scaleX, scaleY, current) => void` — scale factors are relative to the size at call time.
+
+Options:
+- `container?: HTMLElement` — uses `ResizeObserver` when present, `window.addEventListener('resize')` otherwise
+- `debounceMs?: number` — default 200. Set to 0 for immediate (no debounce)
+- `resources?: ResourceScope` — teardown is automatically registered
+- `skipSmallChanges?: boolean` — skip when scale change < 1%. Default `true` when debounced, `false` when immediate
+
+### Consumers
+
+- **imageParticles.ts (autoCenter)**: `debounceMs: 200`, scales explicit x/y/width/height proportionally. When dimensions are omitted, smart defaults recalculate from the new viewport
+- **imageParticles.ts (elementToParticles)**: `skipSmallChanges: false`, re-reads element `getBoundingClientRect()` on resize. Uses `autoCenter: false` on inner `imageToParticles` call to avoid double handling
+- **screensaver.ts**: `debounceMs: 0` (immediate), updates emitter spawn width and center position
+- **imageShatter.ts / forces.ts**: Use `getViewportSize(container)` directly for initial smart defaults (no ongoing resize watch)
+
+### DX Defaults (Zero-Config)
+
+- **Renderer**: WebGL by default (all of `createParticles`, `startScreensaver`, `useParticles`, `useScreensaver`)
+- **Canvas**: Auto-created and appended to `container` or `document.body` when omitted. Auto-removed on `destroy()`.
+- **Styles**: `applyCanvasStyles()` called automatically — sets positioning (`fixed` for viewport, `absolute` for container), `pointer-events: none`, z-index. No manual styles needed.
+- **Image/text positioning**: `x`/`y` default to center of viewport/container. `width` defaults to `the natural image size capped to 50% of viewport/container width and height`.
+- **mouseForce shorthand**: `createParticles({ mouseForce: true })` adds a tracking mouse force with sensible defaults.
+- **textToParticles config**: Optional — `textToParticles('Hello')` works with zero config.
+- **elementToParticles**: `elementToParticles(el)` works with zero config — position, size, and image derived from the element automatically.
+- **shatterImage**: `shatterImage({ image: url })` works with minimal config — position and size default to centered/auto-sized, all physics defaults produce a polished glass-break effect.
+
+**Defaults pattern**: Every feature's defaults live in `src/particular/core/defaults.ts` as named exports (`defaultImageParticles`, `defaultElementParticles`, `defaultMouseWind`, etc.). Convenience methods merge user config over these: `{ ...defaultXxx, ...userConfig }`. Never hardcode default values inline in convenience methods or stories.
+
+Minimal usage: `createParticles()` gives a fully working engine with WebGL, auto-canvas, and styles applied.
+
+## Performance Optimizations
+
+The library has zero runtime dependencies (lodash-es removed). Key hot-path optimizations:
+
+### Cached hex color parsing
+`Particle` parses its hex color to normalized RGB (`colorR`, `colorG`, `colorB`, 0–1 range) once in the constructor via the static `parseHexNorm()` method. The WebGL renderer reads these cached fields in `fillInstanceData` instead of calling `hexToRgba()` per particle per frame.
+
+### In-place trail segment aging
+`Particle.update()` ages and compacts trail segments using a write-index pattern instead of `.map(spread).filter()`. This eliminates per-frame array allocation (~250 objects/frame at typical trail counts).
+
+### Minimal trail ghost objects
+Both renderers expand trail segments into drawable "ghost" objects for the render pipeline. Instead of `{ ...particle }` (spreading all 50+ Particle fields), ghosts are constructed with only the ~15-17 fields needed by the draw methods (`position`, `factoredSize`, `rotation`, `alpha`, `color`, `colorR/G/B`, `shape`, `blendMode`, `image`, `imageTint`, `glow`, `shadow`, `trail`, `trailSegments`, `shadowLightOrigin`).
+
+### Cached WebGL attribute locations
+`WebGLRenderer` caches all `getAttribLocation()` and `getUniformLocation()` results as class fields during `init()`. The hot-path draw methods (`drawCircleInstances`, `drawImageInstances`, `drawImageBatch`, `onUpdateAfter`) use cached locations instead of querying the GL context each frame.
+
+### WebGL draw call optimization
+`drawCircleInstances` and `drawImageInstances` hoist GL attribute setup (bindBuffer, enableVertexAttribArray, vertexAttribPointer, vertexAttribDivisor) outside the per-chunk loop — only `bufferSubData` + `drawArraysInstanced` run per chunk. `fillInstanceData` takes `startIdx`/`endIdx` parameters and iterates the source array directly, eliminating `list.slice()` temporary array allocations. The convenience API passes `webglMaxInstances` (default 4096), so most scenes (10K particles) render in a single instanced draw call.
+
+### Inlined particle hot path
+`Particle.update()` inlines all Vector method calls (add, addFriction, addGravity) directly as `this.velocity.x += this.acceleration.x * dt` etc, eliminating ~7 function calls per particle per frame. Trail update is guarded with `if (this.trail)` to skip the function call entirely for non-trail particles.
+
+### Settled-particle fast path
+Particles at rest at their exact home position with zero velocity enter a fast path at the top of `update()`. Only external forces and idle pulse timers are evaluated — velocity integration, friction, gravity, and spring math are all skipped. Size growth and breathing animation still run. Saves ~25 ops/particle/frame for 10K+ settled text/image particles.
+
+### Native iteration
+All `lodash-es` utilities (`forEach`, `filter`, `sample`) replaced with native loops and `Math.random()` indexing. `Particular.getCount()` sums emitter particle counts in a for-loop instead of allocating `getAllParticles()`. WebGL renderer hot paths (`expandParticlesWithTrails`, `buildBatches`, `fillInstanceData`, batch iteration) use index-based `for` loops instead of `for...of` for tighter JIT optimization.
+
+### Object pooling (render + update hot paths)
+Per-frame allocations eliminated via index-based pools and array reuse:
+- **Trail ghost pools** (canvasRenderer, webglRenderer): Both renderers maintain pre-allocated pools of ghost objects for trail segment rendering. A pool index resets each frame; ghosts are acquired by index and field-overwritten, never allocated after warm-up.
+- **DrawBatch pool** (webglRenderer): Batch objects and their `particles` arrays are pooled and reused. The result array is also reused.
+- **TrailSegment recycling** (particle.ts): A module-level `freeSegments` free list (capped at 5000) collects expired segments during in-place compaction. New segments pop from the free list before falling back to allocation. `_reinit()` defensively drains stale segments from pooled particles.
+- **Engine array reuse** (particular.ts): `getAllParticles()` fills a cached array instead of `concat()`. Combined forces array is cached. Dead emitter cleanup uses in-place compaction instead of `filter()`.
+- **Force vector reuse** (attractor.ts, mouseForce.ts): `getForce()` returns a module-level reusable `_tempForce` vector instead of `new Vector()` per call. Safe because `velocity.add()` consumes the result immediately. On scroll-heavy pages with ~390 attractors × 600 particles, this eliminates ~234K+ Vector allocations per frame. Math is also inlined (normalize + scale combined into a single division).
+- **Emitter in-place compaction** (emitter.ts): `update()` uses write-index compaction on `this.particles` instead of allocating a new `currentParticles` array each frame. Detonation children use a cached `_newChildren` array.
+- **ContainerGlow resize debounce** (containerGlow.ts): `ResizeObserver` callback is rAF-debounced to coalesce multiple resize events per frame, matching boundary.ts behavior.
+- **Trail ghost glow/shadow reset** (canvasRenderer.ts, webglRenderer.ts): Trail ghost objects explicitly set `glow = false` and `shadow = false` on every reuse, preventing expensive canvas `shadowBlur` or WebGL batch breaks on trail segments.
+- **Particle object pool** (particle.ts): Dead particles are returned to a module-level `_particlePool` (max 2000) via `destroy()`. New particles are acquired via `Particle.create(params)` which pops from the pool and calls `_reinit()` — reusing existing Vector objects (position, velocity, acceleration, shadowLightOrigin) instead of allocating new ones. This eliminates the Particle object + 4 Vector allocations per particle lifecycle. All `new Particle()` call sites (emitter.ts, explosion.ts, imageParticles.ts, imageShatter.ts) use `Particle.create()`.
+- **Event dispatch fast path** (particle.ts, eventDispatcher.ts): `Particle.dispatch()` guards with `hasEventListener()` before calling `dispatchEvent()`, skipping the entire event system when no listeners are registered (the common case). `EventDispatcher.dispatchEvent()` snapshots subscribed listeners to handle additions/removals safely and calls every listener even when one returns true. Unsubscribed particle events still take the fast path.
+- **Vector early-outs** (vector.ts): `addFriction()` returns immediately when friction ≤ 0 (skips `Math.pow`), `addGravity()` returns when gravity === 0 (skips addition). Saves per-particle-per-frame math for particles with zero friction/gravity.
+- **Squared-distance home threshold** (particle.ts): Home spring settle check uses `distSq < thresholdSq` and `speedSq < thresholdSq` instead of `Math.sqrt(distSq) < threshold`, eliminating 2× `Math.sqrt` per home-particle per frame. Squared thresholds are cached once in `_reinit()` (`homeThresholdSq`, `velocityThresholdSq`).
+
+## Stable Public API
+
+From `src/index.ts`: `Particular`, `Emitter`, `Particle`, `Attractor`, `MouseForce`, `FlockingForce`, `CanvasRenderer`, `WebGLRenderer`, `WebGL3DRenderer`, `Camera`, `ParticularWrapper`, `useParticles`, `useScreensaver`, `createParticles`, `startScreensaver`, `presets`, `applyCanvasStyles`, and all public types (including `FlockingForceConfig`, `ImageShatterConfig`, `CameraConfig`, `WebGL3DRendererOptions`, `defaultCamera`). Avoid breaking these exports.

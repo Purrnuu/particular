@@ -48,7 +48,7 @@ const ExplosionDemo: React.FC<ExplosionStoryArgs> = ({ renderer }) => {
 
   return (
     <div style={{ minHeight: '100vh', cursor: 'pointer' }}>
-      <canvas ref={canvasRef} style={particlesBackgroundLayerStyle} />
+      <canvas key={renderer} ref={canvasRef} style={particlesBackgroundLayerStyle} />
       <h1
         style={{
           textAlign: 'center',
@@ -126,7 +126,7 @@ const DetonationDemo: React.FC<DetonationStoryArgs> = ({ renderer }) => {
 
   return (
     <div style={{ minHeight: '100vh', cursor: 'pointer' }}>
-      <canvas ref={canvasRef} style={particlesBackgroundLayerStyle} />
+      <canvas key={renderer} ref={canvasRef} style={particlesBackgroundLayerStyle} />
       <h1
         style={{
           textAlign: 'center',

@@ -300,7 +300,7 @@ const Ambient = {
     },
   } satisfies FullParticularConfig,
 
-  /** Boids flock: self-organizing swarm of bird-like triangles. Use with addFlockingForce() for full effect. */
+  /** Boids flock: bird-like triangles with gentle steering and sustained flight. Use with addFlockingForce(). */
   flock: {
     shape: 'triangle' as const,
     blendMode: 'additive' as const,
@@ -317,16 +317,16 @@ const Ambient = {
     life: 999999,
     particleLife: 600,
     velocity: Vector.fromAngle(0, 2),
-    spread: Math.PI * 2,
+    spread: Math.PI / 5,
     colors: sunsetPalette,
     sizeMin: 3,
     sizeMax: 6,
-    velocityMultiplier: 3,
+    velocityMultiplier: 0,
     fadeTime: 80,
     gravity: 0,
     acceleration: 0,
     accelerationSize: 0,
-    friction: 0.01,
+    friction: 0.002,
     frictionSize: 0,
     rotateToVelocity: true,
     scaleStep: 1,

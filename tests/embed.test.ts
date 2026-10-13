@@ -1,4 +1,6 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, cpSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -9,7 +11,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const distDir = path.resolve(__dirname, '../dist');
+const distDir = path.resolve(__dirname, '../.build/lib');
 
 function createMockCanvasContext(): Partial<CanvasRenderingContext2D> {
   return {
@@ -46,7 +48,10 @@ beforeAll(() => {
     value: vi.fn(() => createMockCanvasContext()),
   });
 
-  vi.stubGlobal('requestAnimationFrame', vi.fn(() => 1));
+  vi.stubGlobal(
+    'requestAnimationFrame',
+    vi.fn(() => 1)
+  );
   vi.stubGlobal('cancelAnimationFrame', vi.fn());
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 });
@@ -61,7 +66,9 @@ describe('built standalone embed', () => {
     const iifePath = path.resolve(distDir, 'particular.global.js');
     const script = readFileSync(iifePath, 'utf8');
 
-    window.eval(`${script}\nwindow.Particular = typeof Particular !== 'undefined' ? Particular : window.Particular;`);
+    window.eval(
+      `${script}\nwindow.Particular = typeof Particular !== 'undefined' ? Particular : window.Particular;`
+    );
 
     const api = (window as typeof window & { Particular?: any }).Particular;
     expect(api).toBeDefined();
@@ -103,7 +110,7 @@ describe('built react embed', () => {
         React.Fragment,
         null,
         React.createElement('canvas', { ref: canvasRef, className: 'particular' }),
-        React.createElement('button', { onClick: burstFromEvent }, 'burst'),
+        React.createElement('button', { onClick: burstFromEvent }, 'burst')
       );
     };
 
@@ -127,5 +134,84 @@ describe('built react embed', () => {
     await act(async () => {
       root.unmount();
     });
+  });
+});
+
+describe('package entry boundaries', () => {
+  it('loads vanilla, core, renderers, and image helpers without React installed', () => {
+    const isolated = mkdtempSync(path.join(tmpdir(), 'particular-package-'));
+    try {
+      cpSync(distDir, path.join(isolated, 'dist'), { recursive: true });
+      writeFileSync(
+        path.join(isolated, 'package.json'),
+        readFileSync(path.resolve(__dirname, '../package.json'))
+      );
+      const result = execFileSync(
+        process.execPath,
+        [
+          '--input-type=module',
+          '-e',
+          `
+        import { createRequire } from 'node:module';
+        const require = createRequire(process.cwd() + '/package.json');
+        try { require.resolve('react'); throw new Error('React unexpectedly available'); }
+        catch (error) { if (error.code !== 'MODULE_NOT_FOUND') throw error; }
+        const modules = ['vanilla', 'core', 'renderers/canvas', 'renderers/webgl', 'renderers/webgl3d', 'effects/images'];
+        for (const entry of modules) {
+          const api = await import('@purrnuu/particular/' + entry);
+          const cjs = require('@purrnuu/particular/' + entry);
+          if (!Object.keys(api).length || !Object.keys(cjs).length) throw new Error('Empty entry: ' + entry);
+        }
+        console.log('entry boundaries OK');
+      `,
+        ],
+        { cwd: isolated, encoding: 'utf8' }
+      );
+      expect(result.trim()).toBe('entry boundaries OK');
+      writeFileSync(
+        path.join(isolated, 'consumer.ts'),
+        `
+        import { createParticles, type CanvasLayerStyle } from '@purrnuu/particular/vanilla';
+        import { Particular, Vector, configureParticular, createFeatureContext } from '@purrnuu/particular/core';
+        import { CanvasRenderer } from '@purrnuu/particular/renderers/canvas';
+        import { createImageParticles } from '@purrnuu/particular/effects/images';
+        const engine = new Particular();
+        const config = configureParticular({ rate: 1 });
+        engine.initialize(config);
+        engine.addRenderer(new CanvasRenderer(document.createElement('canvas')));
+        const images = createImageParticles(createFeatureContext(engine, config));
+        const particles = createParticles();
+        particles.addForce({ getForce: () => new Vector(1, 0), update: (frame) => { void frame.dt; } });
+        const style: CanvasLayerStyle = { position: 'fixed', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' };
+        void images; void style;
+      `
+      );
+      writeFileSync(
+        path.join(isolated, 'tsconfig.json'),
+        JSON.stringify({
+          compilerOptions: {
+            noEmit: true,
+            strict: true,
+            module: 'NodeNext',
+            moduleResolution: 'NodeNext',
+            target: 'ES2020',
+            lib: ['ES2020', 'DOM'],
+            types: [],
+          },
+          include: ['consumer.ts'],
+        })
+      );
+      execFileSync(
+        process.execPath,
+        [
+          path.resolve(__dirname, '../node_modules/typescript/bin/tsc'),
+          '-p',
+          path.join(isolated, 'tsconfig.json'),
+        ],
+        { cwd: isolated, encoding: 'utf8' }
+      );
+    } finally {
+      rmSync(isolated, { recursive: true, force: true });
+    }
   });
 });

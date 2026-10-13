@@ -21,6 +21,16 @@ describe('MouseForce', () => {
   });
 
   describe('updatePosition', () => {
+    it('accepts a normalized delta for programmatic movement', () => {
+      const mf = new MouseForce();
+      mf.updatePosition(5, 10, 0.5);
+      expect(mf.velocity.x).toBe(10);
+      expect(mf.velocity.y).toBe(20);
+      mf.updatePosition(50, 50, 0);
+      expect(mf.position.x).toBe(5);
+      expect(mf.position.y).toBe(10);
+    });
+
     it('derives velocity from position delta', () => {
       const mf = new MouseForce();
       mf.updatePosition(10, 20);
