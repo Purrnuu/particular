@@ -143,7 +143,7 @@ const SnowAroundCardsDemo: React.FC<PageLayoutArgs> = ({
         overflow: 'hidden',
       }}
     >
-      <canvas ref={canvasRef} style={particlesContainerLayerStyle} />
+      <canvas key={renderer} ref={canvasRef} style={particlesContainerLayerStyle} />
 
       {/* Header */}
       <div style={{ textAlign: 'center', padding: '60px 24px 40px', position: 'relative', zIndex: 1 }}>
@@ -254,7 +254,7 @@ const BurstAroundCardsDemo: React.FC<PageLayoutArgs> = ({
         overflow: 'hidden',
       }}
     >
-      <canvas ref={canvasRef} style={particlesContainerLayerStyle} />
+      <canvas key={renderer} ref={canvasRef} style={particlesContainerLayerStyle} />
 
       <div style={{ textAlign: 'center', padding: '60px 24px 40px', position: 'relative', zIndex: 1 }}>
         <h1 style={{ color: '#fff', fontSize: '2.2rem', fontWeight: 700, marginBottom: 12 }}>
@@ -373,7 +373,7 @@ const TextWithCardsDemo: React.FC<PageLayoutArgs> = ({
         overflow: 'hidden',
       }}
     >
-      <canvas ref={canvasRef} style={particlesContainerLayerStyle} />
+      <canvas key={renderer} ref={canvasRef} style={particlesContainerLayerStyle} />
 
       {/* Spacer for text particles area */}
       <div style={{ height: '40vh' }} />
@@ -523,7 +523,7 @@ const ScrollingLandingDemo: React.FC<PageLayoutArgs> = ({
         fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
       }}
     >
-      <canvas ref={canvasRef} style={particlesContainerLayerStyle} />
+      <canvas key={renderer} ref={canvasRef} style={particlesContainerLayerStyle} />
 
       {/* Hero */}
       <section style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '0 24px', textAlign: 'center', position: 'relative', zIndex: 1 }}>
@@ -607,7 +607,7 @@ const ScrollingLandingDemo: React.FC<PageLayoutArgs> = ({
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, pointerEvents: 'none' }}>
           {testimonials.map((t, i) => (
             <div key={i} ref={setCardRef(cardIndex++)} style={cardStyle}>
-              <div style={{ ...bodyStyle, fontStyle: 'italic', marginBottom: 16 }}>"{t.quote}"</div>
+              <div style={{ ...bodyStyle, fontStyle: 'italic', marginBottom: 16 }}>&quot;{t.quote}&quot;</div>
               <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.35)' }}>— {t.author}</div>
             </div>
           ))}

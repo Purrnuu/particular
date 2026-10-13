@@ -5,6 +5,8 @@
  * and cleanup registration so each module doesn't reimplement the pattern.
  */
 
+import type { ResourceScope } from '../core/resourceScope';
+
 /** Get current viewport (window) or container size. */
 export function getViewportSize(container?: HTMLElement): { w: number; h: number } {
   if (container) {
@@ -18,8 +20,8 @@ export interface WatchResizeOptions {
   container?: HTMLElement;
   /** Debounce delay in ms. Default 200. Set to 0 for immediate (no debounce). */
   debounceMs?: number;
-  /** Cleanup array — teardown is automatically registered. */
-  cleanups?: Array<() => void>;
+  /** Resource scope owns the observer, listener, and debounce timer. */
+  resources?: ResourceScope;
   /** Skip callback when scale change < 1%. Default true when debounced, false when immediate. */
   skipSmallChanges?: boolean;
 }
@@ -32,14 +34,16 @@ export interface WatchResizeOptions {
  */
 export function watchResize(
   callback: (scaleX: number, scaleY: number, current: { w: number; h: number }) => void,
-  options: WatchResizeOptions = {},
+  options: WatchResizeOptions = {}
 ): { w: number; h: number } {
-  const { container, debounceMs = 200, cleanups } = options;
-  const skipSmall = options.skipSmallChanges ?? (debounceMs > 0);
+  const { container, debounceMs = 200, resources } = options;
+  resources?.assertActive();
+  const skipSmall = options.skipSmallChanges ?? debounceMs > 0;
   const initial = getViewportSize(container);
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   const fire = () => {
+    if (resources?.disposed) return;
     const current = getViewportSize(container);
     const scaleX = initial.w > 0 ? current.w / initial.w : 1;
     const scaleY = initial.h > 0 ? current.h / initial.h : 1;
@@ -63,10 +67,16 @@ export function watchResize(
   if (container) {
     const ro = new ResizeObserver(handler);
     ro.observe(container);
-    cleanups?.push(() => { ro.disconnect(); teardown(); });
+    resources?.add(() => {
+      ro.disconnect();
+      teardown();
+    });
   } else {
     window.addEventListener('resize', handler);
-    cleanups?.push(() => { window.removeEventListener('resize', handler); teardown(); });
+    resources?.add(() => {
+      window.removeEventListener('resize', handler);
+      teardown();
+    });
   }
 
   return initial;

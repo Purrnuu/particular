@@ -8,19 +8,52 @@ An opinionated particle engine: pretty defaults, performant, minimal setup. Canv
 npm install @purrnuu/particular
 ```
 
+Use `@purrnuu/particular/vanilla` for browser APIs without React, or
+`@purrnuu/particular/react` for hooks. Existing root imports remain compatible.
+Advanced integrations can compose `/core`, `/renderers/canvas`,
+`/renderers/webgl`, `/renderers/webgl3d`, and `/effects/images` independently.
+
+Image, text, element, and shatter methods return `Promise<Emitter>`, including
+the React hook methods. Await them to obtain the emitter or handle load errors.
+Destroying the controller rejects pending work with `AbortError` and cancels
+effect timers. Destruction is idempotent and terminal.
+
+`useParticles().controller` becomes available after mount. Equivalent immutable
+inline configs preserve its engine; changing configuration values recreates it.
+Image/shatter options accept `expandBudget: false` to preserve a hard `maxCount`;
+the default `true` keeps automatic budget expansion for complete images.
+
+## Refresh-rate timing
+
+Timing is normalized to 60 Hz: `rate: 1` emits 60 particles per second,
+and a 60-tick lifetime is one second, regardless of display refresh rate.
+At 120 FPS, each normal frame advances `dt = 0.5`. Trails sample once per
+60 Hz tick, and mouse-trail speed thresholds use the same time unit.
+
+`UPDATE` callbacks receive `{ dt, deltaSeconds, elapsedSeconds }`. Custom
+animation callbacks must scale their changes by elapsed time too. Physics
+uses variable steps, so spring trajectories can differ slightly across refresh
+rates. Long frame gaps are capped at 50 ms of simulation time rather than
+catching up an entire background-tab pause.
+
+Tracked mouse forces and wobble drag measure pointer speed per simulation tick,
+not per input event. The first input establishes position without a jump;
+mouse-force damping applies to residual wind after input stops. Custom forces
+return velocity change per 60 Hz tick; the engine applies `dt` once on all axes.
+
 ## Quick start
 
 ### React — Click Burst
 
 ```tsx
-import { useParticles } from "@purrnuu/particular";
+import { useParticles } from "@purrnuu/particular/react";
 
 function App() {
-  const { canvasRef, canvasStyle, burstFromEvent } = useParticles();
+  const { canvasRef, canvasKey, canvasStyle, burstFromEvent } = useParticles();
 
   return (
     <>
-      <canvas ref={canvasRef} style={canvasStyle} />
+      <canvas key={canvasKey} ref={canvasRef} style={canvasStyle} />
       <button onClick={burstFromEvent}>Click for particles</button>
     </>
   );
@@ -31,7 +64,7 @@ function App() {
 
 ```tsx
 import { useRef, useEffect } from "react";
-import { createParticles } from "@purrnuu/particular";
+import { createParticles } from "@purrnuu/particular/vanilla";
 
 function TextParticles() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -56,7 +89,7 @@ function TextParticles() {
 
 ```tsx
 import { useRef, useEffect } from "react";
-import { createParticles } from "@purrnuu/particular";
+import { createParticles } from "@purrnuu/particular/vanilla";
 
 function ImageParticles() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -83,12 +116,12 @@ function ImageParticles() {
 ### React — Screensaver
 
 ```tsx
-import { useScreensaver } from "@purrnuu/particular";
+import { useScreensaver } from "@purrnuu/particular/react";
 
 function Snow() {
-  const { canvasRef, canvasStyle } = useScreensaver({ preset: "snow" });
+  const { canvasRef, canvasKey, canvasStyle } = useScreensaver({ preset: "snow" });
 
-  return <canvas ref={canvasRef} style={canvasStyle} />;
+  return <canvas key={canvasKey} ref={canvasRef} style={canvasStyle} />;
 }
 ```
 
@@ -209,6 +242,32 @@ function Snow() {
 
 Image/text particles have spring physics — they return to their home positions after being pushed. Press E (in the examples) to scatter them.
 
+### Bird-like Flocking
+
+The `flock` preset preserves flight momentum, and `addFlockingForce()` defaults
+to gentle steering (`maxSteeringForce: 0.08`) with lower cohesion (`0.15`).
+Birds launch in a shared direction with a small heading spread and maintain a
+cruising floor (`minSpeed: 1.5`), so alignment and drag do not stall them at the
+emitter. Use `minSpeed: 0` for passive swarms that can slow to a stop.
+Override these for a tighter, more reactive swarm, for example:
+`controller.addFlockingForce({ maxSteeringForce: 0.5, cohesionWeight: 0.3, minSpeed: 0 })`.
+External attractors and mouse forces can still cause sharper evasive turns.
+
+Flocks turn inward near canvas edges without losing cruising speed. Edge turns
+have a separate steering budget (`boundarySteeringForce: 0.12`), and
+`containment: true` keeps particle bodies inside the logical flight region even
+after a strong impulse or resize. Use `containment: false` for soft steering only.
+`boundsScale` (default `1`) selects a centered fraction of the viewport;
+`boundsDepth` (default `0`, unbounded) optionally bounds 3D depth. These are
+engine-space flight bounds, not a camera-frustum guarantee under arbitrary zoom.
+With bounded depth, the horizontal footprint is square and uses the shorter
+viewport side, keeping orbiting flight volumes compact.
+
+For a predator cursor, use
+`mouseForce: { mode: 'repel', strength: 2, radius: 75 }`. It pushes away from
+cursor position even while the cursor is stationary. The default `'wind'` mode
+follows cursor motion; negative wind strength reverses drag, not radial direction.
+
 ### Intro Animation
 
 Add `intro` to `imageToParticles()` or `textToParticles()` for animated particle reveals:
@@ -236,7 +295,7 @@ The library is designed for zero-config usage:
 Use `renderer: 'webgl3d'` for 3D perspective rendering with depth, camera controls, and spherical emission. All 2D shapes work automatically as billboarded quads.
 
 ```js
-import { createParticles } from "@purrnuu/particular";
+import { createParticles } from "@purrnuu/particular/vanilla";
 
 const p = createParticles({
   container: document.getElementById("hero"),
@@ -266,18 +325,18 @@ By default, particles render as a full-viewport overlay (`position: fixed`). To 
 
 ```tsx
 import { useRef } from "react";
-import { useParticles } from "@purrnuu/particular";
+import { useParticles } from "@purrnuu/particular/react";
 
 function HeroSection() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { canvasRef, canvasStyle, burstFromEvent } = useParticles({
+  const { canvasRef, canvasKey, canvasStyle, burstFromEvent } = useParticles({
     preset: "magic",
     container: containerRef.current!,
   });
 
   return (
     <div ref={containerRef} style={{ position: "relative", height: 400 }}>
-      <canvas ref={canvasRef} style={canvasStyle} />
+      <canvas key={canvasKey} ref={canvasRef} style={canvasStyle} />
       <button onClick={burstFromEvent}>Click for particles</button>
     </div>
   );

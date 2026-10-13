@@ -96,7 +96,7 @@ const AttractorDemo: React.FC<AttractorStoryArgs> = (props) => {
 
   return (
     <div onMouseMove={handleMouseMove} style={{ minHeight: '100vh', cursor: 'crosshair' }}>
-      <canvas ref={canvasRef} style={particlesBackgroundLayerStyle} />
+      <canvas key={renderer} ref={canvasRef} style={particlesBackgroundLayerStyle} />
       <h1
         style={{
           textAlign: 'center',
@@ -299,7 +299,7 @@ const VisibleAttractorDemo: React.FC<AttractorStoryArgs> = (props) => {
 
   return (
     <div onMouseMove={handleMouseMove} style={{ minHeight: '100vh', cursor: 'crosshair' }}>
-      <canvas ref={canvasRef} style={particlesBackgroundLayerStyle} />
+      <canvas key={renderer} ref={canvasRef} style={particlesBackgroundLayerStyle} />
       <h1
         style={{
           textAlign: 'center',
@@ -396,7 +396,7 @@ const RandomAttractorsDemo: React.FC<AttractorStoryArgs> = (props) => {
       }}
       style={{ minHeight: '100vh', cursor: 'pointer' }}
     >
-      <canvas ref={canvasRef} style={particlesBackgroundLayerStyle} />
+      <canvas key={renderer} ref={canvasRef} style={particlesBackgroundLayerStyle} />
       <h1
         style={{
           textAlign: 'center',
@@ -488,7 +488,7 @@ const RiverDemo: React.FC<{ renderer: 'canvas' | 'webgl' }> = ({ renderer }) => 
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a1628' }}>
-      <canvas ref={canvasRef} style={particlesBackgroundLayerStyle} />
+      <canvas key={renderer} ref={canvasRef} style={particlesBackgroundLayerStyle} />
       <p
         style={{
           textAlign: 'center',

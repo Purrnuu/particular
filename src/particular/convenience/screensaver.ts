@@ -19,7 +19,7 @@ export function startScreensaver({
   autoResize = true,
   mouseWind: mouseWindOption,
   container,
-}: ScreensaverOptions): ScreensaverController {
+}: ScreensaverOptions = {}): ScreensaverController {
   const basePreset = getPreset(preset);
   const mergedConfig: Partial<FullParticularConfig> = {
     ...basePreset,
@@ -53,7 +53,7 @@ export function startScreensaver({
   emitter.isEmitting = true;
   emitter.emit();
 
-  const cleanups: Array<() => void> = [];
+  const resources = controller.engine.resources;
 
   // Gentle mouse wind — snowflakes drift away from cursor movement.
   if (mouseWindOption !== false) {
@@ -65,14 +65,16 @@ export function startScreensaver({
   }
 
   if (autoResize) {
-    watchResize((_sx, _sy, current) => {
-      emitter.configuration.spawnWidth = current.w / pixelRatio;
-      emitter.configuration.point.x = current.w / 2 / pixelRatio;
-    }, { container, debounceMs: 0, cleanups });
+    watchResize(
+      (_sx, _sy, current) => {
+        emitter.configuration.spawnWidth = current.w / pixelRatio;
+        emitter.configuration.point.x = current.w / 2 / pixelRatio;
+      },
+      { container, debounceMs: 0, resources }
+    );
   }
 
   const destroy = () => {
-    for (const cleanup of cleanups) cleanup();
     controller.destroy();
   };
 

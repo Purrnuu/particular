@@ -151,7 +151,7 @@ const ImageDemo: React.FC<ImageDemoProps> = ({ buildImage, background = '#1a1a2e
 
   return (
     <div style={{ minHeight: '100vh', background }}>
-      <canvas ref={canvasRef} style={particlesBackgroundLayerStyle} />
+      <canvas key={args.renderer} ref={canvasRef} style={particlesBackgroundLayerStyle} />
       <p
         style={{
           textAlign: 'center',
@@ -218,7 +218,7 @@ const TextToParticlesDemo: React.FC<ImageParticlesStoryArgs> = (args) => {
 
   return (
     <div style={{ minHeight: '100vh', background: '#1a1a2e' }}>
-      <canvas ref={canvasRef} style={particlesBackgroundLayerStyle} />
+      <canvas key={args.renderer} ref={canvasRef} style={particlesBackgroundLayerStyle} />
       <p
         style={{
           textAlign: 'center',

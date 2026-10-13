@@ -1,16 +1,18 @@
 import Emitter from '../components/emitter';
-import type Particular from '../core/particular';
-import { configureParticle, defaultWobble, type MergedConfig } from '../core/defaults';
+import { configureParticle, defaultWobble } from '../core/defaults';
 import { createExplosionChild } from '../utils/explosion';
 import { generateHarmoniousPalette } from '../utils/color';
 import Vector from '../utils/vector';
-import type { ExplodeOptions, WobbleConfig } from '../types';
+import PointerMotion from '../utils/pointerMotion';
+import type { ExplodeOptions, WobbleConfig, FrameContext } from '../types';
+import type { FeatureContext } from './context';
 
 /**
  * Create explode() and scatter() helpers bound to an engine instance.
  */
-export function createEffects(engine: Particular, mergedConfig: MergedConfig) {
+export function createEffects({ engine, config: mergedConfig, resources }: FeatureContext) {
   const explode = (options: ExplodeOptions = {}): void => {
+    resources.assertActive();
     const destroyParents = options.destroyParents ?? true;
     const allParticles = engine.getAllParticles();
     if (allParticles.length === 0) return;
@@ -19,6 +21,7 @@ export function createEffects(engine: Particular, mergedConfig: MergedConfig) {
     const snapshots = allParticles.map((p) => ({
       x: p.position.x,
       y: p.position.y,
+      z: p.position.z,
       color: p.color,
       shape: p.shape,
       blendMode: p.blendMode,
@@ -64,6 +67,7 @@ export function createEffects(engine: Particular, mergedConfig: MergedConfig) {
   };
 
   const scatter = (options: { velocity?: number; rotation?: number } = {}): void => {
+    resources.assertActive();
     const baseVelocity = options.velocity ?? 10;
     const rotationImpulse = options.rotation ?? 0;
     const allParticles = engine.getAllParticles();
@@ -87,6 +91,7 @@ export function createEffects(engine: Particular, mergedConfig: MergedConfig) {
   let wobbleCleanup: (() => void) | null = null;
 
   const startWobble = (config?: WobbleConfig): void => {
+    resources.assertActive();
     stopWobble();
     const { track, ...rest } = config ?? {};
     const resolved = { ...defaultWobble, ...rest };
@@ -98,7 +103,9 @@ export function createEffects(engine: Particular, mergedConfig: MergedConfig) {
 
     // Compute image center from average of particle home positions (stable reference)
     const allParticles = engine.getAllParticles();
-    let cx = 0, cy = 0, homeCount = 0;
+    let cx = 0,
+      cy = 0,
+      homeCount = 0;
     for (const p of allParticles) {
       if (p.homePosition) {
         cx += p.homePosition.x;
@@ -106,7 +113,10 @@ export function createEffects(engine: Particular, mergedConfig: MergedConfig) {
         homeCount++;
       }
     }
-    if (homeCount > 0) { cx /= homeCount; cy /= homeCount; }
+    if (homeCount > 0) {
+      cx /= homeCount;
+      cy /= homeCount;
+    }
     const center = { x: cx, y: cy };
 
     // Mouse tracking state (engine coords)
@@ -114,7 +124,7 @@ export function createEffects(engine: Particular, mergedConfig: MergedConfig) {
     let mouseY = center.y;
     let mouseVelX = 0;
     let mouseVelY = 0;
-    let hasMouse = false;
+    const pointerMotion = new PointerMotion();
     const eventCleanups: (() => void)[] = [];
 
     if (track) {
@@ -124,7 +134,9 @@ export function createEffects(engine: Particular, mergedConfig: MergedConfig) {
       // Cache container rect — invalidate on scroll/resize instead of reading per mousemove
       let cachedRect: { left: number; top: number } | null = null;
       let rectDirty = true;
-      const invalidateRect = () => { rectDirty = true; };
+      const invalidateRect = () => {
+        rectDirty = true;
+      };
       let wobbleRo: ResizeObserver | null = null;
       if (container) {
         wobbleRo = new ResizeObserver(invalidateRect);
@@ -147,13 +159,9 @@ export function createEffects(engine: Particular, mergedConfig: MergedConfig) {
         }
         const newX = x / pr;
         const newY = y / pr;
-        if (hasMouse) {
-          mouseVelX = newX - mouseX;
-          mouseVelY = newY - mouseY;
-        }
+        pointerMotion.record(newX, newY);
         mouseX = newX;
         mouseY = newY;
-        hasMouse = true;
       };
 
       const onMouseMove = (e: MouseEvent) => updateMouse(e.clientX, e.clientY);
@@ -168,17 +176,27 @@ export function createEffects(engine: Particular, mergedConfig: MergedConfig) {
       eventCleanups.push(
         () => track.removeEventListener('mousemove', onMouseMove),
         () => track.removeEventListener('touchmove', onTouchMove),
-        () => { if (wobbleRo) wobbleRo.disconnect(); },
+        () => {
+          if (wobbleRo) wobbleRo.disconnect();
+        },
         () => {
           if (container) {
             window.removeEventListener('scroll', invalidateRect);
             container.removeEventListener('scroll', invalidateRect);
           }
-        },
+        }
       );
     }
 
-    const wobble = () => {
+    const wobble = (frame?: FrameContext) => {
+      const dt = frame?.dt ?? 1;
+      if (dt <= 0) return;
+      const motion = pointerMotion.consume(dt);
+      if (motion) {
+        mouseVelX = motion.x;
+        mouseVelY = motion.y;
+      }
+      const noiseScale = Math.sqrt(dt);
       const particles = engine.getAllParticles();
       const pr = mergedConfig.pixelRatio;
       const engineRadius = resolved.mouseRadius / pr;
@@ -201,33 +219,37 @@ export function createEffects(engine: Particular, mergedConfig: MergedConfig) {
           // Push: outward with angular jitter, strength scaled by mouse proximity
           const angleJitter = (Math.random() - 0.5) * 0.8;
           const pushAngle = outAngle + angleJitter;
-          const pushStrength = resolved.velocity * (0.3 + proximity * resolved.mouseStrength) * (0.3 + Math.random() * 1.4);
-          p.velocity.x += Math.cos(pushAngle) * pushStrength;
-          p.velocity.y += Math.sin(pushAngle) * pushStrength;
+          const pushStrength =
+            resolved.velocity *
+            (0.3 + proximity * resolved.mouseStrength) *
+            (0.3 + Math.random() * 1.4);
+          p.velocity.x += Math.cos(pushAngle) * pushStrength * dt;
+          p.velocity.y += Math.sin(pushAngle) * pushStrength * dt;
 
           // Mouse velocity drags nearby particles along
           if (proximity > 0.1) {
-            p.velocity.x += mouseVelX * proximity * 0.3;
-            p.velocity.y += mouseVelY * proximity * 0.3;
+            p.velocity.x += mouseVelX * proximity * 0.3 * dt;
+            p.velocity.y += mouseVelY * proximity * 0.3 * dt;
           }
 
           // Rotation jitter scaled by proximity
-          p.rotationVelocity += (Math.random() - 0.5) * resolved.rotation * 2 * (0.3 + proximity * 2);
+          p.rotationVelocity +=
+            (Math.random() - 0.5) * resolved.rotation * 2 * (0.3 + proximity * 2) * noiseScale;
 
           // Small organic noise on top
-          p.velocity.x += (Math.random() - 0.5) * resolved.velocity * 0.3;
-          p.velocity.y += (Math.random() - 0.5) * resolved.velocity * 0.3;
+          p.velocity.x += (Math.random() - 0.5) * resolved.velocity * 0.3 * noiseScale;
+          p.velocity.y += (Math.random() - 0.5) * resolved.velocity * 0.3 * noiseScale;
         } else {
           // ── Fallback: random wobble (no mouse tracking) ──
-          p.velocity.x += (Math.random() - 0.5) * resolved.velocity * 2;
-          p.velocity.y += (Math.random() - 0.5) * resolved.velocity * 2;
-          p.rotationVelocity += (Math.random() - 0.5) * resolved.rotation * 2;
+          p.velocity.x += (Math.random() - 0.5) * resolved.velocity * 2 * noiseScale;
+          p.velocity.y += (Math.random() - 0.5) * resolved.velocity * 2 * noiseScale;
+          p.rotationVelocity += (Math.random() - 0.5) * resolved.rotation * 2 * noiseScale;
         }
       }
 
       // Decay mouse velocity smoothly when mouse stops moving
-      mouseVelX *= 0.85;
-      mouseVelY *= 0.85;
+      mouseVelX *= Math.pow(0.85, dt);
+      mouseVelY *= Math.pow(0.85, dt);
     };
 
     engine.addEventListener('UPDATE', wobble);
@@ -247,5 +269,6 @@ export function createEffects(engine: Particular, mergedConfig: MergedConfig) {
     }
   };
 
+  resources.add(stopWobble);
   return { explode, scatter, startWobble, stopWobble };
 }

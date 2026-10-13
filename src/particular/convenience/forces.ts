@@ -1,18 +1,14 @@
 import Attractor from '../components/attractor';
 import MouseForce from '../components/mouseForce';
 import FlockingForce from '../components/flockingForce';
-import type Particular from '../core/particular';
+import type { FeatureContext } from './context';
 import { getViewportSize } from './resize';
-import type { AttractorConfig, MouseForceConfig, FlockingForceConfig } from '../types';
+import type { AttractorConfig, MouseForceConfig, FlockingForceConfig, ForceSource } from '../types';
 
 /**
  * Create attractor and mouse force helpers bound to an engine instance.
  */
-export function createForces(
-  engine: Particular,
-  container: HTMLElement | undefined,
-  cleanups: Array<() => void>,
-) {
+export function createForces({ engine, container, resources }: FeatureContext) {
   const addAttractor = (config: AttractorConfig): Attractor => {
     const attractor = new Attractor(config);
     engine.addAttractor(attractor);
@@ -25,7 +21,7 @@ export function createForces(
 
   const addRandomAttractors = (
     count: number,
-    config?: Partial<Omit<AttractorConfig, 'x' | 'y'>>,
+    config?: Partial<Omit<AttractorConfig, 'x' | 'y'>>
   ): Attractor[] => {
     const pixelRatio = engine.pixelRatio;
     const vp = getViewportSize(container);
@@ -63,7 +59,7 @@ export function createForces(
     if (track) {
       const target = track === true ? window : track;
       mouseForce.startTracking(target, engine.pixelRatio, container);
-      cleanups.push(() => mouseForce.stopTracking());
+      resources.add(() => mouseForce.stopTracking());
     }
 
     return mouseForce;
@@ -84,5 +80,21 @@ export function createForces(
     engine.removeFlockingForce(flockingForce);
   };
 
-  return { addAttractor, removeAttractor, addRandomAttractors, removeAllAttractors, addMouseForce, removeMouseForce, addFlockingForce, removeFlockingForce };
+  const addForce = (force: ForceSource): ForceSource => {
+    engine.addForce(force);
+    return force;
+  };
+  const removeForce = (force: ForceSource): void => engine.removeForce(force);
+  return {
+    addForce,
+    removeForce,
+    addAttractor,
+    removeAttractor,
+    addRandomAttractors,
+    removeAllAttractors,
+    addMouseForce,
+    removeMouseForce,
+    addFlockingForce,
+    removeFlockingForce,
+  };
 }

@@ -19,6 +19,7 @@ import type {
   MouseTrailConfig,
   ImageShatterConfig,
   WobbleConfig,
+  ForceSource,
 } from '../types';
 import type { PresetName } from '../presets';
 
@@ -83,15 +84,17 @@ export interface ParticlesController {
 
   // ── Emission ──
   burst: (options: BurstOptions) => Emitter;
-  attachClickBurst: (
-    target?: EventTarget,
-    overrides?: Partial<FullParticularConfig>,
-  ) => () => void;
+  attachClickBurst: (target?: EventTarget, overrides?: Partial<FullParticularConfig>) => () => void;
 
   // ── Forces ──
+  addForce: (force: ForceSource) => ForceSource;
+  removeForce: (force: ForceSource) => void;
   addAttractor: (config: AttractorConfig) => Attractor;
   removeAttractor: (attractor: Attractor) => void;
-  addRandomAttractors: (count: number, config?: Partial<Omit<AttractorConfig, 'x' | 'y'>>) => Attractor[];
+  addRandomAttractors: (
+    count: number,
+    config?: Partial<Omit<AttractorConfig, 'x' | 'y'>>
+  ) => Attractor[];
   removeAllAttractors: () => void;
   addMouseForce: (config?: MouseForceConfig) => MouseForce;
   removeMouseForce: (mouseForce: MouseForce) => void;
@@ -126,7 +129,7 @@ export interface ParticlesController {
   imageToParticles: (config: ImageParticlesConfig) => Promise<Emitter>;
   textToParticles: (
     text: string,
-    config?: Omit<ImageParticlesConfig, 'image'> & { textConfig?: Omit<TextImageConfig, 'text'> },
+    config?: Omit<ImageParticlesConfig, 'image'> & { textConfig?: Omit<TextImageConfig, 'text'> }
   ) => Promise<Emitter>;
   /** Capture any HTML element and replace it with particles at the same position.
    *  Uses manual Canvas 2D rendering (reads computed styles) — no external libraries needed.
@@ -140,7 +143,7 @@ export interface ParticlesController {
    *  Supports all ImageShatterConfig options plus text styling via textConfig. */
   shatterText: (
     text: string,
-    config?: Omit<ImageShatterConfig, 'image'> & { textConfig?: Omit<TextImageConfig, 'text'> },
+    config?: Omit<ImageShatterConfig, 'image'> & { textConfig?: Omit<TextImageConfig, 'text'> }
   ) => Promise<Emitter>;
   /** Toggle idle animations (breathing, wiggle, wave, pulse) on all particles with home positions.
    *  Spring return still works when idle is disabled — particles return home but stay still once there. */

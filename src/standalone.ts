@@ -29,6 +29,7 @@ export { startScreensaver } from './particular/convenience/screensaver';
 export { configureParticle } from './particular/core/defaults';
 export { createTextImage, createHeartImage, canvasToDataURL } from './particular/utils/imageSource';
 export { showFPSOverlay } from './particular/devFPSOverlay';
+export type { CanvasLayerStyle } from './particular/canvasStyles';
 
 export type {
   ParticularConfig,
@@ -43,6 +44,7 @@ export type {
   MouseForceConfig,
   FlockingForceConfig,
   ForceSource,
+  FrameContext,
   RendererType,
   ChildExplosionConfig,
   ExplodeOptions,

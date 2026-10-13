@@ -1,13 +1,22 @@
 import Emitter from '../components/emitter';
 import Particle from '../components/particle';
-import type Particular from '../core/particular';
-import { configureParticle, defaultImageParticles, defaultElementParticles, type MergedConfig } from '../core/defaults';
+import type { FeatureContext } from './context';
+import {
+  configureParticle,
+  defaultImageParticles,
+  defaultElementParticles,
+} from '../core/defaults';
 import Vector from '../utils/vector';
 import { loadImage, sampleImagePixels } from '../utils/pixelSampler';
 import { createTextImage, canvasToDataURL } from '../utils/imageSource';
 import { captureElement } from '../utils/elementCapture';
 import { getViewportSize, watchResize } from './resize';
-import type { ImageParticlesConfig, TextImageConfig, ElementParticlesConfig, IntroMode } from '../types';
+import type {
+  ImageParticlesConfig,
+  TextImageConfig,
+  ElementParticlesConfig,
+  IntroMode,
+} from '../types';
 import type { PixelSample } from '../utils/pixelSampler';
 
 /**
@@ -16,9 +25,15 @@ import type { PixelSample } from '../utils/pixelSampler';
  * Samples an image (or rendered text) into a grid of colored particles with
  * spring-return home positions and idle animations.
  */
-export function createImageParticles(engine: Particular, mergedConfig: MergedConfig, container?: HTMLElement, cleanups?: Array<() => void>) {
-
+export function createImageParticles({
+  engine,
+  config: mergedConfig,
+  container,
+  resources,
+  coordinates,
+}: FeatureContext) {
   const imageToParticles = async (config: ImageParticlesConfig): Promise<Emitter> => {
+    resources.assertActive();
     const merged = { ...defaultImageParticles, ...config };
     const {
       image: imageSrc,
@@ -55,11 +70,17 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
 
     let image: HTMLImageElement;
     try {
-      image = await loadImage(imageSrc);
+      image = await loadImage(imageSrc, resources.signal);
     } catch (err) {
-      console.warn('Particular: imageToParticles failed to load image.', typeof imageSrc === 'string' ? imageSrc : '(HTMLImageElement)', err);
+      if (!resources.disposed)
+        console.warn(
+          'Particular: imageToParticles failed to load image.',
+          typeof imageSrc === 'string' ? imageSrc : '(HTMLImageElement)',
+          err
+        );
       throw err;
     }
+    resources.assertActive();
     const aspect = image.naturalWidth / image.naturalHeight;
 
     // Smart defaults for position and size
@@ -95,8 +116,7 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
     const pr = mergedConfig.pixelRatio;
     const engineW = displayW / pr;
     const engineH = displayH / pr;
-    const centerX = x / pr;
-    const centerY = y / pr;
+    const { x: centerX, y: centerY } = coordinates.localToEngine(x, y);
     const originX = centerX - engineW / 2;
     const originY = centerY - engineH / 2;
 
@@ -111,11 +131,12 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
     const imageCenter = new Vector(centerX, centerY);
 
     const samples = sampleImagePixels(image, resolution, alphaThreshold);
-    const size = sizeOverride != null ? sizeOverride / pr : sizeForRes(resolution, shape ?? 'square');
+    const size =
+      sizeOverride != null ? sizeOverride / pr : sizeForRes(resolution, shape ?? 'square');
     const scaleStep = scaleStepOverride ?? size;
 
     // Ensure maxCount can hold all particles
-    if (engine.maxCount < engine.getCount() + samples.length) {
+    if (merged.expandBudget && engine.maxCount < engine.getCount() + samples.length) {
       engine.maxCount = engine.getCount() + samples.length;
     }
 
@@ -129,9 +150,21 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
       icons: [],
     });
     collector.isEmitting = false;
+    engine.addEmitter(collector);
+    const hasBudget = () =>
+      engine.getCount() + (engine.emitters.includes(collector) ? 0 : collector.particles.length) <
+      engine.maxCount;
+    const introTimers: Array<() => void> = [];
+    const cancelIntro = () => {
+      for (const cancel of introTimers) cancel();
+      introTimers.length = 0;
+      collector.configuration.life = 0;
+      collector.isEmitting = false;
+    };
 
     /** Create a particle from a pixel sample and add it to the collector. */
     const makeParticle = (sample: PixelSample, introScaleStep?: number): Particle => {
+      resources.assertActive();
       const px = originX + sample.nx * engineW;
       const py = originY + sample.ny * engineH;
       const homePos = new Vector(px, py);
@@ -175,6 +208,10 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
       }
 
       particle.init(null, engine);
+      if (resources.disposed) {
+        particle.destroy();
+        resources.assertActive();
+      }
       return particle;
     };
 
@@ -189,6 +226,7 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
         const scatterRadius = Math.max(engineW, engineH) * 0.3;
 
         for (const sample of samples) {
+          if (!hasBudget()) break;
           const particle = makeParticle(sample, introScaleStep);
           // Scatter: offset from home position
           const angle = Math.random() * Math.PI * 2;
@@ -217,14 +255,16 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
         // Small spread around center so particles don't all originate from one pixel
         const spread = Math.max(engineW, engineH) * 0.03;
         const numBatches = 30;
+        collector.configuration.life = Infinity;
         const batchMs = duration / numBatches;
 
         for (let b = 0; b < numBatches; b++) {
-          const bStart = Math.floor(b * sorted.length / numBatches);
-          const bEnd = Math.floor((b + 1) * sorted.length / numBatches);
+          const bStart = Math.floor((b * sorted.length) / numBatches);
+          const bEnd = Math.floor(((b + 1) * sorted.length) / numBatches);
 
           const createBatch = () => {
             for (let i = bStart; i < bEnd; i++) {
+              if (!hasBudget()) break;
               const speedVariance = 0.5 + Math.random() * 1.0;
               const particle = makeParticle(sorted[i]!, introScaleStep * speedVariance);
               // Start at center with small random spread
@@ -245,12 +285,13 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
               collector.particles.push(particle);
             }
             if (b === 0) engine.addEmitter(collector);
+            if (b === numBatches - 1) cancelIntro();
           };
 
           if (b === 0) {
             createBatch();
           } else {
-            setTimeout(createBatch, b * batchMs);
+            introTimers.push(resources.timeout(createBatch, b * batchMs));
           }
         }
       } else if (mode === 'ripple') {
@@ -263,14 +304,16 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
         });
 
         const numBatches = 40;
+        collector.configuration.life = Infinity;
         const batchMs = duration / numBatches;
 
         for (let b = 0; b < numBatches; b++) {
-          const bStart = Math.floor(b * sorted.length / numBatches);
-          const bEnd = Math.floor((b + 1) * sorted.length / numBatches);
+          const bStart = Math.floor((b * sorted.length) / numBatches);
+          const bEnd = Math.floor(((b + 1) * sorted.length) / numBatches);
 
           const createBatch = () => {
             for (let i = bStart; i < bEnd; i++) {
+              if (!hasBudget()) break;
               const s = sorted[i]!;
               const speedVariance = 0.4 + Math.random() * 1.2;
               const particle = makeParticle(s, introScaleStep * speedVariance);
@@ -289,30 +332,33 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
               collector.particles.push(particle);
             }
             if (b === 0) engine.addEmitter(collector);
+            if (b === numBatches - 1) cancelIntro();
           };
 
           if (b === 0) {
             createBatch();
           } else {
-            setTimeout(createBatch, b * batchMs);
+            introTimers.push(resources.timeout(createBatch, b * batchMs));
           }
         }
       } else {
         // paint: particles spray from bottom center, staggered left to right
         const sorted = [...samples];
-        sorted.sort((a, b) => (a.nx + Math.random() * 0.05) - (b.nx + Math.random() * 0.05));
+        sorted.sort((a, b) => a.nx + Math.random() * 0.05 - (b.nx + Math.random() * 0.05));
 
         const launchX = centerX;
         const launchY = originY + engineH; // bottom center of image
         const numBatches = 40;
+        collector.configuration.life = Infinity;
         const batchMs = duration / numBatches;
 
         for (let b = 0; b < numBatches; b++) {
-          const bStart = Math.floor(b * sorted.length / numBatches);
-          const bEnd = Math.floor((b + 1) * sorted.length / numBatches);
+          const bStart = Math.floor((b * sorted.length) / numBatches);
+          const bEnd = Math.floor(((b + 1) * sorted.length) / numBatches);
 
           const createBatch = () => {
             for (let i = bStart; i < bEnd; i++) {
+              if (!hasBudget()) break;
               const speedVariance = 0.5 + Math.random() * 1.0;
               const particle = makeParticle(sorted[i]!, introScaleStep * speedVariance);
               // All particles spray from the exact same point
@@ -338,18 +384,20 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
               collector.particles.push(particle);
             }
             if (b === 0) engine.addEmitter(collector);
+            if (b === numBatches - 1) cancelIntro();
           };
 
           if (b === 0) {
             createBatch();
           } else {
-            setTimeout(createBatch, b * batchMs);
+            introTimers.push(resources.timeout(createBatch, b * batchMs));
           }
         }
       }
     } else {
       // No intro — create all particles immediately at full size
       for (const sample of samples) {
+        if (!hasBudget()) break;
         const particle = makeParticle(sample);
         collector.particles.push(particle);
       }
@@ -360,40 +408,50 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
     const autoCenter = config.autoCenter ?? true;
     if (autoCenter) {
       let resizeGen = 0;
-      watchResize((scaleX, scaleY) => {
-        const gen = ++resizeGen;
+      watchResize(
+        (scaleX, scaleY) => {
+          cancelIntro();
+          const gen = ++resizeGen;
 
-        // Remove old particles
-        const idx = engine.emitters.indexOf(collector);
-        if (idx !== -1) engine.emitters.splice(idx, 1);
-        collector.particles.length = 0;
+          // Remove old particles
+          const idx = engine.emitters.indexOf(collector);
+          if (idx !== -1) engine.emitters.splice(idx, 1);
+          collector.destroy();
 
-        // Re-run with scaled position/size, no intro, no recursive autoCenter.
-        // Scale explicit x/y/width/height proportionally when present.
-        // When omitted, smart defaults recalculate from the new viewport.
-        const scaledConfig: ImageParticlesConfig = {
-          ...config,
-          intro: undefined,
-          autoCenter: false,
-        };
-        if (config.x != null) scaledConfig.x = config.x * scaleX;
-        if (config.y != null) scaledConfig.y = config.y * scaleY;
-        if (config.width != null) scaledConfig.width = config.width * scaleX;
-        if (config.height != null) scaledConfig.height = config.height * scaleY;
+          // Re-run with scaled position/size, no intro, no recursive autoCenter.
+          // Scale explicit x/y/width/height proportionally when present.
+          // When omitted, smart defaults recalculate from the new viewport.
+          const scaledConfig: ImageParticlesConfig = {
+            ...config,
+            intro: undefined,
+            autoCenter: false,
+          };
+          if (config.x != null) scaledConfig.x = config.x * scaleX;
+          if (config.y != null) scaledConfig.y = config.y * scaleY;
+          if (config.width != null) scaledConfig.width = config.width * scaleX;
+          if (config.height != null) scaledConfig.height = config.height * scaleY;
 
-        imageToParticles(scaledConfig).then((newCollector) => {
-          // Discard stale result if a newer resize has started
-          if (gen !== resizeGen) {
-            const staleIdx = engine.emitters.indexOf(newCollector);
-            if (staleIdx !== -1) engine.emitters.splice(staleIdx, 1);
-            return;
-          }
-          collector.particles.push(...newCollector.particles);
-          const newIdx = engine.emitters.indexOf(newCollector);
-          if (newIdx !== -1) engine.emitters.splice(newIdx, 1);
-          engine.addEmitter(collector);
-        });
-      }, { container, cleanups });
+          imageToParticles(scaledConfig)
+            .then((newCollector) => {
+              // Discard stale result if a newer resize has started
+              if (gen !== resizeGen) {
+                const staleIdx = engine.emitters.indexOf(newCollector);
+                if (staleIdx !== -1) engine.emitters.splice(staleIdx, 1);
+                newCollector.destroy();
+                return;
+              }
+              collector.particles.push(...newCollector.particles);
+              newCollector.particles.length = 0;
+              const newIdx = engine.emitters.indexOf(newCollector);
+              if (newIdx !== -1) engine.emitters.splice(newIdx, 1);
+              engine.addEmitter(collector);
+            })
+            .catch((error: unknown) => {
+              if (!resources.disposed) console.warn('Particular: image resize failed.', error);
+            });
+        },
+        { container, resources }
+      );
     }
 
     return collector;
@@ -401,8 +459,9 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
 
   const textToParticles = async (
     text: string,
-    config?: Omit<ImageParticlesConfig, 'image'> & { textConfig?: Omit<TextImageConfig, 'text'> },
+    config?: Omit<ImageParticlesConfig, 'image'> & { textConfig?: Omit<TextImageConfig, 'text'> }
   ): Promise<Emitter> => {
+    resources.assertActive();
     const { textConfig, ...imageConfig } = config ?? {};
     const textCanvas = createTextImage({ text, ...textConfig });
     return imageToParticles({
@@ -426,8 +485,9 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
   /** Capture any HTML element and replace it with particles at the same position. */
   const elementToParticles = async (
     element: HTMLElement,
-    config?: ElementParticlesConfig,
+    config?: ElementParticlesConfig
   ): Promise<Emitter> => {
+    resources.assertActive();
     const merged = { ...defaultElementParticles, ...config };
     const { hideElement, restoreElement, ...imageConfig } = merged;
 
@@ -460,6 +520,8 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
       autoCenter: false,
     });
 
+    resources.assertActive();
+    const originalVisibility = element.style.visibility;
     // Hide the original element so particles replace it visually
     if (hideElement) {
       element.style.visibility = 'hidden';
@@ -467,7 +529,9 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
 
     // Register cleanup to restore the element when the engine is destroyed
     if (restoreElement && hideElement) {
-      cleanups?.push(() => { element.style.visibility = ''; });
+      resources.add(() => {
+        element.style.visibility = originalVisibility;
+      });
     }
 
     // Element-aware resize: re-read the element's bounding rect on resize
@@ -479,49 +543,63 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
       let lastH = height;
       let elemResizeGen = 0;
 
-      watchResize(() => {
-        const gen = ++elemResizeGen;
-        const newRect = readElementRect(element);
-        const newX = imageConfig.x ?? newRect.x;
-        const newY = imageConfig.y ?? newRect.y;
-        const newW = imageConfig.width ?? newRect.width;
-        const newH = imageConfig.height ?? newRect.height;
+      watchResize(
+        () => {
+          const gen = ++elemResizeGen;
+          const newRect = readElementRect(element);
+          const newX = imageConfig.x ?? newRect.x;
+          const newY = imageConfig.y ?? newRect.y;
+          const newW = imageConfig.width ?? newRect.width;
+          const newH = imageConfig.height ?? newRect.height;
 
-        // Skip if position/size barely changed
-        if (Math.abs(newX - lastX) < 1 && Math.abs(newY - lastY) < 1 &&
-            Math.abs(newW - lastW) < 1 && Math.abs(newH - lastH) < 1) return;
-        lastX = newX;
-        lastY = newY;
-        lastW = newW;
-        lastH = newH;
-
-        // Remove old particles
-        const idx = engine.emitters.indexOf(emitter);
-        if (idx !== -1) engine.emitters.splice(idx, 1);
-        emitter.particles.length = 0;
-
-        imageToParticles({
-          ...imageConfig,
-          image: dataURL,
-          x: newX,
-          y: newY,
-          width: newW,
-          height: newH,
-          autoCenter: false,
-          intro: undefined,
-        }).then((newCollector) => {
-          // Discard stale result if a newer resize has started
-          if (gen !== elemResizeGen) {
-            const staleIdx = engine.emitters.indexOf(newCollector);
-            if (staleIdx !== -1) engine.emitters.splice(staleIdx, 1);
+          // Skip if position/size barely changed
+          if (
+            Math.abs(newX - lastX) < 1 &&
+            Math.abs(newY - lastY) < 1 &&
+            Math.abs(newW - lastW) < 1 &&
+            Math.abs(newH - lastH) < 1
+          )
             return;
-          }
-          emitter.particles.push(...newCollector.particles);
-          const newIdx = engine.emitters.indexOf(newCollector);
-          if (newIdx !== -1) engine.emitters.splice(newIdx, 1);
-          engine.addEmitter(emitter);
-        });
-      }, { container, cleanups, skipSmallChanges: false });
+          lastX = newX;
+          lastY = newY;
+          lastW = newW;
+          lastH = newH;
+
+          // Remove old particles
+          const idx = engine.emitters.indexOf(emitter);
+          if (idx !== -1) engine.emitters.splice(idx, 1);
+          emitter.destroy();
+
+          imageToParticles({
+            ...imageConfig,
+            image: dataURL,
+            x: newX,
+            y: newY,
+            width: newW,
+            height: newH,
+            autoCenter: false,
+            intro: undefined,
+          })
+            .then((newCollector) => {
+              // Discard stale result if a newer resize has started
+              if (gen !== elemResizeGen) {
+                const staleIdx = engine.emitters.indexOf(newCollector);
+                if (staleIdx !== -1) engine.emitters.splice(staleIdx, 1);
+                newCollector.destroy();
+                return;
+              }
+              emitter.particles.push(...newCollector.particles);
+              newCollector.particles.length = 0;
+              const newIdx = engine.emitters.indexOf(newCollector);
+              if (newIdx !== -1) engine.emitters.splice(newIdx, 1);
+              engine.addEmitter(emitter);
+            })
+            .catch((error: unknown) => {
+              if (!resources.disposed) console.warn('Particular: element resize failed.', error);
+            });
+        },
+        { container, resources, skipSmallChanges: false }
+      );
     }
 
     return emitter;
@@ -529,6 +607,7 @@ export function createImageParticles(engine: Particular, mergedConfig: MergedCon
 
   /** Toggle idle animations (breathing, wiggle, wave, pulse) on all particles with home positions. */
   const setIdleEffect = (enabled: boolean): void => {
+    resources.assertActive();
     for (const particle of engine.getAllParticles()) {
       if (particle.homePosition) {
         particle.idleEnabled = enabled;

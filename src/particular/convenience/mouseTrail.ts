@@ -1,8 +1,9 @@
 import Emitter from '../components/emitter';
 import Particular from '../core/particular';
+import type { FeatureContext } from './context';
 import { configureParticle, defaultMouseTrail } from '../core/defaults';
 import Vector from '../utils/vector';
-import type { MouseTrailConfig } from '../types';
+import type { FrameContext, MouseTrailConfig } from '../types';
 import type { MouseTrailHandle } from './types';
 
 /**
@@ -12,12 +13,10 @@ import type { MouseTrailHandle } from './types';
  * inherit cursor velocity direction and leave glowing wisp streaks.
  * Emission pauses when the mouse stops moving.
  */
-export function createMouseTrailHelper(
-  engine: Particular,
-  container: HTMLElement | undefined,
-  cleanups: Array<() => void>,
-) {
+export function createMouseTrailHelper({ engine, container, resources }: FeatureContext) {
   const addMouseTrail = (config: MouseTrailConfig = {}): MouseTrailHandle => {
+    resources.assertActive();
+    let disposed = false;
     const { target: userTarget, ...userConfig } = config;
     const resolved = { ...defaultMouseTrail, ...userConfig };
     const pr = engine.pixelRatio;
@@ -76,7 +75,9 @@ export function createMouseTrailHelper(
     // Cache container rect — invalidate on scroll/resize instead of reading per mousemove
     let cachedRect: { left: number; top: number } | null = null;
     let rectDirty = true;
-    const invalidateRect = () => { rectDirty = true; };
+    const invalidateRect = () => {
+      rectDirty = true;
+    };
     let trailRo: ResizeObserver | null = null;
     if (container) {
       trailRo = new ResizeObserver(invalidateRect);
@@ -119,7 +120,9 @@ export function createMouseTrailHelper(
     target.addEventListener('touchstart', onTouchMove, { passive: true });
 
     // Per-frame update: move emitter to mouse, set velocity from cursor direction
-    const onUpdate = () => {
+    const onUpdate = (frame?: FrameContext) => {
+      const dt = frame?.dt ?? 1;
+      if (dt <= 0) return;
       if (paused) {
         emitter.isEmitting = false;
         return;
@@ -132,7 +135,7 @@ export function createMouseTrailHelper(
 
       const dx = mouseX - prevX;
       const dy = mouseY - prevY;
-      mouseSpeed = Math.sqrt(dx * dx + dy * dy);
+      mouseSpeed = Math.sqrt(dx * dx + dy * dy) / dt;
       prevX = mouseX;
       prevY = mouseY;
 
@@ -160,9 +163,11 @@ export function createMouseTrailHelper(
         emitter.isEmitting = false;
       },
       start: () => {
+        if (disposed || resources.disposed) return;
         paused = false;
       },
-      destroy: () => {
+      destroy: resources.add(() => {
+        disposed = true;
         engine.removeEventListener(Particular.UPDATE, onUpdate);
         target.removeEventListener('mousemove', onMouseMove);
         target.removeEventListener('touchmove', onTouchMove);
@@ -175,10 +180,9 @@ export function createMouseTrailHelper(
         const idx = engine.emitters.indexOf(emitter);
         if (idx !== -1) engine.emitters.splice(idx, 1);
         emitter.destroy();
-      },
+      }),
     };
 
-    cleanups.push(() => handle.destroy());
     return handle;
   };
 

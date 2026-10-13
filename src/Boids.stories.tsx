@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { createParticles } from './index';
+import { createParticles, Vector } from './index';
 
 const meta: Meta = {
   title: 'Particular/Boids',
@@ -11,7 +11,7 @@ export default meta;
 // ── Basic Flock ─────────────────────────────────────────────────────────────
 // Particles self-organize into organic swarm patterns via boids flocking rules.
 
-const BasicFlockComponent: React.FC = () => {
+const BasicFlockComponent: React.FC<{ renderer: 'canvas' | 'webgl' }> = ({ renderer }) => {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!ref.current) return;
@@ -19,6 +19,7 @@ const BasicFlockComponent: React.FC = () => {
     const controller = createParticles({
       container: ref.current,
       preset: 'flock',
+      renderer,
       config: { autoStart: false },
     });
 
@@ -26,7 +27,7 @@ const BasicFlockComponent: React.FC = () => {
     controller.burst({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
 
     return () => controller.destroy();
-  }, []);
+  }, [renderer]);
 
   return (
     <div
@@ -45,14 +46,16 @@ const BasicFlockComponent: React.FC = () => {
   );
 };
 
-export const BasicFlock: StoryObj = {
-  render: () => <BasicFlockComponent />,
+export const BasicFlock: StoryObj<{ renderer: 'canvas' | 'webgl' }> = {
+  args: { renderer: 'webgl' },
+  argTypes: { renderer: { control: 'inline-radio', options: ['canvas', 'webgl'] } },
+  render: (args) => <BasicFlockComponent {...args} />,
 };
 
 // ── Predator Mouse ──────────────────────────────────────────────────────────
 // Mouse scatters the flock with a repelling force, which regroups after.
 
-const PredatorMouseComponent: React.FC = () => {
+const PredatorMouseComponent: React.FC<{ renderer: 'canvas' | 'webgl' }> = ({ renderer }) => {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!ref.current) return;
@@ -61,14 +64,15 @@ const PredatorMouseComponent: React.FC = () => {
       container: ref.current,
       preset: 'flock',
       config: { autoStart: false },
-      mouseForce: { strength: -2, radius: 150, track: true },
+      renderer,
+      mouseForce: { mode: 'repel', strength: 2, radius: 75, track: true },
     });
 
     controller.addFlockingForce();
     controller.burst({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
 
     return () => controller.destroy();
-  }, []);
+  }, [renderer]);
 
   return (
     <div
@@ -87,8 +91,10 @@ const PredatorMouseComponent: React.FC = () => {
   );
 };
 
-export const PredatorMouse: StoryObj = {
-  render: () => <PredatorMouseComponent />,
+export const PredatorMouse: StoryObj<{ renderer: 'canvas' | 'webgl' }> = {
+  args: { renderer: 'webgl' },
+  argTypes: { renderer: { control: 'inline-radio', options: ['canvas', 'webgl'] } },
+  render: (args) => <PredatorMouseComponent {...args} />,
 };
 
 // ── Flock + Attractor ───────────────────────────────────────────────────────
@@ -108,8 +114,8 @@ const FlockAttractorComponent: React.FC = () => {
     const pixelRatio = controller.engine.pixelRatio;
     const cx = rect.width / 2 / pixelRatio;
     const cy = rect.height / 2 / pixelRatio;
-    controller.addAttractor({ x: cx - 100, y: cy, strength: 0.3, radius: 400, visible: true });
-    controller.addAttractor({ x: cx + 100, y: cy, strength: 0.3, radius: 400, visible: true });
+    controller.addAttractor({ x: cx - 100, y: cy, strength: 0.05, radius: 400, visible: true });
+    controller.addAttractor({ x: cx + 100, y: cy, strength: 0.05, radius: 400, visible: true });
     controller.addFlockingForce();
     controller.burst({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
 
@@ -151,8 +157,9 @@ const Flock3DComponent: React.FC = () => {
       preset: 'flock',
       config: {
         autoStart: false,
-        spawnDepth: 300,
-        spread3d: Math.PI,
+        spawnDepth: 40,
+        velocity: Vector.fromAngle(0, 1.5),
+        spread3d: 0, // Depth variation, but a shared forward launch heading.
         camera: {
           fov: 60,
           position: { x: 0, y: 100, z: 600 },
@@ -161,7 +168,11 @@ const Flock3DComponent: React.FC = () => {
       },
     });
 
-    controller.addFlockingForce();
+    controller.addFlockingForce({
+      maxSpeed: 1.5,
+      boundsScale: 0.5,
+      boundsDepth: 40,
+    });
     controller.burst({
       x: rect.left + rect.width / 2,
       y: rect.top + rect.height / 2,

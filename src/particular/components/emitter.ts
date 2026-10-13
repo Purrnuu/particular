@@ -27,18 +27,25 @@ export default class Emitter {
   emit(dt = 1): void {
     if (!this.isEmitting) return;
     if (!this.particular) return;
+    if (this.particular.isDestroyed) return;
 
     this.emitAccumulator += this.configuration.rate * dt;
-    const count = Math.floor(this.emitAccumulator);
-    this.emitAccumulator -= count;
+    // Fractional RAF deltas can leave an integer boundary just below its target.
+    const requested = Math.floor(this.emitAccumulator + 1e-9);
+    this.emitAccumulator = Math.max(0, this.emitAccumulator - requested);
+    const budget = Math.max(0, Math.floor(this.particular.maxCount - this.particular.getCount()));
+    const count = Math.min(requested, budget);
 
     for (let j = 0; j < count; j++) {
+      if (this.particular.getCount() >= this.particular.maxCount) break;
       const particle = this.createParticle();
       const icons = this.configuration.icons;
-      const icon = icons.length > 0
-        ? icons[Math.floor(Math.random() * icons.length)]!
-        : null;
+      const icon = icons.length > 0 ? icons[Math.floor(Math.random() * icons.length)]! : null;
       particle.init(icon, this.particular);
+      if (this.particular.isDestroyed) {
+        particle.destroy();
+        return;
+      }
       this.particles.push(particle);
     }
   }
@@ -47,7 +54,14 @@ export default class Emitter {
     this.particular = particular;
   }
 
-  update(boundsX: number, boundsY: number, marginX: number, marginY: number, forces?: ForceSource[], dt = 1): void {
+  update(
+    boundsX: number,
+    boundsY: number,
+    marginX: number,
+    marginY: number,
+    forces?: ForceSource[],
+    dt = 1
+  ): void {
     let writeIdx = 0;
     const detonate = this.configuration.detonate;
     const newChildren = this._newChildren;
@@ -87,7 +101,14 @@ export default class Emitter {
         particle.lifeTick >= particle.lifeTime * detonate.at
       ) {
         const childCount = detonate.childCount ?? 5;
-        const budget = Math.max(0, this.particular.maxCount - this.particular.getCount() - newChildren.length);
+        const budget = Math.max(
+          0,
+          this.particular.maxCount -
+            this.particular.getCount() +
+            (i - writeIdx) +
+            1 -
+            newChildren.length
+        );
         const toSpawn = Math.min(childCount, budget);
         for (let j = 0; j < toSpawn; j++) {
           const child = createExplosionChild(
@@ -101,7 +122,7 @@ export default class Emitter {
             },
             detonate,
             this.particular,
-            this.configuration.colors,
+            this.configuration.colors
           );
           child.isDetonationChild = true;
           newChildren.push(child);
@@ -187,7 +208,10 @@ export default class Emitter {
       // Uses asin-based sampling to avoid polar bunching (uniform area on the sphere).
       // spread3d = PI → half-angle PI/2 → full sphere. Values >= PI all give full sphere.
       const baseAzimuth = Math.atan2(emitDirection.y, emitDirection.x);
-      const baseElevation = Math.atan2(emitDirection.z, Math.sqrt(emitDirection.x * emitDirection.x + emitDirection.y * emitDirection.y));
+      const baseElevation = Math.atan2(
+        emitDirection.z,
+        Math.sqrt(emitDirection.x * emitDirection.x + emitDirection.y * emitDirection.y)
+      );
       const azimuth = baseAzimuth + (Math.random() - 0.5) * 2 * Math.PI;
       const halfAngle = Math.min(spread3d * 0.5, Math.PI / 2);
       const maxSin = Math.sin(halfAngle);
@@ -203,9 +227,8 @@ export default class Emitter {
     const friction = frictionBase + frictionSize * size;
     const acceleration = new Vector(0, accelBase + accelerationSize * size);
     const jitter = gravityJitter ?? 0;
-    const jitteredGravity = jitter > 0
-      ? gravity * (1 - jitter + Math.random() * jitter * 2)
-      : gravity;
+    const jitteredGravity =
+      jitter > 0 ? gravity * (1 - jitter + Math.random() * jitter * 2) : gravity;
 
     this.lifeCycle++;
 

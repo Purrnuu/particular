@@ -32,6 +32,7 @@ export { configureParticle } from './particular/core/defaults';
 export { createTextImage, createHeartImage, canvasToDataURL } from './particular/utils/imageSource';
 export { useParticles, useScreensaver } from './particular/useParticles';
 export { showFPSOverlay } from './particular/devFPSOverlay';
+export type { CanvasLayerStyle } from './particular/canvasStyles';
 
 // Export types
 export type {
@@ -48,6 +49,7 @@ export type {
   MouseForceConfig,
   FlockingForceConfig,
   ForceSource,
+  FrameContext,
   RendererType,
   ChildExplosionConfig,
   ExplodeOptions,

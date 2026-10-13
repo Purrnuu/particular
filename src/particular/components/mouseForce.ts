@@ -1,14 +1,20 @@
 import Vector from '../utils/vector';
-import type { ForceSource, MouseForceConfig } from '../types';
+import PointerMotion from '../utils/pointerMotion';
+import type { ForceSource, MouseForceConfig, FrameContext } from '../types';
 import { defaultMouseForce } from '../core/defaults';
 
 // Reusable force vector — safe because getForce result is consumed immediately by velocity.add()
 const _tempForce = new Vector(0, 0);
 
 /** Projects a 3D particle position to 2D engine coords (screen space). */
-export type ScreenProjection = (px: number, py: number, pz: number) => { x: number; y: number } | null;
+export type ScreenProjection = (
+  px: number,
+  py: number,
+  pz: number
+) => { x: number; y: number } | null;
 
 export default class MouseForce implements ForceSource {
+  mode: 'wind' | 'repel';
   position: Vector;
   velocity: Vector;
   strength: number;
@@ -29,9 +35,12 @@ export default class MouseForce implements ForceSource {
   private _rectDirty = true;
   private _rectInvalidator: (() => void) | null = null;
   private _resizeObserver: ResizeObserver | null = null;
+  private pointerMotion = new PointerMotion();
+  private hasTrackedPosition = false;
 
   constructor(config: MouseForceConfig = {}) {
     const merged = { ...defaultMouseForce, ...config };
+    this.mode = merged.mode;
     this.position = new Vector(merged.x, merged.y);
     this.velocity = new Vector(0, 0);
     this.strength = merged.strength;
@@ -51,10 +60,15 @@ export default class MouseForce implements ForceSource {
     this._container = container ?? null;
     this._rectDirty = true;
     this._cachedRect = null;
+    this.hasTrackedPosition = false;
+    this.velocity.x = 0;
+    this.velocity.y = 0;
 
     // Cache container rect — invalidate on scroll/resize instead of reading per mousemove
     if (this._container) {
-      this._rectInvalidator = () => { this._rectDirty = true; };
+      this._rectInvalidator = () => {
+        this._rectDirty = true;
+      };
       this._resizeObserver = new ResizeObserver(this._rectInvalidator);
       this._resizeObserver.observe(this._container);
       window.addEventListener('scroll', this._rectInvalidator, { passive: true });
@@ -73,7 +87,10 @@ export default class MouseForce implements ForceSource {
         x -= this._cachedRect.left;
         y -= this._cachedRect.top;
       }
-      this.updatePosition(x / this._pixelRatio, y / this._pixelRatio);
+      this.position.x = x / this._pixelRatio;
+      this.position.y = y / this._pixelRatio;
+      this.hasTrackedPosition = true;
+      this.pointerMotion.record(this.position.x, this.position.y);
     };
 
     this._trackListener = (e: MouseEvent) => {
@@ -94,6 +111,7 @@ export default class MouseForce implements ForceSource {
   }
 
   stopTracking(): void {
+    this.pointerMotion.reset();
     if (this._trackTarget) {
       if (this._trackListener) {
         this._trackTarget.removeEventListener('mousemove', this._trackListener as EventListener);
@@ -125,9 +143,11 @@ export default class MouseForce implements ForceSource {
     this.stopTracking();
   }
 
-  updatePosition(x: number, y: number): void {
-    this.velocity.x = x - this.position.x;
-    this.velocity.y = y - this.position.y;
+  /** Programmatic movement in engine coordinates; dt is elapsed time in 60 Hz ticks. */
+  updatePosition(x: number, y: number, dt = 1): void {
+    if (dt <= 0) return;
+    this.velocity.x = (x - this.position.x) / dt;
+    this.velocity.y = (y - this.position.y) / dt;
     this.position.x = x;
     this.position.y = y;
   }
@@ -138,13 +158,34 @@ export default class MouseForce implements ForceSource {
     this.velocity.y *= factor;
   }
 
+  update(frame: FrameContext): void {
+    const motion = this.pointerMotion.consume(frame.dt);
+    if (motion) {
+      this.velocity.x = motion.x;
+      this.velocity.y = motion.y;
+    } else {
+      // Active input already measures speed; decay only the residual wind.
+      this.decay(frame.dt);
+    }
+  }
+
   getForce(particlePosition: Vector): Vector {
+    _tempForce.z = 0;
+    if (this.isTracking && !this.hasTrackedPosition) {
+      _tempForce.x = 0;
+      _tempForce.y = 0;
+      return _tempForce;
+    }
     let px = particlePosition.x;
     let py = particlePosition.y;
 
     // In 3D mode, project particle to screen space so distance is visual, not spatial
     if (this.projectToScreen && particlePosition.z !== 0) {
-      const projected = this.projectToScreen(particlePosition.x, particlePosition.y, particlePosition.z);
+      const projected = this.projectToScreen(
+        particlePosition.x,
+        particlePosition.y,
+        particlePosition.z
+      );
       if (!projected) {
         _tempForce.x = 0;
         _tempForce.y = 0;
@@ -164,21 +205,27 @@ export default class MouseForce implements ForceSource {
       return _tempForce;
     }
 
+    const linearFalloff = 1 - dist / this.radius;
+    const distanceFalloff =
+      this.falloff === 1 ? linearFalloff : Math.pow(linearFalloff, this.falloff);
+
+    if (this.mode === 'repel') {
+      const scale = Math.abs(this.strength) * distanceFalloff / dist;
+      _tempForce.x = dx * scale;
+      _tempForce.y = dy * scale;
+      return _tempForce;
+    }
+
     const speed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y);
     if (speed < 0.01) {
       _tempForce.x = 0;
       _tempForce.y = 0;
       return _tempForce;
     }
-
-    const linearFalloff = 1 - dist / this.radius;
-    const distanceFalloff = this.falloff === 1
-      ? linearFalloff
-      : Math.pow(linearFalloff, this.falloff);
     const speedFactor = Math.min(speed, this.maxSpeed) / this.maxSpeed;
 
     // Combine normalize + scale: (vel/speed) * strength * falloff * speedFactor
-    const scale = this.strength * distanceFalloff * speedFactor / speed;
+    const scale = (this.strength * distanceFalloff * speedFactor) / speed;
     _tempForce.x = this.velocity.x * scale;
     _tempForce.y = this.velocity.y * scale;
     return _tempForce;

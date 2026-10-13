@@ -25,7 +25,12 @@ After installation, restart your terminal or run:
 source ~/.zshrc  # or ~/.bashrc for bash users
 ```
 
-#### Using NVM with This Project
+#### Windows
+
+Use nvm-windows, then run `nvm install 22.12.0` and `nvm use 22.12.0`.
+In PowerShell, `npm.cmd` also works when script execution policy blocks `npm.ps1`.
+
+### Using NVM with This Project
 
 Once NVM is installed, navigate to the project directory and run:
 
@@ -117,6 +122,18 @@ npm run dev
 This will rebuild the library automatically when you make changes.
 
 ## Testing
+
+### Validate Development Changes
+
+```bash
+npm run validate
+```
+
+This checks types, lint, source tests, freshly built package entries, and Storybook.
+Build checks write reference outputs to `.build/`. Before committing source changes,
+run `npm run build:lib` and include `dist/` in the feature-branch commit.
+`npm run validate` verifies the distributable matches source and tests its entries.
+Generated Storybook `docs/` remains release-only.
 
 ### Run Tests Once
 

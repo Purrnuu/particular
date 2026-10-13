@@ -11,7 +11,7 @@ npm install @purrnuu/particular
 
 ### Vanilla — zero config
 ```js
-import { createParticles } from "@purrnuu/particular";
+import { createParticles } from "@purrnuu/particular/vanilla";
 const p = createParticles();            // auto-creates canvas, appends to body, WebGL
 p.attachClickBurst(document);           // click anywhere for particles
 // p.destroy() to clean up
@@ -19,14 +19,14 @@ p.attachClickBurst(document);           // click anywhere for particles
 
 ### Vanilla — text to particles
 ```js
-import { createParticles } from "@purrnuu/particular";
+import { createParticles } from "@purrnuu/particular/vanilla";
 const p = createParticles({ preset: "imageText", mouseForce: true });
 p.textToParticles("Hello");             // auto-centered, 1:1 size (capped at 50% viewport)
 ```
 
 ### Vanilla — image to particles
 ```js
-import { createParticles } from "@purrnuu/particular";
+import { createParticles } from "@purrnuu/particular/vanilla";
 const p = createParticles({ preset: "imageShape", mouseForce: { strength: 3, radius: 80 } });
 p.imageToParticles({ image: "/photo.png", width: 500 });
 ```
@@ -39,7 +39,7 @@ startScreensaver({ preset: "snow" });   // auto-creates canvas, continuous snowf
 
 ### Vanilla — container mode
 ```js
-import { createParticles } from "@purrnuu/particular";
+import { createParticles } from "@purrnuu/particular/vanilla";
 const p = createParticles({ container: document.getElementById("hero"), preset: "magic" });
 p.attachClickBurst(document.getElementById("hero"));
 // container must have position: relative
@@ -47,12 +47,12 @@ p.attachClickBurst(document.getElementById("hero"));
 
 ### React — click burst
 ```tsx
-import { useParticles } from "@purrnuu/particular";
+import { useParticles } from "@purrnuu/particular/react";
 function App() {
-  const { canvasRef, canvasStyle, burstFromEvent } = useParticles();
+  const { canvasRef, canvasKey, canvasStyle, burstFromEvent } = useParticles();
   return (
     <>
-      <canvas ref={canvasRef} style={canvasStyle} />
+      <canvas key={canvasKey} ref={canvasRef} style={canvasStyle} />
       <button onClick={burstFromEvent}>Burst</button>
     </>
   );
@@ -61,10 +61,10 @@ function App() {
 
 ### React — screensaver
 ```tsx
-import { useScreensaver } from "@purrnuu/particular";
+import { useScreensaver } from "@purrnuu/particular/react";
 function Snow() {
-  const { canvasRef, canvasStyle } = useScreensaver({ preset: "snow" });
-  return <canvas ref={canvasRef} style={canvasStyle} />;
+  const { canvasRef, canvasKey, canvasStyle } = useScreensaver({ preset: "snow" });
+  return <canvas key={canvasKey} ref={canvasRef} style={canvasStyle} />;
 }
 ```
 
@@ -173,11 +173,11 @@ Returns:
 - scatter(options?) → void
 - startWobble(config?) → void
 - stopWobble() → void
-- imageToParticles(config) → void
-- textToParticles(text, config?) → void
-- elementToParticles(element, config?) → void
-- shatterImage(config) → void
-- shatterText(text, config?) → void
+- imageToParticles(config) → Promise<Emitter>
+- textToParticles(text, config?) → Promise<Emitter>
+- elementToParticles(element, config?) → Promise<Emitter>
+- shatterImage(config) → Promise<Emitter>
+- shatterText(text, config?) → Promise<Emitter>
 - setIdleEffect(enabled) → void
 
 ### useScreensaver(options?) → UseScreensaverResult (React hook)
@@ -191,7 +191,7 @@ Options (all optional):
 - mouseWind: MouseForceConfig | false
 - container: HTMLElement
 
-Returns: { canvasRef, canvasStyle, destroy() }
+Returns: { canvasRef, canvasKey, canvasStyle, destroy() }
 
 ## Config Types
 
@@ -267,10 +267,15 @@ Extends ImageParticlesConfig (minus `image`). Position and size auto-derived fro
 
 ### FlockingForceConfig (for addFlockingForce)
 - neighborRadius?: number           — radius for neighbor detection. Default 100
-- separationWeight?: number         — avoid crowding weight. Default 1.5
+- separationWeight?: number         — avoid crowding weight. Default 1.2
 - alignmentWeight?: number          — match neighbor heading weight. Default 1.5
-- cohesionWeight?: number           — steer toward neighbor center weight. Default 0.3
-- maxSteeringForce?: number         — max force magnitude per frame. Default 0.5
+- cohesionWeight?: number           — steer toward neighbor center weight. Default 0.15
+- maxSteeringForce?: number         — max steering velocity change per 60 Hz tick. Default 0.08
+- minSpeed?: number                 — minimum cruising speed, capped by maxSpeed. Default 1.5; 0 allows passive swarms
+- boundarySteeringForce?: number    — edge-turn steering budget per 60 Hz tick. Default 0.12
+- containment?: boolean            — positional safety fallback inside flight bounds. Default true
+- boundsScale?: number             — centered fraction of logical viewport. Default 1
+- boundsDepth?: number             — full depth of 3D flight region; 0 is unbounded. Default 0
 - maxSpeed?: number                 — max particle speed (velocity clamped). Default 4
 - separationDistance?: number       — min distance before separation kicks in. Default 25
 
@@ -326,7 +331,7 @@ ContainerGlowHandle: { update(), stop(), start(), destroy() }
 - trailLength?: number               — default 6
 - trailFade?: number                 — default 0.4
 - trailShrink?: number               — default 0.5
-- minSpeed?: number                  — min mouse speed to emit. Default 0.5
+- minSpeed?: number                  — min mouse speed in engine units per 60 Hz tick to emit. Default 0.5
 
 MouseTrailHandle: { stop(), start(), destroy() }
 - stop() — pause emission, existing particles fade naturally
@@ -369,7 +374,7 @@ MouseTrailHandle: { stop(), start(), destroy() }
 - pixelRatio: number                 — canvas pixel ratio. Default 2
 - continuous: boolean                — keep emitters alive after burst. Default false
 - particlePoolSize: number           — max dead particles kept in reuse pool. Default 2000. Higher = less GC, more idle memory
-- webglMaxInstances: number          — WebGL max particles per draw call. Default 16384
+- webglMaxInstances: number          — WebGL max particles per draw call. Default 4096
 - container: HTMLElement             — container-aware mode element
 
 ### setParticlePoolSize(size: number): void
@@ -379,19 +384,19 @@ Pool auto-shrinks if new limit is smaller than current pool size. Default 2000.
 ### Key Particle Config Fields
 - shape: "circle" | "rectangle" | "square" | "roundedRectangle" | "triangle" | "star" | "ring" | "sparkle"
 - blendMode: "normal" | "additive" | "multiply" | "screen"
-- rate: number                      — particles per frame. Default 8
+- rate: number                      — particles per 60 Hz tick (rate * 60 per second). Default 8
 - life: number                      — emitter burst budget. Default 30
 - particleLife: number              — particle lifetime in ticks. Default 100. Use Infinity for permanent particles (no lifetime countdown). Particles with homePosition are automatically permanent
 - velocity: Vector                  — initial velocity direction + speed
 - spread: number                    — emission cone width in radians
 - sizeMin/sizeMax: number           — particle size range
-- velocityMultiplier: number        — each particle's speed = velocity × random(0, multiplier). Higher = more variation. Default 6
+- velocityMultiplier: number        — size-based upward spawn bias: y -= (sizeMax - size) / 15 * multiplier. Default 6
 - fadeTime: number                  — fade-out duration in ticks. Default 30
 - gravity: number                   — downward pull. Default 0.15
 - gravityJitter: number             — per-particle gravity randomness (0–1). Each particle's gravity is multiplied by a random factor in the range `1 ± gravityJitter`, giving heavier and lighter particles even at the same size. Default 0
 - colors: string[]                  — hex color palette. Empty = auto-generated harmonious palette
 - trail: boolean                    — enable trail rendering
-- trailLength: number               — max trail segments
+- trailLength: number               — max trail age in 60 Hz ticks; sampled once per tick
 - glow: boolean                     — enable glow effect
 - glowSize: number                  — glow radius
 - shadow: boolean                   — enable drop shadow
@@ -618,7 +623,7 @@ p.addFlockingForce(); // particles self-organize via separation, alignment, cohe
 
 ### Flock with predator mouse
 ```js
-const p = createParticles({ preset: "flock", mouseForce: { strength: -2, radius: 150 } });
+const p = createParticles({ preset: "flock", mouseForce: { mode: "repel", strength: 2, radius: 75 } });
 p.addFlockingForce();
 ```
 
@@ -640,3 +645,45 @@ const p = createParticles({ config: { colors: ["#ff6b6b", "#feca57", "#48dbfb"] 
 - 3D rendering requires `renderer: 'webgl3d'`. Particles are billboarded quads — all 2D shapes (circle, star, sparkle, etc.) work in 3D automatically.
 - Canvas 2D renderer stays purely 2D. Existing 2D convenience helpers (imageToParticles, shatter, containerGlow, mouseTrail) render on the z=0 plane in 3D scenes.
 - `Camera`, `CameraConfig`, `defaultCamera`, `WebGL3DRenderer` are exported from the main entry point.
+
+## Extension and Lifecycle Contracts
+
+- /vanilla and /core import without React; /react contains React adapters. Root exports stay compatible.
+- Optional entries: /renderers/canvas, /renderers/webgl, /renderers/webgl3d, /effects/images.
+- controller.addForce(force: ForceSource) returns the force; removeForce(force) detaches it.
+- ForceSource: getForce(position, particle?) plus optional update(frame), preCompute(particles, dt), setBounds(width, height), destroy().
+- UPDATE and UPDATE_AFTER receive FrameContext { timestamp, dt, deltaSeconds, elapsedSeconds }. dt is in 60 Hz ticks; seconds are clamped simulation time. The frame object is reused.
+- /core exports ResourceScope and createFeatureContext(engine, resolvedConfig) for explicit helper composition.
+- destroy() is idempotent and terminal, cancels timers/listeners, and rejects pending asynchronous operations with AbortError.
+- React image/text/element/shatter methods preserve Promise<Emitter> results and errors; controller readiness is reactive after mount. Equivalent immutable inline configs preserve the engine; changed values recreate it.
+- ImageParticlesConfig and ImageShatterConfig expose expandBudget?: boolean (default true); false keeps the existing maxCount.
+- Intro promises resolve after initial setup, before staggered intro timers finish.
+
+- useParticles/useScreensaver return canvasKey: RendererType. Attach it with <canvas key={canvasKey} ref={canvasRef} style={canvasStyle} /> so changing renderers remounts the browser canvas.
+- CanvasLayerStyle is a framework-independent public style type; vanilla declarations do not require React types.
+
+### Force timing
+- getForce returns velocity change per 60 Hz tick; particle integration applies dt once on x/y/z.
+- Tracked mouse wind and wobble drag aggregate pointer events and normalize displacement by dt. First input anchors position without an impulse. Mouse wind decays when there is no new input.
+- MouseForce.updatePosition(x, y, dt = 1) accepts elapsed 60 Hz ticks for programmatic movement.
+- Spring-return and wobble noise use sqrt(dt); damping and smoothing use exponential dt scaling.
+
+### Bird-like flock defaults
+- Flocking defaults: separationWeight 1.2, alignmentWeight 1.5, cohesionWeight 0.15, maxSteeringForce 0.08. Neighbor radius 100 and maxSpeed 4 are unchanged.
+- The flock preset uses friction 0.002 and velocityMultiplier 0 to preserve momentum without upward spawn bias. Explicit force/preset overrides remain supported.
+
+### Sustained flock flight
+- Flock birds share a forward launch heading (spread PI/5) and maintain minSpeed 1.5. Set minSpeed: 0 to disable active cruising.
+- Cruise-speed correction preserves heading, including exact braking cancellation; a stationary particle without steering stays stationary. Speed correction is separate from the steering cap and uses the same dt compensation as maxSpeed.
+
+### Flock bounds
+- Edge avoidance rotates velocity inward without braking, with a separate boundary budget. It does not wait for neighbor-force smoothing.
+- constrain(particle) is an optional ForceSource hook, applied after integration before rendering. Flocking also repairs bounds before kill-zone checks on resize.
+- Flight bounds use logical dimensions (viewport / pixelRatio), optionally a centered boundsScale region and +/-boundsDepth/2. The containment fallback keeps bodies inside and reverses outward velocity components. containment: false leaves soft steering only.
+- 3D bounds are engine-space volumes, not a guarantee against camera cropping at arbitrary zoom/orbit settings.
+- When boundsDepth is positive, boundsScale uses the shorter logical viewport side for a centered square xy footprint. The orbiting 3D demo uses this compact volume.
+
+### Predator cursor and distributables
+- MouseForceConfig.mode: 'wind' (default) or 'repel'. Repel pushes radially away from cursor position, including at rest; strength is a magnitude. Wind follows cursor velocity and retains signed strength.
+- Self-tracking repel fields wait for the first pointer position rather than creating a phantom threat at the origin.
+- Rebuild and commit dist with source/API changes on feature branches. npm run build:lib regenerates it; npm run check:dist compares a fresh build and npm run test:dist tests the distributable. CI includes this guard via npm run validate. Generated Storybook docs remains release-only.

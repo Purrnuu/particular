@@ -1,0 +1,685 @@
+'use strict';
+
+var chunk5V4IP2RS_cjs = require('./chunk-5V4IP2RS.cjs');
+
+// src/particular/renderers/webglRenderer.ts
+var VERTEX_SHADER = `#version 300 es
+in vec2 a_position;
+in vec2 a_particle_pos;
+in float a_particle_size;
+in float a_particle_rotation;
+in vec4 a_particle_color;
+in float a_particle_shape;
+
+uniform vec2 u_resolution;
+uniform float u_glowExpand;
+
+out vec4 v_color;
+out vec2 v_uv;
+out float v_particle_size;
+out float v_particle_shape;
+
+void main() {
+  float expand = 1.0 + u_glowExpand;
+  float c = cos(a_particle_rotation);
+  float s = sin(a_particle_rotation);
+  vec2 rotated = vec2(a_position.x * c - a_position.y * s, a_position.x * s + a_position.y * c);
+  vec2 pos = (a_particle_pos + rotated * a_particle_size * expand) / u_resolution * 2.0 - 1.0;
+  pos.y = -pos.y;
+  gl_Position = vec4(pos, 0.0, 1.0);
+  v_color = a_particle_color;
+  v_uv = a_position * expand;
+  v_particle_size = a_particle_size;
+  v_particle_shape = a_particle_shape;
+}
+`;
+var FRAGMENT_SHADER = `#version 300 es
+precision mediump float;
+
+in vec4 v_color;
+in vec2 v_uv;
+in float v_particle_size;
+in float v_particle_shape;
+
+uniform float u_softness;
+uniform float u_glow;
+uniform float u_glowSize;
+uniform vec4 u_glowColor;
+uniform float u_isShadow;
+uniform vec4 u_shadowColor;
+uniform float u_shadowBlur;
+
+out vec4 outColor;
+
+${chunk5V4IP2RS_cjs.SDF_SHAPE_FUNCTIONS}
+
+void main() {
+  float sd = shapeSdf(v_uv, v_particle_shape);
+  float particleAlpha = pow(clamp(v_color.a, 0.0, 1.0), 0.8);
+
+  if (u_isShadow > 0.0) {
+    float retraction = clamp(v_color.a, 0.0, 1.0);
+    float sizeScale = clamp(v_particle_size / 12.0, 0.45, 2.2);
+    float effectiveShadowBlur = u_shadowBlur * retraction * sizeScale;
+    float shadowAlpha = 1.0 - smoothstep(-0.02, effectiveShadowBlur, sd);
+    outColor = vec4(u_shadowColor.rgb, u_shadowColor.a * shadowAlpha * retraction);
+    return;
+  }
+
+  float coreAlpha = 1.0 - smoothstep(-u_softness, u_softness, sd);
+  float alpha = coreAlpha;
+  vec3 rgb = v_color.rgb;
+  if (u_glow > 0.0) {
+    float glowScale = mix(0.75, 1.75, clamp((v_particle_size - 4.0) / 20.0, 0.0, 1.0));
+    float glowRange = u_glowSize * glowScale;
+    float halo = 1.0 - smoothstep(-0.2, glowRange, sd);
+    float glowAlpha = halo * u_glowColor.a;
+    alpha = max(alpha, glowAlpha);
+    float glowMix = clamp((1.0 - coreAlpha) * glowAlpha, 0.0, 1.0);
+    rgb = mix(rgb, u_glowColor.rgb, glowMix);
+  }
+  outColor = vec4(rgb, particleAlpha * alpha);
+}
+`;
+var IMAGE_VERTEX_SHADER = `#version 300 es
+in vec2 a_position;
+in vec2 a_particle_pos;
+in float a_particle_size;
+in float a_particle_rotation;
+in vec4 a_particle_color;
+
+uniform vec2 u_resolution;
+
+out vec4 v_color;
+out vec2 v_uv;
+out float v_particle_size;
+
+void main() {
+  float c = cos(a_particle_rotation);
+  float s = sin(a_particle_rotation);
+  vec2 rotated = vec2(a_position.x * c - a_position.y * s, a_position.x * s + a_position.y * c);
+  vec2 pos = (a_particle_pos + rotated * a_particle_size) / u_resolution * 2.0 - 1.0;
+  pos.y = -pos.y;
+  gl_Position = vec4(pos, 0.0, 1.0);
+  v_color = a_particle_color;
+  v_uv = a_position * 0.5 + 0.5;
+  v_particle_size = a_particle_size;
+}
+`;
+var IMAGE_FRAGMENT_SHADER = `#version 300 es
+precision mediump float;
+
+in vec4 v_color;
+in vec2 v_uv;
+in float v_particle_size;
+
+uniform sampler2D u_texture;
+uniform float u_tint;
+uniform float u_isShadow;
+uniform vec4 u_shadowColor;
+uniform float u_shadowBlur;
+
+out vec4 outColor;
+
+void main() {
+  vec4 tex = texture(u_texture, v_uv);
+
+  if (u_isShadow > 0.0) {
+    vec2 texel = 1.0 / vec2(textureSize(u_texture, 0));
+    float retraction = clamp(v_color.a, 0.0, 1.0);
+    float sizeScale = clamp(v_particle_size / 12.0, 0.45, 2.2);
+    vec2 blur = texel * (u_shadowBlur * retraction * sizeScale);
+
+    // 9-tap weighted blur on alpha for softer image shadows.
+    float a = tex.a * 0.28;
+    a += texture(u_texture, v_uv + vec2( blur.x, 0.0)).a * 0.12;
+    a += texture(u_texture, v_uv + vec2(-blur.x, 0.0)).a * 0.12;
+    a += texture(u_texture, v_uv + vec2(0.0,  blur.y)).a * 0.12;
+    a += texture(u_texture, v_uv + vec2(0.0, -blur.y)).a * 0.12;
+    a += texture(u_texture, v_uv + vec2( blur.x,  blur.y)).a * 0.06;
+    a += texture(u_texture, v_uv + vec2(-blur.x,  blur.y)).a * 0.06;
+    a += texture(u_texture, v_uv + vec2( blur.x, -blur.y)).a * 0.06;
+    a += texture(u_texture, v_uv + vec2(-blur.x, -blur.y)).a * 0.06;
+    outColor = vec4(u_shadowColor.rgb, min(1.0, a) * u_shadowColor.a * retraction);
+    return;
+  }
+
+  vec3 rgb = mix(tex.rgb, tex.rgb * v_color.rgb, u_tint);
+  float particleAlpha = pow(clamp(v_color.a, 0.0, 1.0), 0.8);
+  outColor = vec4(rgb, tex.a * particleAlpha);
+}
+`;
+var WebGLRenderer = class {
+  constructor(target, options) {
+    this.gl = null;
+    this.program = null;
+    this.imageProgram = null;
+    this.quadBuffer = null;
+    this.circleQuadBuffer = null;
+    this.instanceBuffer = null;
+    this.particular = null;
+    this.pixelRatio = 2;
+    this.instanceStride = 9;
+    this.resolutionUniform = null;
+    this.softnessUniform = null;
+    this.glowUniform = null;
+    this.glowExpandUniform = null;
+    this.glowSizeUniform = null;
+    this.glowColorUniform = null;
+    this.isShadowUniform = null;
+    this.shadowColorUniform = null;
+    this.shadowBlurUniform = null;
+    this.imageResolutionUniform = null;
+    this.imageTintUniform = null;
+    this.imageIsShadowUniform = null;
+    this.imageShadowColorUniform = null;
+    this.imageShadowBlurUniform = null;
+    this.textureCache = /* @__PURE__ */ new Map();
+    // Cached attribute locations (circle program)
+    this.circleAttrPos = -1;
+    this.circleAttrParticlePos = -1;
+    this.circleAttrSize = -1;
+    this.circleAttrRotation = -1;
+    this.circleAttrColor = -1;
+    this.circleAttrShape = -1;
+    // Cached attribute locations (image program)
+    this.imageAttrPos = -1;
+    this.imageAttrParticlePos = -1;
+    this.imageAttrSize = -1;
+    this.imageAttrRotation = -1;
+    this.imageAttrColor = -1;
+    this.imageTexUniform = null;
+    // Object pools to avoid per-frame allocations
+    this.ghostPool = [];
+    this.ghostPoolIdx = 0;
+    this.expandedArr = [];
+    this.batchPool = [];
+    this.batchPoolIdx = 0;
+    this.resize = (args) => {
+      if (!args || !this.gl) return;
+      const { width, height } = args;
+      this.target.width = width;
+      this.target.height = height;
+      this.gl.viewport(0, 0, width, height);
+    };
+    this.onUpdate = () => {
+      if (!this.gl) return;
+      this.gl.clearColor(0, 0, 0, 0);
+      this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+    };
+    this._batchResult = [];
+    this.onUpdateAfter = () => {
+      if (!this.gl || !this.particular || !this.program) return;
+      const baseParticles = this.particular.getAllParticles();
+      const particles = this.expandParticlesWithTrails(baseParticles);
+      for (let ai = 0; ai < this.particular.attractors.length; ai++) {
+        const attractor = this.particular.attractors[ai];
+        if (attractor.visible) {
+          particles.push(attractor.toDrawable());
+        }
+      }
+      const pixelRatio = this.particular.pixelRatio;
+      const w = this.target.width || this.particular.width;
+      const h = this.target.height || this.particular.height;
+      const logicalW = w / pixelRatio;
+      const logicalH = h / pixelRatio;
+      if (logicalW <= 0 || logicalH <= 0) return;
+      const batches = this.buildBatches(particles);
+      if (!this.resolutionUniform || !this.softnessUniform || !this.glowUniform || !this.glowSizeUniform || !this.glowColorUniform) return;
+      this.gl.useProgram(this.program);
+      this.gl.uniform2f(this.resolutionUniform, logicalW, logicalH);
+      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.circleQuadBuffer);
+      const posLoc = this.circleAttrPos;
+      this.gl.enableVertexAttribArray(posLoc);
+      this.gl.vertexAttribPointer(posLoc, 2, this.gl.FLOAT, false, 0, 0);
+      for (let bi = 0; bi < batches.length; bi++) {
+        const batch = batches[bi];
+        if (batch.type === "circle") {
+          this.drawCircleBatch(batch);
+        } else {
+          this.drawImageBatch(batch, logicalW, logicalH);
+          this.gl.useProgram(this.program);
+          this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.circleQuadBuffer);
+          this.gl.enableVertexAttribArray(posLoc);
+          this.gl.vertexAttribPointer(posLoc, 2, this.gl.FLOAT, false, 0, 0);
+        }
+      }
+    };
+    this.target = target;
+    this.maxInstances = options?.maxInstances ?? 16384;
+    this.instanceStride = 9;
+    this.instanceData = new Float32Array(this.maxInstances * this.instanceStride);
+  }
+  init(particular, pixelRatio) {
+    this.particular = particular;
+    this.pixelRatio = pixelRatio;
+    const gl = this.target.getContext("webgl2", {
+      alpha: true,
+      premultipliedAlpha: true
+    });
+    if (!gl) {
+      throw new Error("WebGL2 not supported");
+    }
+    this.gl = gl;
+    const vs = this.compileShader(gl.VERTEX_SHADER, VERTEX_SHADER);
+    const fs = this.compileShader(gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
+    const program = gl.createProgram();
+    if (!program) throw new Error("Failed to create program");
+    gl.attachShader(program, vs);
+    gl.attachShader(program, fs);
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error("Shader link error: " + gl.getProgramInfoLog(program));
+    }
+    this.program = program;
+    this.resolutionUniform = gl.getUniformLocation(program, "u_resolution");
+    this.softnessUniform = gl.getUniformLocation(program, "u_softness");
+    this.glowUniform = gl.getUniformLocation(program, "u_glow");
+    this.glowExpandUniform = gl.getUniformLocation(program, "u_glowExpand");
+    this.glowSizeUniform = gl.getUniformLocation(program, "u_glowSize");
+    this.glowColorUniform = gl.getUniformLocation(program, "u_glowColor");
+    this.isShadowUniform = gl.getUniformLocation(program, "u_isShadow");
+    this.shadowColorUniform = gl.getUniformLocation(program, "u_shadowColor");
+    this.shadowBlurUniform = gl.getUniformLocation(program, "u_shadowBlur");
+    this.circleAttrPos = gl.getAttribLocation(program, "a_position");
+    this.circleAttrParticlePos = gl.getAttribLocation(program, "a_particle_pos");
+    this.circleAttrSize = gl.getAttribLocation(program, "a_particle_size");
+    this.circleAttrRotation = gl.getAttribLocation(program, "a_particle_rotation");
+    this.circleAttrColor = gl.getAttribLocation(program, "a_particle_color");
+    this.circleAttrShape = gl.getAttribLocation(program, "a_particle_shape");
+    const imageVs = this.compileShader(gl.VERTEX_SHADER, IMAGE_VERTEX_SHADER);
+    const imageFs = this.compileShader(gl.FRAGMENT_SHADER, IMAGE_FRAGMENT_SHADER);
+    const imageProgram = gl.createProgram();
+    if (!imageProgram) throw new Error("Failed to create image program");
+    gl.attachShader(imageProgram, imageVs);
+    gl.attachShader(imageProgram, imageFs);
+    gl.linkProgram(imageProgram);
+    if (!gl.getProgramParameter(imageProgram, gl.LINK_STATUS)) {
+      throw new Error("Image shader link error: " + gl.getProgramInfoLog(imageProgram));
+    }
+    this.imageProgram = imageProgram;
+    this.imageResolutionUniform = gl.getUniformLocation(imageProgram, "u_resolution");
+    this.imageTintUniform = gl.getUniformLocation(imageProgram, "u_tint");
+    this.imageIsShadowUniform = gl.getUniformLocation(imageProgram, "u_isShadow");
+    this.imageShadowColorUniform = gl.getUniformLocation(imageProgram, "u_shadowColor");
+    this.imageShadowBlurUniform = gl.getUniformLocation(imageProgram, "u_shadowBlur");
+    this.imageAttrPos = gl.getAttribLocation(imageProgram, "a_position");
+    this.imageAttrParticlePos = gl.getAttribLocation(imageProgram, "a_particle_pos");
+    this.imageAttrSize = gl.getAttribLocation(imageProgram, "a_particle_size");
+    this.imageAttrRotation = gl.getAttribLocation(imageProgram, "a_particle_rotation");
+    this.imageAttrColor = gl.getAttribLocation(imageProgram, "a_particle_color");
+    this.imageTexUniform = gl.getUniformLocation(imageProgram, "u_texture");
+    const quadData = new Float32Array([
+      -1,
+      -1,
+      1,
+      -1,
+      -1,
+      1,
+      -1,
+      1,
+      1,
+      -1,
+      1,
+      1
+    ]);
+    this.quadBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, quadData, gl.STATIC_DRAW);
+    const circleQuadData = new Float32Array([
+      -2,
+      -2,
+      2,
+      -2,
+      -2,
+      2,
+      -2,
+      2,
+      2,
+      -2,
+      2,
+      2
+    ]);
+    this.circleQuadBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.circleQuadBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, circleQuadData, gl.STATIC_DRAW);
+    this.instanceBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
+    gl.bufferData(
+      gl.ARRAY_BUFFER,
+      this.instanceData.byteLength,
+      gl.DYNAMIC_DRAW
+    );
+    particular.addEventListener("UPDATE", this.onUpdate);
+    particular.addEventListener("UPDATE_AFTER", this.onUpdateAfter);
+    particular.addEventListener("RESIZE", this.resize);
+  }
+  getOrCreateTexture(image) {
+    if (!image.complete || image.naturalWidth === 0) return null;
+    let tex = this.textureCache.get(image);
+    if (tex) return tex;
+    const gl = this.gl;
+    tex = gl.createTexture();
+    if (!tex) return null;
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+    this.textureCache.set(image, tex);
+    return tex;
+  }
+  compileShader(type, source) {
+    return chunk5V4IP2RS_cjs.compileShader(this.gl, type, source);
+  }
+  expandParticlesWithTrails(particles) {
+    const expanded = this.expandedArr;
+    expanded.length = 0;
+    this.ghostPoolIdx = 0;
+    for (let pi = 0; pi < particles.length; pi++) {
+      const particle = particles[pi];
+      expanded.push(particle);
+      if (!particle.trail || particle.trailSegments.length === 0) continue;
+      const maxAge = Math.max(1, Math.floor(particle.trailLength));
+      for (let si = 0; si < particle.trailSegments.length; si++) {
+        const segment = particle.trailSegments[si];
+        const life = 1 - segment.age / maxAge;
+        if (life <= 0) continue;
+        const sizeScale = particle.trailShrink + life * (1 - particle.trailShrink);
+        const alphaScale = life * particle.trailFade;
+        const ghost = this.acquireGhost();
+        ghost.position.x = segment.x;
+        ghost.position.y = segment.y;
+        ghost.position.z = segment.z;
+        ghost.factoredSize = Math.max(0.1, segment.size * sizeScale);
+        ghost.rotation = segment.rotation;
+        ghost.alpha = segment.alpha * alphaScale;
+        ghost.color = particle.color;
+        ghost.colorR = particle.colorR;
+        ghost.colorG = particle.colorG;
+        ghost.colorB = particle.colorB;
+        ghost.shape = particle.shape;
+        ghost.blendMode = particle.blendMode;
+        ghost.image = particle.image;
+        ghost.imageTint = particle.imageTint;
+        ghost.glow = false;
+        ghost.shadow = false;
+        expanded.push(ghost);
+      }
+    }
+    return expanded;
+  }
+  acquireGhost() {
+    if (this.ghostPoolIdx < this.ghostPool.length) {
+      return this.ghostPool[this.ghostPoolIdx++];
+    }
+    const ghost = {
+      position: { x: 0, y: 0 },
+      factoredSize: 0,
+      rotation: 0,
+      alpha: 0,
+      color: "",
+      colorR: 0,
+      colorG: 0,
+      colorB: 0,
+      shape: "circle",
+      blendMode: "normal",
+      image: null,
+      imageTint: false,
+      glow: false,
+      shadow: false,
+      trail: false,
+      trailSegments: [],
+      shadowLightOrigin: null
+    };
+    this.ghostPool.push(ghost);
+    this.ghostPoolIdx++;
+    return ghost;
+  }
+  buildBatches(particles) {
+    this.batchPoolIdx = 0;
+    const batches = this._batchResult;
+    batches.length = 0;
+    let current = null;
+    for (let bi = 0; bi < particles.length; bi++) {
+      const p = particles[bi];
+      const img = p.image && p.image instanceof HTMLImageElement ? p.image : null;
+      const tex = img ? this.getOrCreateTexture(img) : null;
+      const isImage = !!tex;
+      const blendMode = p.blendMode;
+      const imageTint = !!p.imageTint;
+      const sameBatch = current && current.type === (isImage ? "image" : "circle") && current.blendMode === blendMode && current.shadow === p.shadow && (!p.shadow || current.shadowOffsetX === p.shadowOffsetX && current.shadowOffsetY === p.shadowOffsetY && current.shadowBlur === p.shadowBlur && current.shadowColor === p.shadowColor && current.shadowAlpha === p.shadowAlpha) && (isImage ? current.texture === tex && current.imageTint === imageTint : current.glow === p.glow && (!p.glow || current.glowSize === p.glowSize && current.glowColor === p.glowColor && current.glowAlpha === p.glowAlpha));
+      if (!sameBatch) {
+        current = this.acquireBatch();
+        current.type = isImage ? "image" : "circle";
+        current.blendMode = blendMode;
+        current.shadow = p.shadow;
+        current.shadowBlur = p.shadowBlur;
+        current.shadowOffsetX = p.shadowOffsetX;
+        current.shadowOffsetY = p.shadowOffsetY;
+        current.shadowColor = p.shadowColor;
+        current.shadowAlpha = p.shadowAlpha;
+        if (isImage && tex) {
+          current.texture = tex;
+          current.image = img;
+          current.imageTint = imageTint;
+        } else {
+          current.texture = void 0;
+          current.image = void 0;
+          current.imageTint = void 0;
+          current.glow = p.glow;
+          current.glowSize = p.glowSize;
+          current.glowColor = p.glowColor;
+          current.glowAlpha = p.glowAlpha;
+        }
+        batches.push(current);
+      }
+      current.particles.push(p);
+    }
+    return batches;
+  }
+  acquireBatch() {
+    if (this.batchPoolIdx < this.batchPool.length) {
+      const batch2 = this.batchPool[this.batchPoolIdx++];
+      batch2.particles.length = 0;
+      return batch2;
+    }
+    const batch = {
+      type: "circle",
+      blendMode: "normal",
+      particles: []
+    };
+    this.batchPool.push(batch);
+    this.batchPoolIdx++;
+    return batch;
+  }
+  fillInstanceData(particles, startIdx, endIdx, offsetX = 0, offsetY = 0, scaleOffsetByAlpha = false, directionalFromLightOrigin = false) {
+    let offset = 0;
+    for (let pi = startIdx; pi < endIdx; pi++) {
+      const p = particles[pi];
+      const r = p.colorR;
+      const g = p.colorG;
+      const b = p.colorB;
+      let effectiveOffsetX = offsetX;
+      let effectiveOffsetY = offsetY;
+      if (directionalFromLightOrigin) {
+        const baseDistance = Math.hypot(offsetX, offsetY);
+        const lightDx = p.position.x - p.shadowLightOrigin.x;
+        const lightDy = p.position.y - p.shadowLightOrigin.y;
+        const lightDist = Math.hypot(lightDx, lightDy);
+        if (baseDistance > 0 && lightDist > 1e-4) {
+          effectiveOffsetX = lightDx / lightDist * baseDistance;
+          effectiveOffsetY = lightDy / lightDist * baseDistance;
+        }
+      }
+      if (scaleOffsetByAlpha) {
+        const retraction = Math.max(0, Math.min(1, p.alpha));
+        const sizeScale = Math.max(0.45, Math.min(2.2, p.factoredSize / 12));
+        effectiveOffsetX *= retraction;
+        effectiveOffsetY *= retraction;
+        effectiveOffsetX *= sizeScale;
+        effectiveOffsetY *= sizeScale;
+      }
+      this.instanceData[offset++] = p.position.x + effectiveOffsetX;
+      this.instanceData[offset++] = p.position.y + effectiveOffsetY;
+      this.instanceData[offset++] = p.factoredSize;
+      this.instanceData[offset++] = p.rotation * Math.PI / 180;
+      this.instanceData[offset++] = r;
+      this.instanceData[offset++] = g;
+      this.instanceData[offset++] = b;
+      this.instanceData[offset++] = p.alpha;
+      this.instanceData[offset++] = chunk5V4IP2RS_cjs.shapeToId(p.shape);
+    }
+  }
+  drawCircleInstances(list, offsetX, offsetY, scaleOffsetByAlpha = false, directionalFromLightOrigin = false) {
+    const gl = this.gl;
+    const stride = this.instanceStride;
+    const posLoc2 = this.circleAttrParticlePos;
+    const sizeLoc = this.circleAttrSize;
+    const rotLoc = this.circleAttrRotation;
+    const colLoc = this.circleAttrColor;
+    const shapeLoc = this.circleAttrShape;
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
+    gl.enableVertexAttribArray(posLoc2);
+    gl.vertexAttribPointer(posLoc2, 2, gl.FLOAT, false, stride * 4, 0);
+    gl.vertexAttribDivisor(posLoc2, 1);
+    gl.enableVertexAttribArray(sizeLoc);
+    gl.vertexAttribPointer(sizeLoc, 1, gl.FLOAT, false, stride * 4, 8);
+    gl.vertexAttribDivisor(sizeLoc, 1);
+    gl.enableVertexAttribArray(rotLoc);
+    gl.vertexAttribPointer(rotLoc, 1, gl.FLOAT, false, stride * 4, 12);
+    gl.vertexAttribDivisor(rotLoc, 1);
+    gl.enableVertexAttribArray(colLoc);
+    gl.vertexAttribPointer(colLoc, 4, gl.FLOAT, false, stride * 4, 16);
+    gl.vertexAttribDivisor(colLoc, 1);
+    gl.enableVertexAttribArray(shapeLoc);
+    gl.vertexAttribPointer(shapeLoc, 1, gl.FLOAT, false, stride * 4, 32);
+    gl.vertexAttribDivisor(shapeLoc, 1);
+    for (let i = 0; i < list.length; i += this.maxInstances) {
+      const end = Math.min(i + this.maxInstances, list.length);
+      const count = end - i;
+      this.fillInstanceData(list, i, end, offsetX, offsetY, scaleOffsetByAlpha, directionalFromLightOrigin);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.instanceData.subarray(0, count * stride));
+      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, count);
+    }
+    gl.vertexAttribDivisor(posLoc2, 0);
+    gl.vertexAttribDivisor(sizeLoc, 0);
+    gl.vertexAttribDivisor(rotLoc, 0);
+    gl.vertexAttribDivisor(colLoc, 0);
+    gl.vertexAttribDivisor(shapeLoc, 0);
+  }
+  drawCircleBatch(batch) {
+    const gl = this.gl;
+    const list = batch.particles;
+    if (batch.shadow) {
+      const [sr, sg, sb] = chunk5V4IP2RS_cjs.hexToRgba(batch.shadowColor ?? "#000000");
+      const sa = batch.shadowAlpha ?? 0.5;
+      gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+      gl.blendEquation(gl.FUNC_ADD);
+      gl.uniform1f(this.isShadowUniform, 1);
+      gl.uniform1f(this.glowExpandUniform, 0);
+      gl.uniform4f(this.shadowColorUniform, sr, sg, sb, sa);
+      gl.uniform1f(this.shadowBlurUniform, Math.min(1, (batch.shadowBlur ?? 8) / 20));
+      this.drawCircleInstances(list, batch.shadowOffsetX ?? 4, batch.shadowOffsetY ?? 4, true, true);
+      gl.uniform1f(this.isShadowUniform, 0);
+    }
+    chunk5V4IP2RS_cjs.setBlendMode(gl, batch.blendMode);
+    gl.uniform1f(this.softnessUniform, 0.1);
+    gl.uniform1f(this.glowUniform, batch.glow ? 1 : 0);
+    const glowUV = Math.min(1, (batch.glowSize ?? 10) / 30) * 1.75;
+    gl.uniform1f(this.glowExpandUniform, batch.glow ? glowUV : 0);
+    gl.uniform1f(this.glowSizeUniform, Math.min(1, (batch.glowSize ?? 10) / 30));
+    const [gr, gg, gb] = chunk5V4IP2RS_cjs.hexToRgba(batch.glowColor ?? "#ffffff");
+    gl.uniform4f(this.glowColorUniform, gr, gg, gb, Math.max(0, Math.min(1, batch.glowAlpha ?? 0.35)));
+    this.drawCircleInstances(list, 0, 0);
+  }
+  drawImageInstances(list, offsetX, offsetY, scaleOffsetByAlpha = false, directionalFromLightOrigin = false) {
+    const gl = this.gl;
+    const stride = this.instanceStride;
+    const posLoc2 = this.imageAttrParticlePos;
+    const sizeLoc = this.imageAttrSize;
+    const rotLoc = this.imageAttrRotation;
+    const colLoc = this.imageAttrColor;
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
+    gl.enableVertexAttribArray(posLoc2);
+    gl.vertexAttribPointer(posLoc2, 2, gl.FLOAT, false, stride * 4, 0);
+    gl.vertexAttribDivisor(posLoc2, 1);
+    gl.enableVertexAttribArray(sizeLoc);
+    gl.vertexAttribPointer(sizeLoc, 1, gl.FLOAT, false, stride * 4, 8);
+    gl.vertexAttribDivisor(sizeLoc, 1);
+    gl.enableVertexAttribArray(rotLoc);
+    gl.vertexAttribPointer(rotLoc, 1, gl.FLOAT, false, stride * 4, 12);
+    gl.vertexAttribDivisor(rotLoc, 1);
+    gl.enableVertexAttribArray(colLoc);
+    gl.vertexAttribPointer(colLoc, 4, gl.FLOAT, false, stride * 4, 16);
+    gl.vertexAttribDivisor(colLoc, 1);
+    for (let i = 0; i < list.length; i += this.maxInstances) {
+      const end = Math.min(i + this.maxInstances, list.length);
+      const count = end - i;
+      this.fillInstanceData(list, i, end, offsetX, offsetY, scaleOffsetByAlpha, directionalFromLightOrigin);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.instanceData.subarray(0, count * stride));
+      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, count);
+    }
+    gl.vertexAttribDivisor(posLoc2, 0);
+    gl.vertexAttribDivisor(sizeLoc, 0);
+    gl.vertexAttribDivisor(rotLoc, 0);
+    gl.vertexAttribDivisor(colLoc, 0);
+  }
+  drawImageBatch(batch, logicalW, logicalH) {
+    const gl = this.gl;
+    const list = batch.particles;
+    if (!this.imageProgram || !batch.texture || !this.imageResolutionUniform || !this.imageTintUniform || !this.imageShadowBlurUniform) return;
+    gl.useProgram(this.imageProgram);
+    gl.uniform2f(this.imageResolutionUniform, logicalW, logicalH);
+    gl.uniform1f(this.imageTintUniform, batch.imageTint ? 1 : 0);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, batch.texture);
+    gl.uniform1i(this.imageTexUniform, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuffer);
+    gl.enableVertexAttribArray(this.imageAttrPos);
+    gl.vertexAttribPointer(this.imageAttrPos, 2, gl.FLOAT, false, 0, 0);
+    if (batch.shadow) {
+      const [sr, sg, sb] = chunk5V4IP2RS_cjs.hexToRgba(batch.shadowColor ?? "#000000");
+      const sa = batch.shadowAlpha ?? 0.5;
+      gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+      gl.blendEquation(gl.FUNC_ADD);
+      gl.uniform1f(this.imageIsShadowUniform, 1);
+      gl.uniform4f(this.imageShadowColorUniform, sr, sg, sb, sa);
+      gl.uniform1f(this.imageShadowBlurUniform, Math.max(0, batch.shadowBlur ?? 8));
+      this.drawImageInstances(list, batch.shadowOffsetX ?? 4, batch.shadowOffsetY ?? 4, true, true);
+      gl.uniform1f(this.imageIsShadowUniform, 0);
+    }
+    chunk5V4IP2RS_cjs.setBlendMode(gl, batch.blendMode);
+    this.drawImageInstances(list, 0, 0);
+  }
+  destroy() {
+    this.remove();
+  }
+  remove() {
+    if (!this.particular || !this.gl) return;
+    this.particular.removeEventListener("UPDATE", this.onUpdate);
+    this.particular.removeEventListener("UPDATE_AFTER", this.onUpdateAfter);
+    this.particular.removeEventListener("RESIZE", this.resize);
+    if (this.quadBuffer) this.gl.deleteBuffer(this.quadBuffer);
+    if (this.circleQuadBuffer) this.gl.deleteBuffer(this.circleQuadBuffer);
+    if (this.instanceBuffer) this.gl.deleteBuffer(this.instanceBuffer);
+    if (this.program) this.gl.deleteProgram(this.program);
+    if (this.imageProgram) this.gl.deleteProgram(this.imageProgram);
+    for (const tex of this.textureCache.values()) {
+      this.gl.deleteTexture(tex);
+    }
+    this.textureCache.clear();
+    this.particular = null;
+    this.gl = null;
+    this.program = null;
+    this.imageProgram = null;
+    this.quadBuffer = null;
+    this.circleQuadBuffer = null;
+    this.instanceBuffer = null;
+  }
+};
+
+exports.WebGLRenderer = WebGLRenderer;
+//# sourceMappingURL=chunk-ZMNMQZSP.cjs.map
+//# sourceMappingURL=chunk-ZMNMQZSP.cjs.map

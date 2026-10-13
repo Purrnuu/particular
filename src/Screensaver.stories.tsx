@@ -60,7 +60,7 @@ const ScreensaverDemo: React.FC<ScreensaverStoryArgs> = (props) => {
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a1a' }}>
-      <canvas ref={canvasRef} style={particlesBackgroundLayerStyle} />
+      <canvas key={renderer} ref={canvasRef} style={particlesBackgroundLayerStyle} />
       <h1
         style={{
           textAlign: 'center',
@@ -256,7 +256,7 @@ const FireworksShowDemo: React.FC<{ renderer: 'canvas' | 'webgl' }> = ({ rendere
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a1a' }}>
-      <canvas ref={canvasRef} style={particlesBackgroundLayerStyle} />
+      <canvas key={renderer} ref={canvasRef} style={particlesBackgroundLayerStyle} />
       <h1
         style={{
           textAlign: 'center',

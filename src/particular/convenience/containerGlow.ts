@@ -1,8 +1,9 @@
 import Emitter from '../components/emitter';
 import Particular from '../core/particular';
+import type { FeatureContext } from './context';
 import { configureParticle, defaultContainerGlow } from '../core/defaults';
 import Vector from '../utils/vector';
-import type { ContainerGlowConfig } from '../types';
+import type { ContainerGlowConfig, FrameContext } from '../types';
 import type { ContainerGlowHandle } from './types';
 
 /** Edge direction angles (radians): outward from each edge. */
@@ -20,12 +21,15 @@ const EDGE_ANGLES = {
  * glowing particles outward. Emission rate pulses sinusoidally for a breathing
  * effect. Auto-syncs on resize and scroll.
  */
-export function createContainerGlowHelper(
-  engine: Particular,
-  container: HTMLElement | undefined,
-  cleanups: Array<() => void>,
-) {
+export function createContainerGlowHelper({
+  engine,
+  container,
+  resources,
+  coordinates,
+}: FeatureContext) {
   const addContainerGlow = (config: ContainerGlowConfig): ContainerGlowHandle => {
+    resources.assertActive();
+    let disposed = false;
     const { element, ...userConfig } = config;
     const resolved = { ...defaultContainerGlow, ...userConfig };
     const pr = engine.pixelRatio;
@@ -68,19 +72,17 @@ export function createContainerGlowHelper(
 
     /** Full rebuild: remove old emitters, create new ones at current element position. */
     const rebuild = () => {
+      if (disposed || resources.disposed) return;
       for (const em of emitters) {
-        engine.emitters.splice(engine.emitters.indexOf(em), 1);
+        const index = engine.emitters.indexOf(em);
+        if (index !== -1) engine.emitters.splice(index, 1);
         em.destroy();
       }
       emitters = [];
       edgeData = [];
 
-      const refRect = container
-        ? container.getBoundingClientRect()
-        : { left: 0, top: 0 };
       const elRect = element.getBoundingClientRect();
-      const elLeft = (elRect.left - refRect.left) / pr;
-      const elTop = (elRect.top - refRect.top) / pr;
+      const { x: elLeft, y: elTop } = coordinates.clientToEngine(elRect.left, elRect.top);
       const elW = elRect.width / pr;
       const elH = elRect.height / pr;
 
@@ -121,9 +123,7 @@ export function createContainerGlowHelper(
     const reposition = () => {
       if (emitters.length === 0) return;
 
-      const refRect = container
-        ? container.getBoundingClientRect()
-        : { left: 0, top: 0 };
+      const refRect = container ? container.getBoundingClientRect() : { left: 0, top: 0 };
       const elRect = element.getBoundingClientRect();
       const elLeft = (elRect.left - refRect.left) / pr;
       const elTop = (elRect.top - refRect.top) / pr;
@@ -138,13 +138,13 @@ export function createContainerGlowHelper(
 
     /** Per-frame handler: enforce paused state + pulse modulation.
      *  Runs on UPDATE (before emit) so it overrides the engine's isEmitting reset. */
-    const onUpdate = () => {
+    const onUpdate = (frame?: FrameContext) => {
       if (paused) {
         for (const em of emitters) em.isEmitting = false;
         return;
       }
       if (resolved.pulseAmplitude > 0 && resolved.pulseSpeed > 0) {
-        pulseTick++;
+        pulseTick += frame?.dt ?? 1;
         const pulse = 1 + resolved.pulseAmplitude * Math.sin(pulseTick * resolved.pulseSpeed);
         for (const em of emitters) {
           em.configuration.rate = baseRate * pulse;
@@ -188,6 +188,7 @@ export function createContainerGlowHelper(
     };
 
     const start = () => {
+      if (disposed || resources.disposed) return;
       paused = false;
       for (const em of emitters) em.isEmitting = true;
     };
@@ -196,7 +197,8 @@ export function createContainerGlowHelper(
       update: rebuild,
       stop,
       start,
-      destroy: () => {
+      destroy: resources.add(() => {
+        disposed = true;
         engine.removeEventListener(Particular.UPDATE, onUpdate);
         ro.disconnect();
         if (rebuildRafId) cancelAnimationFrame(rebuildRafId);
@@ -209,10 +211,9 @@ export function createContainerGlowHelper(
         }
         emitters = [];
         edgeData = [];
-      },
+      }),
     };
 
-    cleanups.push(() => handle.destroy());
     return handle;
   };
 

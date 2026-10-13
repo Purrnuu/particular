@@ -139,6 +139,54 @@ describe('Particle', () => {
   });
 
   describe('external forces', () => {
+    it.each([false, true])('applies constraints before rendering (home fast path: %s)', (home) => {
+      const p = Particle.create(minParams({
+        point: new Vector(0, 0),
+        ...(home ? { homePosition: new Vector(0, 0), homeConfig: {} } : {}),
+      }));
+      const rendered: number[] = [];
+      p.particular = {
+        hasEventListener: () => true,
+        dispatchEvent: () => { rendered.push(p.position.x); },
+      } as unknown as typeof p.particular;
+      const constrain = vi.fn((particle: Particle) => { particle.position.x = 5; });
+      p.update([{ getForce: () => new Vector(1, 0), constrain }], 1);
+      expect(constrain).toHaveBeenCalledOnce();
+      expect(rendered).toEqual([5]);
+    });
+
+    it('keeps JavaScript 2D forces without a z component finite', () => {
+      const p = Particle.create(minParams());
+      p.update([{ getForce: () => ({ x: 1, y: 2 }) as Vector }], 0.5);
+      expect(p.velocity.z).toBe(0);
+      expect(p.position.z).toBe(0);
+    });
+
+    it.each([false, true])('integrates all force axes once (settled home: %s)', (home) => {
+      const p = Particle.create(minParams({
+        point: new Vector(0, 0),
+        ...(home ? { homePosition: new Vector(0, 0), homeConfig: {} } : {}),
+      }));
+      p.update([{ getForce: () => new Vector(1, 2, 3) }], 0.5);
+      expect(p.velocity.x).toBeCloseTo(0.5);
+      expect(p.velocity.y).toBeCloseTo(1);
+      expect(p.velocity.z).toBeCloseTo(1.5);
+      expect(p.position.x).toBeCloseTo(0.25);
+      expect(p.position.y).toBeCloseTo(0.5);
+      expect(p.position.z).toBeCloseTo(0.75);
+    });
+
+    it.each([0.25, 0.5, 1, 2])('scales spring-return noise variance with dt=%s', (dt) => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.75);
+      const p = Particle.create(minParams({
+        homePosition: new Vector(100, 0),
+        homeConfig: { springStrength: 0, springDamping: 1, returnNoise: 4 },
+      }));
+      p.update(undefined, dt);
+      expect(p.velocity.x).toBeCloseTo(Math.sqrt(dt), 10);
+      expect(p.velocity.y).toBeCloseTo(Math.sqrt(dt), 10);
+    });
+
     it('applies force from ForceSource', () => {
       const mockForce: ForceSource = {
         getForce: () => new Vector(1, 2),
@@ -324,6 +372,40 @@ describe('Particle', () => {
   });
 
   describe('trail', () => {
+    it.each([30, 60, 120, 144, 240])('samples trails at 60 Hz on a %i Hz display', (hz) => {
+      const p = Particle.create(minParams({
+        particleLife: Infinity, trail: true, trailLength: 6,
+        point: new Vector(100, 100), velocity: new Vector(2, 0, 1),
+      }));
+      for (let i = 0; i < hz; i++) p.update(undefined, 60 / hz);
+      expect(p.trailSegments).toHaveLength(6);
+      p.trailSegments.forEach((segment, i) => {
+        expect(segment.age).toBeCloseTo(5 - i, 8);
+        expect(segment.x).toBeCloseTo(208 + 2 * i, 8);
+        expect(segment.z).toBeCloseTo(54 + i, 8);
+      });
+    });
+
+    it('does not sample trails when no simulation time passes', () => {
+      const p = Particle.create(minParams({ trail: true, trailLength: 6 }));
+      p.update(undefined, 0);
+      expect(p.trailSegments).toHaveLength(0);
+    });
+
+    it('resets fractional trail sampling when a particle is reused', () => {
+      setParticlePoolSize(10);
+      const params = minParams({ trail: true, trailLength: 6 });
+      const p = Particle.create(params);
+      p.update(undefined, 0.5);
+      p.destroy();
+      const reused = Particle.create(params);
+      expect(reused).toBe(p);
+      reused.update(undefined, 0.5);
+      expect(reused.trailSegments).toHaveLength(0);
+      reused.update(undefined, 0.5);
+      expect(reused.trailSegments).toHaveLength(1);
+    });
+
     it('creates trail segments when trail is enabled', () => {
       const p = Particle.create(minParams({
         trail: true,

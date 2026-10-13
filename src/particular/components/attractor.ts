@@ -46,7 +46,7 @@ export default class Attractor {
       const img = new Image();
       img.src = this.icon;
       this._resolvedImage = img;
-    } else if (this.icon instanceof HTMLImageElement) {
+    } else if (typeof HTMLImageElement !== 'undefined' && this.icon instanceof HTMLImageElement) {
       this._resolvedImage = this.icon;
     }
   }
@@ -55,9 +55,7 @@ export default class Attractor {
     const dx = this.position.x - particlePosition.x;
     const dy = this.position.y - particlePosition.y;
     const dz = this.position.z - particlePosition.z;
-    const dist = dz === 0
-      ? Math.sqrt(dx * dx + dy * dy)
-      : Math.sqrt(dx * dx + dy * dy + dz * dz);
+    const dist = dz === 0 ? Math.sqrt(dx * dx + dy * dy) : Math.sqrt(dx * dx + dy * dy + dz * dz);
 
     if (dist === 0 || dist > this.radius) {
       _tempForce.x = 0;
@@ -67,7 +65,7 @@ export default class Attractor {
     }
 
     // Combine normalize + scale: (dx/dist) * strength * falloff
-    const scale = this.strength * (1 - dist / this.radius) / dist;
+    const scale = (this.strength * (1 - dist / this.radius)) / dist;
     _tempForce.x = dx * scale;
     _tempForce.y = dy * scale;
     _tempForce.z = dz * scale;
@@ -101,10 +99,11 @@ export default class Attractor {
       trail: false,
       trailSegments: [],
       trailLength: 0,
-      getRoundedLocation: () => [
-        ((this.position.x * 10) << 0) * 0.1,
-        ((this.position.y * 10) << 0) * 0.1,
-      ] as [number, number],
+      getRoundedLocation: () =>
+        [((this.position.x * 10) << 0) * 0.1, ((this.position.y * 10) << 0) * 0.1] as [
+          number,
+          number,
+        ],
     } as unknown as Particle;
   }
 }

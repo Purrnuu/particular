@@ -1,8 +1,10 @@
 # Dependencies
 node_modules/
+.build/
+.tools/
+.npm-cache/
 
 # Lock files (library — consumers resolve their own deps)
-package-lock.json
 yarn.lock
 pnpm-lock.yaml
 
